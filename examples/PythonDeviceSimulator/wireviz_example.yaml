@@ -1,0 +1,23 @@
+metadata:
+  title: CT3xx Python DUT Example
+
+connectors:
+  CT3:
+    bgcolor: WH
+    pinlabels: [SC3_27_1, SC3_28_1, SC3_29_1, SC3_30_1, SC3_31_1, SC3_32_1, SC3_33_1, SC3_34_1]
+
+  HARNESS_A:
+    bgcolor: YE
+    pinlabels: [A1.1, A1.2, A1.3, A1.4, A1.5, A1.6, A1.7, A1.8]
+
+  DevicePort:
+    bgcolor: YE
+    pinlabels: [J5.1, J5.2, J5.3, J5.4, J5.5, J5.6, J5.7, J5.8]
+
+connections:
+  -
+    - CT3: [1, 2, 3, 4, 5, 6, 7, 8]
+    - HARNESS_A: [1, 2, 3, 4, 5, 6, 7, 8]
+  -
+    - HARNESS_A: [1, 2, 3, 4, 5, 6, 7, 8]
+    - DevicePort: [1, 2, 3, 4, 5, 6, 7, 8]

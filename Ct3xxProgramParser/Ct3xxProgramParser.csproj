@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Description>Parserlibrary for CT3xx program-, signal- and config files.</Description>
+    <PackageId>Ct3xxProgramParser</PackageId>
+    <AssemblyName>Ct3xxProgramParser</AssemblyName>
+    <RootNamespace>Ct3xxProgramParser</RootNamespace>
+  </PropertyGroup>
+
+</Project>

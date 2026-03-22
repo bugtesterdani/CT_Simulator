@@ -1,0 +1,15 @@
+<Window x:Class="Ct3xxSimulator.Desktop.Views.InputDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Eingabe" Height="180" Width="420"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <StackPanel Margin="15">
+        <TextBlock x:Name="PromptText" TextWrapping="Wrap" FontWeight="SemiBold"
+                   AutomationProperties.AutomationId="PromptLabel"/>
+        <TextBox x:Name="InputBox" MinWidth="200" AutomationProperties.AutomationId="PromptInputBox"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="OK" Width="80" IsDefault="True" Click="OnOk" AutomationProperties.AutomationId="PromptOkButton"/>
+            <Button Content="Abbrechen" Width="80" IsCancel="True" AutomationProperties.AutomationId="PromptCancelButton"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

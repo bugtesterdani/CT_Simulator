@@ -1,0 +1,15 @@
+<Window x:Class="Ct3xxSimulator.Desktop.Views.SelectionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Auswahl" Height="260" Width="420"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <DockPanel Margin="15">
+        <TextBlock x:Name="PromptText" DockPanel.Dock="Top" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10"
+                   AutomationProperties.AutomationId="SelectionPromptLabel"/>
+        <ListBox x:Name="OptionsList" DisplayMemberPath="." AutomationProperties.AutomationId="SelectionListBox"/>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="OK" Width="80" IsDefault="True" Click="OnOk" AutomationProperties.AutomationId="SelectionOkButton"/>
+            <Button Content="Abbrechen" Width="80" IsCancel="True" AutomationProperties.AutomationId="SelectionCancelButton"/>
+        </StackPanel>
+    </DockPanel>
+</Window>
