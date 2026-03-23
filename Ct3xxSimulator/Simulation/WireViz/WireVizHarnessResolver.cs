@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using Ct3xxSimulationModelParser.Model;
+using Ct3xxSimulationModelParser.Parsing;
 using Ct3xxProgramParser.Documents;
 using Ct3xxProgramParser.Programs;
 using Ct3xxProgramParser.SignalTables;
@@ -13,10 +16,17 @@ namespace Ct3xxSimulator.Simulation.WireViz;
 public sealed class WireVizHarnessResolver
 {
     private readonly Dictionary<string, List<WireVizConnectionResolution>> _resolutions;
+    private readonly Dictionary<string, List<ResolutionSeed>> _resolutionSeeds;
+    private readonly List<SimulationElementDefinition> _simulationElements;
 
-    private WireVizHarnessResolver(Dictionary<string, List<WireVizConnectionResolution>> resolutions)
+    private WireVizHarnessResolver(
+        Dictionary<string, List<WireVizConnectionResolution>> resolutions,
+        Dictionary<string, List<ResolutionSeed>> resolutionSeeds,
+        List<SimulationElementDefinition>? simulationElements = null)
     {
         _resolutions = resolutions;
+        _resolutionSeeds = resolutionSeeds;
+        _simulationElements = simulationElements ?? new List<SimulationElementDefinition>();
     }
 
     public int SignalCount => _resolutions.Count;
@@ -31,13 +41,16 @@ public sealed class WireVizHarnessResolver
         var wireVizFiles = WireVizFileLocator.FindCandidateFiles(fileSet.ProgramDirectory);
         if (wireVizFiles.Count == 0)
         {
-            return new WireVizHarnessResolver(new Dictionary<string, List<WireVizConnectionResolution>>(StringComparer.OrdinalIgnoreCase));
+            return new WireVizHarnessResolver(
+                new Dictionary<string, List<WireVizConnectionResolution>>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, List<ResolutionSeed>>(StringComparer.OrdinalIgnoreCase));
         }
 
-        return Create(fileSet, wireVizFiles);
+        var simulationModel = LoadSimulationModel(fileSet.ProgramDirectory);
+        return Create(fileSet, wireVizFiles, simulationModel);
     }
 
-    public static WireVizHarnessResolver Create(Ct3xxProgramFileSet fileSet, IEnumerable<string> wireVizFiles)
+    public static WireVizHarnessResolver Create(Ct3xxProgramFileSet fileSet, IEnumerable<string> wireVizFiles, SimulationModelDocument? simulationModel = null)
     {
         if (fileSet == null)
         {
@@ -52,16 +65,25 @@ public sealed class WireVizHarnessResolver
         var parser = new WireVizParser();
         var graphs = wireVizFiles
             .Select(parser.ParseFile)
-            .Select(BuildGraph)
+            .Select(document => BuildGraph(document, simulationModel, string.Empty, new HashSet<string>(StringComparer.OrdinalIgnoreCase)))
             .ToList();
 
         var resolutions = new Dictionary<string, List<WireVizConnectionResolution>>(StringComparer.OrdinalIgnoreCase);
+        var resolutionSeeds = new Dictionary<string, List<ResolutionSeed>>(StringComparer.OrdinalIgnoreCase);
         foreach (var assignment in fileSet.SignalTables.SelectMany(document => document.Table.AllAssignments))
         {
             foreach (var graph in graphs)
             {
                 foreach (var source in graph.ResolveSignalSources(assignment))
                 {
+                    if (!resolutionSeeds.TryGetValue(assignment.Name, out var seeds))
+                    {
+                        seeds = new List<ResolutionSeed>();
+                        resolutionSeeds[assignment.Name] = seeds;
+                    }
+
+                    seeds.Add(new ResolutionSeed(assignment, source, graph));
+
                     var targets = graph.GetConnectedEndpoints(source)
                         .Where(target => !string.Equals(target.Key, source.Key, StringComparison.OrdinalIgnoreCase))
                         .DistinctBy(target => target.Key, StringComparer.OrdinalIgnoreCase)
@@ -83,7 +105,7 @@ public sealed class WireVizHarnessResolver
             }
         }
 
-        return new WireVizHarnessResolver(resolutions);
+        return new WireVizHarnessResolver(resolutions, resolutionSeeds, simulationModel?.Elements?.ToList());
     }
 
     public bool TryResolve(string signalOrTestpoint, out IReadOnlyList<WireVizConnectionResolution> resolutions)
@@ -99,10 +121,51 @@ public sealed class WireVizHarnessResolver
         return false;
     }
 
-    private static WireVizGraph BuildGraph(WireVizDocument document)
+    public bool TryResolve(string signalOrTestpoint, IReadOnlyDictionary<string, object?> signalState, out IReadOnlyList<WireVizConnectionResolution> resolutions)
     {
-        var connectorPins = ParseConnectorPins(document.ConnectorDefinitions);
+        if (string.IsNullOrWhiteSpace(signalOrTestpoint))
+        {
+            resolutions = Array.Empty<WireVizConnectionResolution>();
+            return false;
+        }
+
+        if (!_resolutionSeeds.TryGetValue(signalOrTestpoint.Trim(), out var seeds))
+        {
+            resolutions = Array.Empty<WireVizConnectionResolution>();
+            return false;
+        }
+
+        if (_simulationElements.Count == 0)
+        {
+            resolutions = _resolutions.TryGetValue(signalOrTestpoint.Trim(), out var items)
+                ? items
+                : Array.Empty<WireVizConnectionResolution>();
+            return true;
+        }
+
+        resolutions = seeds
+            .Select(seed => new WireVizConnectionResolution(
+                seed.Assignment,
+                seed.Source,
+                seed.Graph.GetConnectedEndpoints(seed.Source, signalState)
+                    .Where(target => !string.Equals(target.Key, seed.Source.Key, StringComparison.OrdinalIgnoreCase))
+                    .DistinctBy(target => target.Key, StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
+                seed.Graph.SourcePath))
+            .Where(item => item.Targets.Count > 0)
+            .ToList();
+        return resolutions.Count > 0;
+    }
+
+    private static WireVizGraph BuildGraph(
+        WireVizDocument document,
+        SimulationModelDocument? simulationModel,
+        string prefix,
+        HashSet<string> visitedModels)
+    {
+        var connectorPins = ParseConnectorPins(document.ConnectorDefinitions, prefix);
         var edges = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var prefixedSimulationElements = new List<SimulationElementDefinition>();
 
         foreach (var connection in document.Connections)
         {
@@ -126,7 +189,7 @@ public sealed class WireVizHarnessResolver
                     var terminal = segment.GetTerminal(index);
                     if (terminal != null)
                     {
-                        path.Add($"{segment.Designator}.{terminal}");
+                        path.Add($"{prefix}{segment.Designator}.{terminal}");
                     }
                 }
 
@@ -134,39 +197,189 @@ public sealed class WireVizHarnessResolver
             }
         }
 
+        if (simulationModel?.Elements != null)
+        {
+            foreach (var element in simulationModel.Elements)
+            {
+                if (element is AssemblyElementDefinition assembly)
+                {
+                    MergeAssembly(document, assembly, prefix, connectorPins, edges, prefixedSimulationElements, visitedModels);
+                }
+                else
+                {
+                    prefixedSimulationElements.Add(PrefixElement(element, prefix));
+                }
+            }
+        }
+
         return new WireVizGraph(
             document.SourcePath ?? string.Empty,
             connectorPins,
-            edges);
+            edges,
+            prefixedSimulationElements);
     }
 
-    private static Dictionary<string, List<WireVizEndpoint>> ParseConnectorPins(IReadOnlyDictionary<string, WireVizConnectorDefinition> connectors)
+    private static Dictionary<string, List<WireVizEndpoint>> ParseConnectorPins(IReadOnlyDictionary<string, WireVizConnectorDefinition> connectors, string prefix)
     {
         var result = new Dictionary<string, List<WireVizEndpoint>>(StringComparer.OrdinalIgnoreCase);
         foreach (var connector in connectors)
         {
             var pins = ExpandPins(connector.Value.Value);
             var labels = ExpandPinLabels(connector.Value.Value);
-            var ct3xxSignals = ExpandCt3xxSignals(connector.Value.Value);
             var endpoints = new List<WireVizEndpoint>();
             for (var i = 0; i < pins.Count; i++)
             {
                 var pin = pins[i];
                 var label = i < labels.Count ? labels[i] : null;
-                var ct3xxSignal = i < ct3xxSignals.Count ? ct3xxSignals[i] : null;
                 endpoints.Add(new WireVizEndpoint(
-                    connector.Key,
+                    $"{prefix}{connector.Key}",
                     pin,
                     label,
-                    ct3xxSignal,
                     connector.Value.Role,
                     connector.Value.BackgroundColor));
             }
 
-            result[connector.Key] = endpoints;
+            result[$"{prefix}{connector.Key}"] = endpoints;
         }
 
         return result;
+    }
+
+    private static void MergeAssembly(
+        WireVizDocument parentDocument,
+        AssemblyElementDefinition assembly,
+        string prefix,
+        Dictionary<string, List<WireVizEndpoint>> connectorPins,
+        Dictionary<string, HashSet<string>> edges,
+        List<SimulationElementDefinition> prefixedSimulationElements,
+        HashSet<string> visitedModels)
+    {
+        var basePath = Path.GetDirectoryName(parentDocument.SourcePath ?? string.Empty) ?? Directory.GetCurrentDirectory();
+        var childWiringPath = ResolveRelativePath(basePath, assembly.Wiring);
+        if (!File.Exists(childWiringPath))
+        {
+            return;
+        }
+
+        var childSimulationDocument = LoadAssemblySimulationDocument(basePath, assembly.Simulation, visitedModels);
+        var childKey = $"{childWiringPath}|{childSimulationDocument?.SourcePath}";
+        if (!visitedModels.Add(childKey))
+        {
+            return;
+        }
+
+        var parser = new WireVizParser();
+        var childDocument = parser.ParseFile(childWiringPath);
+        var childPrefix = $"{prefix}{assembly.Id}.";
+        var childGraph = BuildGraph(childDocument, childSimulationDocument, childPrefix, visitedModels);
+
+        foreach (var pair in childGraph.Connectors)
+        {
+            connectorPins[pair.Key] = pair.Value;
+        }
+
+        foreach (var pair in childGraph.Edges)
+        {
+            foreach (var target in pair.Value)
+            {
+                AddEdge(edges, pair.Key, target);
+            }
+        }
+
+        prefixedSimulationElements.AddRange(childGraph.SimulationElements);
+
+        foreach (var port in assembly.Ports)
+        {
+            var externalKey = $"{prefix}{assembly.Id}.{port.Key}";
+            var internalKey = $"{childPrefix}{port.Value}";
+            AddEdge(edges, externalKey, internalKey);
+            AddEdge(edges, internalKey, externalKey);
+        }
+
+        visitedModels.Remove(childKey);
+    }
+
+    private static SimulationModelDocument? LoadAssemblySimulationDocument(string basePath, string? simulationPath, HashSet<string> visitedModels)
+    {
+        if (string.IsNullOrWhiteSpace(simulationPath))
+        {
+            return null;
+        }
+
+        var fullPath = ResolveRelativePath(basePath, simulationPath);
+        if (!File.Exists(fullPath))
+        {
+            return null;
+        }
+
+        var parser = new SimulationModelParser();
+        return parser.ParseFile(fullPath);
+    }
+
+    private static string ResolveRelativePath(string basePath, string path)
+    {
+        return Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(basePath, path));
+    }
+
+    private static SimulationElementDefinition PrefixElement(SimulationElementDefinition element, string prefix)
+    {
+        switch (element)
+        {
+            case RelayElementDefinition relay:
+                return new RelayElementDefinition(
+                    $"{prefix}{relay.Id}",
+                    new RelayCoilDefinition(relay.Coil.Signal, relay.Coil.ThresholdV),
+                    relay.Contacts.Select(contact => new RelayContactDefinition(
+                        PrefixNode(contact.A, prefix),
+                        PrefixNode(contact.B, prefix),
+                        contact.Mode)).ToList(),
+                    relay.Metadata);
+            case ResistorElementDefinition resistor:
+                return new ResistorElementDefinition(
+                    $"{prefix}{resistor.Id}",
+                    PrefixNode(resistor.A, prefix),
+                    PrefixNode(resistor.B, prefix),
+                    resistor.Ohms,
+                    resistor.Metadata);
+            case TransformerElementDefinition transformer:
+                return new TransformerElementDefinition(
+                    $"{prefix}{transformer.Id}",
+                    PrefixNode(transformer.PrimaryA, prefix),
+                    PrefixNode(transformer.PrimaryB, prefix),
+                    PrefixNode(transformer.SecondaryA, prefix),
+                    PrefixNode(transformer.SecondaryB, prefix),
+                    transformer.Ratio,
+                    transformer.Metadata);
+            case CurrentTransformerElementDefinition currentTransformer:
+                return new CurrentTransformerElementDefinition(
+                    $"{prefix}{currentTransformer.Id}",
+                    currentTransformer.PrimarySignal,
+                    PrefixNode(currentTransformer.SecondaryA, prefix),
+                    PrefixNode(currentTransformer.SecondaryB, prefix),
+                    currentTransformer.Ratio,
+                    currentTransformer.Metadata);
+            case AssemblyElementDefinition assembly:
+                return new AssemblyElementDefinition(
+                    $"{prefix}{assembly.Id}",
+                    assembly.Wiring,
+                    assembly.Simulation,
+                    assembly.Ports,
+                    assembly.Metadata);
+            default:
+                return element;
+        }
+    }
+
+    private static string PrefixNode(string node, string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(node))
+        {
+            return node;
+        }
+
+        return node.Contains(".", StringComparison.Ordinal)
+            ? $"{prefix}{node}"
+            : node;
     }
 
     private static List<string> ExpandPins(WireVizValue connector)
@@ -206,30 +419,6 @@ public sealed class WireVizHarnessResolver
         return labels.AsSequenceOrEmpty()
             .Select(item => item.AsString())
             .ToList();
-    }
-
-    private static List<string?> ExpandCt3xxSignals(WireVizValue connector)
-    {
-        if (connector.TryGetProperty("ct3xx_signals", out var labels))
-        {
-            return labels.AsSequenceOrEmpty()
-                .Select(item => item.AsString())
-                .ToList();
-        }
-
-        if (connector.TryGetProperty("ct3xx_signal_map", out var mapping))
-        {
-            var pins = ExpandPins(connector);
-            var values = new List<string?>(pins.Count);
-            foreach (var pin in pins)
-            {
-                values.Add(mapping.AsMappingOrEmpty().TryGetValue(pin, out var signal) ? signal.AsString() : null);
-            }
-
-            return values;
-        }
-
-        return new List<string?>();
     }
 
     private static ConnectionSegment? ParseConnectionSegment(WireVizValue value)
@@ -338,18 +527,24 @@ public sealed class WireVizHarnessResolver
     {
         private readonly Dictionary<string, List<WireVizEndpoint>> _connectors;
         private readonly Dictionary<string, HashSet<string>> _edges;
+        private readonly IReadOnlyList<SimulationElementDefinition> _simulationElements;
 
         public WireVizGraph(
             string sourcePath,
             Dictionary<string, List<WireVizEndpoint>> connectors,
-            Dictionary<string, HashSet<string>> edges)
+            Dictionary<string, HashSet<string>> edges,
+            IReadOnlyList<SimulationElementDefinition> simulationElements)
         {
             SourcePath = sourcePath;
             _connectors = connectors;
             _edges = edges;
+            _simulationElements = simulationElements;
         }
 
         public string SourcePath { get; }
+        public IReadOnlyDictionary<string, List<WireVizEndpoint>> Connectors => _connectors;
+        public IReadOnlyDictionary<string, HashSet<string>> Edges => _edges;
+        public IReadOnlyList<SimulationElementDefinition> SimulationElements => _simulationElements;
 
         public IEnumerable<WireVizEndpoint> ResolveSignalSources(SignalAssignment assignment)
         {
@@ -360,10 +555,10 @@ public sealed class WireVizHarnessResolver
             {
                 foreach (var endpoint in connector)
                 {
-                    if (string.Equals(endpoint.Ct3xxSignal, canonicalName, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(endpoint.PinLabel, canonicalName, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(endpoint.Ct3xxSignal, legacyName, StringComparison.OrdinalIgnoreCase) ||
+                    if (string.Equals(endpoint.PinLabel, canonicalName, StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(endpoint.PinLabel, legacyName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(endpoint.Pin, canonicalName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(endpoint.Pin, legacyName, StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(endpoint.Key, canonicalName, StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(endpoint.Key, legacyName, StringComparison.OrdinalIgnoreCase))
                     {
@@ -389,6 +584,11 @@ public sealed class WireVizHarnessResolver
 
         public IReadOnlyList<WireVizEndpoint> GetConnectedEndpoints(WireVizEndpoint source)
         {
+            return GetConnectedEndpoints(source, null);
+        }
+
+        public IReadOnlyList<WireVizEndpoint> GetConnectedEndpoints(WireVizEndpoint source, IReadOnlyDictionary<string, object?>? signalState)
+        {
             var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var queue = new Queue<string>();
             queue.Enqueue(source.Key);
@@ -403,6 +603,14 @@ public sealed class WireVizHarnessResolver
                 }
 
                 foreach (var target in next)
+                {
+                    if (visited.Add(target))
+                    {
+                        queue.Enqueue(target);
+                    }
+                }
+
+                foreach (var target in GetDynamicTargets(current, signalState))
                 {
                     if (visited.Add(target))
                     {
@@ -426,9 +634,66 @@ public sealed class WireVizHarnessResolver
                 : resolved;
         }
 
+        private IEnumerable<string> GetDynamicTargets(string current, IReadOnlyDictionary<string, object?>? signalState)
+        {
+            foreach (var element in _simulationElements)
+            {
+                switch (element)
+                {
+                    case ResistorElementDefinition resistor:
+                        foreach (var edge in YieldBidirectional(current, resistor.A, resistor.B))
+                        {
+                            yield return edge;
+                        }
+                        break;
+                    case RelayElementDefinition relay when IsRelayClosed(relay, signalState):
+                        foreach (var contact in relay.Contacts)
+                        {
+                            foreach (var edge in YieldBidirectional(current, contact.A, contact.B))
+                            {
+                                yield return edge;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        private static IEnumerable<string> YieldBidirectional(string current, string a, string b)
+        {
+            if (string.Equals(current, a, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return b;
+            }
+            else if (string.Equals(current, b, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return a;
+            }
+        }
+
+        private static bool IsRelayClosed(RelayElementDefinition relay, IReadOnlyDictionary<string, object?>? signalState)
+        {
+            var control = signalState != null && signalState.TryGetValue(relay.Coil.Signal, out var value)
+                ? value
+                : null;
+            var numeric = control switch
+            {
+                null => 0d,
+                bool b => b ? relay.Coil.ThresholdV : 0d,
+                double d => d,
+                float f => f,
+                int i => i,
+                long l => l,
+                string s when double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) => parsed,
+                _ => 0d
+            };
+
+            return numeric >= relay.Coil.ThresholdV;
+        }
+
         private IEnumerable<WireVizEndpoint> ResolveEndpointByKey(string key)
         {
-            var dot = key.IndexOf('.', StringComparison.Ordinal);
+            var dot = key.LastIndexOf('.');
             if (dot <= 0 || dot >= key.Length - 1)
             {
                 yield break;
@@ -449,5 +714,31 @@ public sealed class WireVizHarnessResolver
                 }
             }
         }
+    }
+
+    private static SimulationModelDocument? LoadSimulationModel(string programDirectory)
+    {
+        var path = SimulationModelFileLocator.FindCandidateFile(programDirectory);
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var parser = new SimulationModelParser();
+        return parser.ParseFile(path);
+    }
+
+    private sealed class ResolutionSeed
+    {
+        public ResolutionSeed(SignalAssignment assignment, WireVizEndpoint source, WireVizGraph graph)
+        {
+            Assignment = assignment;
+            Source = source;
+            Graph = graph;
+        }
+
+        public SignalAssignment Assignment { get; }
+        public WireVizEndpoint Source { get; }
+        public WireVizGraph Graph { get; }
     }
 }

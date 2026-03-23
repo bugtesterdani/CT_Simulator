@@ -10,6 +10,17 @@ internal sealed class ExternalDeviceSession : IDisposable
 {
     private readonly PythonDeviceSimulatorClient _client;
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+    private static readonly HashSet<string> GenericPortLabels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "IN",
+        "OUT",
+        "GND",
+        "VPLUS",
+        "VMINUS",
+        "VIN",
+        "VOUT",
+        "SIG"
+    };
 
     public ExternalDeviceSession(PythonDeviceSimulatorClient client)
     {
@@ -22,6 +33,22 @@ internal sealed class ExternalDeviceSession : IDisposable
 
     public ExternalDeviceResponse Hello(System.Threading.CancellationToken cancellationToken) =>
         _client.Hello(CurrentSimTimeMs, cancellationToken);
+
+    public ExternalDeviceResponse Shutdown(System.Threading.CancellationToken cancellationToken) =>
+        _client.Shutdown(CurrentSimTimeMs, cancellationToken);
+
+    public bool TryWriteSignal(string name, object? value, System.Threading.CancellationToken cancellationToken, out string? error)
+    {
+        var response = _client.SetInput(name, value, CurrentSimTimeMs, cancellationToken);
+        if (!response.Ok)
+        {
+            error = $"{response.ErrorCode}: {response.ErrorMessage}";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
 
     public bool TryReadSignal(IEnumerable<WireVizConnectionResolution> resolutions, System.Threading.CancellationToken cancellationToken, out string signalName, out object? value, out string? stateSummary, out string? error)
     {
@@ -91,8 +118,15 @@ internal sealed class ExternalDeviceSession : IDisposable
         return resolutions
             .SelectMany(resolution => resolution.Targets)
             .OrderBy(endpoint => endpoint.Role == Ct3xxWireVizParser.Model.WireVizConnectorRole.Device ? 0 : endpoint.Role == Ct3xxWireVizParser.Model.WireVizConnectorRole.Harness ? 1 : 2)
+            .ThenByDescending(endpoint => endpoint.Key.Count(ch => ch == '.'))
+            .ThenBy(endpoint => IsGenericBoundaryLabel(endpoint.PinLabel) ? 1 : 0)
             .Select(endpoint => string.IsNullOrWhiteSpace(endpoint.PinLabel) ? endpoint.Key : endpoint.PinLabel!)
             .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsGenericBoundaryLabel(string? label)
+    {
+        return !string.IsNullOrWhiteSpace(label) && GenericPortLabels.Contains(label.Trim());
     }
 
     private static object? ExtractNodeValue(System.Text.Json.Nodes.JsonNode? node)

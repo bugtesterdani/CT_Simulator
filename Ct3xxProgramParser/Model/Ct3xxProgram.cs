@@ -156,6 +156,9 @@ public class AcquisitionChannel
     [XmlAttribute("Source")] public string? Source { get; set; }
     [XmlAttribute("Range")] public string? Range { get; set; }
     [XmlAttribute("Filter")] public string? Filter { get; set; }
+    [XmlAttribute("UpperVoltageLimit")] public string? UpperVoltageLimit { get; set; }
+    [XmlAttribute("LowerVoltageLimit")] public string? LowerVoltageLimit { get; set; }
+    [XmlAnyAttribute] public XmlAttribute[]? AdditionalAttributes { get; set; }
 }
 
 public class StimulusChannel

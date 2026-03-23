@@ -3,647 +3,107 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:vm="clr-namespace:Ct3xxSimulator.Desktop.ViewModels"
-        xmlns:conv="clr-namespace:Ct3xxSimulator.Desktop.Converters"
         mc:Ignorable="d"
-        Title="CT3xx Visual Simulator" Height="750" Width="1200">
-    <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        <conv:LeftMarginConverter x:Key="LeftMarginConverter"/>
-        <DataTemplate DataType="{x:Type vm:ProgramDetailsViewModel}">
-            <StackPanel>
-                <TextBlock Text="Programmdaten" FontWeight="Bold"/>
-                <UniformGrid Columns="2" Margin="0,6,0,0">
-                    <StackPanel Margin="0,0,12,0">
-                        <TextBlock Text="ID" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding ProgramId, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel>
-                        <TextBlock Text="Revision" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Revision, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,12,0">
-                        <TextBlock Text="Autor" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Author, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,0,0">
-                        <TextBlock Text="Version" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Version, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,12,0">
-                        <TextBlock Text="DUT" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding DutName, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,0,0">
-                        <TextBlock Text="DUT Revision" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding DutRevision, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,12,0">
-                        <TextBlock Text="DUT Variante" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding DutVariant, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,0,0">
-                        <TextBlock Text="Fixture" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding FixtureCode, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,12,0">
-                        <TextBlock Text="Handling" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding HandlingCode, TargetNullValue=-}"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,6,0,0">
-                        <TextBlock Text="Lot" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding LotCode, TargetNullValue=-}"/>
-                    </StackPanel>
-                </UniformGrid>
-                <TextBlock Text="{Binding Comment}"
-                           TextWrapping="Wrap"
-                           Margin="0,6,0,0"
-                           FontStyle="Italic"/>
-                <GroupBox Header="Operatoranzeigen"
-                          Margin="0,10,0,0"
-                          Visibility="{Binding HasOperatorDisplays, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding OperatorDisplays}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,4,0,4">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-                <GroupBox Header="Bedienertasten"
-                          Margin="0,10,0,0"
-                          Visibility="{Binding HasUserButtons, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding UserButtons}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,4,0,4">
-                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Status:" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding StatusText}" Margin="6,0,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal"
-                                                Visibility="{Binding HasLibrary, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="Bibliothek:" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding Library}" Margin="6,0,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal"
-                                                Visibility="{Binding HasFunction, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="Funktion:" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding Function}" Margin="6,0,0,0"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-            </StackPanel>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:TableDetailsViewModel}">
-            <StackPanel>
-                <TextBlock Text="{Binding Title, FallbackValue=Tabelle}" FontWeight="Bold"/>
-                <StackPanel Margin="0,6,0,0"
-                            Visibility="{Binding HasFile, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Datei" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding File}" />
-                    <TextBlock Text="{Binding Digest, StringFormat=Hash: {0}}"
-                               Margin="0,2,0,0"
-                               Visibility="{Binding Digest, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-                <StackPanel Margin="0,6,0,0"
-                            Visibility="{Binding HasInterface, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Interface Datei" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding InterfaceFile}" />
-                    <TextBlock Text="{Binding InterfaceDigest, StringFormat=Hash: {0}}"
-                               Margin="0,2,0,0"
-                               Visibility="{Binding InterfaceDigest, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal"
-                            Margin="0,6,0,0"
-                            Visibility="{Binding Length, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Länge:" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding Length}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <GroupBox Header="Variablen"
-                          Margin="0,10,0,0"
-                          Visibility="{Binding HasVariables, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding Variables}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="160"/>
-                                    <TextBlock Text="{Binding Type}" Width="80"/>
-                                    <TextBlock Text="{Binding Initial}" Width="120"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-                <GroupBox Header="Einträge"
-                          Margin="0,10,0,0"
-                          Visibility="{Binding HasRecords, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding Records}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,2,0,2">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Destination, StringFormat=Ziel: {0}}" />
-                                    <TextBlock Text="{Binding Expression, StringFormat=Ausdruck: {0}}" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-                <GroupBox Header="Dateien"
-                          Margin="0,10,0,0"
-                          Visibility="{Binding HasFiles, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding Files}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,2,0,2">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Digest, StringFormat=Hash: {0}}"
-                                               Visibility="{Binding Digest, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-                <GroupBox Header="Bibliotheken"
-                          Margin="0,10,0,0"
-                          Visibility="{Binding HasLibraries, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding Libraries}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Width="200"/>
-                                    <TextBlock Text="{Binding Subtitle}"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-            </StackPanel>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:LibraryDetailsViewModel}">
-            <StackPanel>
-                <TextBlock Text="{Binding Title}" FontWeight="Bold"/>
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                    <TextBlock Text="Revision:" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding Revision, TargetNullValue=-}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                    <TextBlock Text="Extern:" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding ExternalDisplay}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                    <TextBlock Text="Funktionen:" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding FunctionCount}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <TextBlock Text="{Binding Hash, StringFormat=Hash: {0}}"
-                           Margin="0,2,0,0"
-                           Visibility="{Binding HasHash, Converter={StaticResource BoolToVisibilityConverter}}"/>
-            </StackPanel>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:LibraryFunctionDetailsViewModel}">
-            <StackPanel>
-                <TextBlock Text="{Binding Title}" FontWeight="Bold"/>
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
-                            Visibility="{Binding HasExecCondition, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="ExecCondition:" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding ExecCondition}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                            Visibility="{Binding HasLogging, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Logging:" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding LogPrefix, StringFormat=Prefix: {0}}" Margin="6,0,0,0"
-                               Visibility="{Binding LogPrefix, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <TextBlock Text="{Binding LogSuffix, StringFormat=Suffix: {0}}" Margin="6,0,0,0"
-                               Visibility="{Binding LogSuffix, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                    <TextBlock Text="Status:" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding StatusText}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <TextBlock Text="{Binding Hash, StringFormat=Hash: {0}}"
-                           Margin="0,2,0,0"
-                           Visibility="{Binding HasHash, Converter={StaticResource BoolToVisibilityConverter}}"/>
-            </StackPanel>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:GroupDetailsViewModel}">
-            <StackPanel>
-                <TextBlock Text="Gruppeneinstellungen" FontWeight="Bold" Margin="0,0,0,6"/>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0" Visibility="{Binding HasExecutionCondition, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="ExecCondition:" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding ExecutionCondition}" Margin="6,0,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0" Visibility="{Binding HasRepeatCondition, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="RepeatCondition:" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding RepeatCondition}" Margin="6,0,0,0"/>
-                    </StackPanel>
-                    <TextBlock Text="{Binding RepeatDescription}" Margin="0,2,0,0"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0" Visibility="{Binding HasExecMode, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="ExecMode:" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding ExecMode}" Margin="6,0,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0" Visibility="{Binding HasLoopCount, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Loop Count:" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding LoopCount}" Margin="6,0,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0" Visibility="{Binding HasLogLoops, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Log Loops:" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding LogLoops}" Margin="6,0,0,0"/>
-                    </StackPanel>
-                </StackPanel>
-                <GroupBox Header="Tabellen &amp; Variablen" Margin="0,10,0,0" Visibility="{Binding HasTables, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding Tables}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,0,0,12">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-                                    <GroupBox Header="Variablen" Margin="0,6,0,0" Visibility="{Binding HasVariables, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <ItemsControl ItemsSource="{Binding Variables}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="150"/>
-                                                        <TextBlock Text="{Binding Type}" Width="90"/>
-                                                        <TextBlock Text="{Binding InitialDisplay}" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </GroupBox>
-                                    <GroupBox Header="Zuweisungen" Margin="0,6,0,0" Visibility="{Binding HasAssignments, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <ItemsControl ItemsSource="{Binding Assignments}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Margin="0,2,0,0">
-                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-                                                        <TextBlock Text="{Binding Summary}" Margin="0,0,0,4"/>
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </GroupBox>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-            </StackPanel>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:TestDetailsViewModel}">
-            <StackPanel>
-                <TextBlock Text="{Binding Message}" FontStyle="Italic" Foreground="#FF444444" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                    <TextBlock Text="Modus:" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding Mode}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                            Visibility="{Binding HasLibrary, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Bibliothek:" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding LibraryName}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                            Visibility="{Binding HasFunction, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Funktion:" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding FunctionName}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                            Visibility="{Binding HasExternalFile, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Datei:" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding ExternalFile}" Margin="6,0,0,0" TextWrapping="Wrap" Width="280"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                            Visibility="{Binding HasDisplayMode, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Display:" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding DisplayModeName}" Margin="6,0,0,0"/>
-                </StackPanel>
-                <GroupBox Header="Show-Funktionen" Margin="0,6,0,0"
-                          Visibility="{Binding HasDisplayOptions, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding DisplayOptions}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="2,1">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="140"/>
-                                    <TextBlock Text="{Binding Value}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-                <TextBlock Text="AM2 Test" Foreground="#FF444444" Margin="0,4,0,0"
-                           Visibility="{Binding IsAm2Test, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                <TextBlock Text="ICT Test" Foreground="#FF444444" Margin="0,0,0,6"
-                           Visibility="{Binding IsIctTest, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                <GroupBox Header="Optionen" Margin="0,8,0,0"
-                          Visibility="{Binding HasOptions, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ItemsControl ItemsSource="{Binding Options}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="4,2">
-                                    <TextBlock Text="-" Margin="0,0,6,0"/>
-                                    <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
-                <GroupBox Header="Grenzwerte / Messparameter" Margin="0,8,0,0"
-                          Visibility="{Binding HasRecords, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <StackPanel>
-                        <DataGrid ItemsSource="{Binding Records}"
-                                  AutoGenerateColumns="False"
-                                  IsReadOnly="True"
-                                  CanUserAddRows="False"
-                                  Margin="0,0,0,8"
-                                  Height="180">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Parameter" Binding="{Binding Title}" Width="1*"/>
-                                <DataGridTextColumn Header="Typ" Binding="{Binding RecordTypeDisplay}" Width="0.6*"/>
-                                <DataGridTextColumn Header="Ziel" Binding="{Binding DestinationDisplay}" Width="1*"/>
-                                <DataGridTextColumn Header="Expression" Binding="{Binding ExpressionDisplay}" Width="1*"/>
-                                <DataGridTextColumn Header="Limits" Binding="{Binding LimitsDisplay}" Width="*"/>
-                                <DataGridTextColumn Header="Einheit" Binding="{Binding Unit}" Width="0.7*"/>
-                                <DataGridTextColumn Header="Info" Binding="{Binding AdditionalInfo}" Width="1.5*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                        <StackPanel Visibility="{Binding HasLimitRecords, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="Diagramm (Sollbereich)" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding LimitRangeSummary}" Margin="0,0,0,6"/>
-                            <ItemsControl ItemsSource="{Binding LimitRecords}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,0,0,8">
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-                                            <Grid Width="{Binding ChartWidth}" Height="26" Background="#110050EF" Margin="0,4,0,0">
-                                                <Border Background="#5590CAF9"
-                                                        Height="18"
-                                                        VerticalAlignment="Center"
-                                                        HorizontalAlignment="Left"
-                                                        Margin="{Binding RangeOffset, Converter={StaticResource LeftMarginConverter}}"
-                                                        Width="{Binding RangeWidth}"/>
-                                                <TextBlock Text="{Binding LimitsDisplay}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Foreground="#FF003049"/>
-                                            </Grid>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </StackPanel>
-                </GroupBox>
-                <GroupBox Header="Arbiträrsignal" Margin="0,8,0,0"
-                          Visibility="{Binding HasWaveform, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <StackPanel>
-                        <TextBlock Text="{Binding WaveformSummary}" Margin="0,0,0,4"/>
-                        <Grid Height="160" Background="#11000000" Margin="0,4,0,0">
-                            <Polyline Points="{Binding WaveformDisplayPoints}" Stroke="#FF0050EF" StrokeThickness="2"/>
-                        </Grid>
-                    </StackPanel>
-                </GroupBox>
-            </StackPanel>
-        </DataTemplate>
-    </Window.Resources>
-    <Grid>
+        Title="CT3xx Visual Simulator"
+        Height="780"
+        Width="1240">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="3*"/>
-            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="220"/>
         </Grid.RowDefinitions>
 
-        
-<StackPanel Grid.Row="0" Margin="10">
-    <Border Padding="10" Background="#FFF6F6F6" CornerRadius="6">
-                <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <Border Grid.Row="0" Padding="12" Background="#FFF5F7FA" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Programmdatei:" VerticalAlignment="Center"/>
-                <TextBox Margin="8,0,0,0" Width="360" Text="{Binding SelectedFilePath, UpdateSourceTrigger=PropertyChanged}"
-                         AutomationProperties.AutomationId="ProgramPathBox"/>
-                <Button Content="?ffnen..." Click="OnOpenProgram"
-                        AutomationProperties.AutomationId="OpenProgramButton"/>
-                <Button Content="Pfad laden" Margin="6,0,0,0" Click="OnLoadProgramFromPath"
-                        AutomationProperties.AutomationId="LoadProgramButton"/>
-                <TextBlock Margin="16,0,0,0" Text="Schleifen:" VerticalAlignment="Center"/>
-                <TextBox Margin="8,0,0,0" Width="60" Text="{Binding LoopCount, UpdateSourceTrigger=PropertyChanged}"
-                         AutomationProperties.AutomationId="LoopCountBox"/>
-                <Button Content="Simulation starten" Margin="10,0,0,0" Click="OnStartSimulation"
-                        IsEnabled="{Binding CanStartSimulation}"
-                        AutomationProperties.AutomationId="StartSimulationButton"/>
-                <Button Content="Abbrechen" Margin="6,0,0,0" Click="OnCancelSimulation"
-                        IsEnabled="{Binding IsSimulationRunning}"
-                        AutomationProperties.AutomationId="CancelSimulationButton"/>
-            </StackPanel>
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Testprogramm-Ordner"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Margin="10,0,10,8" Text="{Binding TestProgramFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="0" Grid.Column="2" Margin="0,0,8,8" Padding="14,8" Content="Ordner..." Click="OnBrowseProgramFolder"/>
+                <Button Grid.Row="0" Grid.Column="3" Margin="0,0,0,8" Padding="14,8" Content="Programm laden" Click="OnLoadProgramFromResolvedSelection" AutomationProperties.AutomationId="LoadProgramButton"/>
 
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,0">
-                <TextBlock Text="Testprogramme:" VerticalAlignment="Center"/>
-                <ComboBox Margin="8,0,0,0"
-                          Width="320"
-                          ItemsSource="{Binding AvailablePrograms}"
-                          SelectedItem="{Binding SelectedSampleProgram}"
-                          DisplayMemberPath="DisplayName"
-                          AutomationProperties.AutomationId="SampleProgramCombo"/>
-                <Button Content="Auswahl laden"
-                        Margin="8,0,0,0"
-                        Click="OnLoadSelectedSampleProgram"
-                        IsEnabled="{Binding CanLoadSelectedSampleProgram}"
-                        AutomationProperties.AutomationId="LoadSampleProgramButton"/>
-                <TextBlock Margin="12,0,0,0"
-                           Text="{Binding SampleProgramSummary}"
-                           Foreground="#FF555555"
-                           VerticalAlignment="Center"
-                           AutomationProperties.AutomationId="SampleProgramSummaryText"/>
-            </StackPanel>
+                <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Verdrahtungs-Ordner"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Margin="10,0,10,8" Text="{Binding WiringFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Ordner..." Click="OnBrowseWiringFolder"/>
 
-            <Border Grid.Row="2"
-                    Margin="0,8,0,0"
-                    Padding="8"
-                    CornerRadius="4"
-                    Background="#FFEEF7FF"
-                    BorderBrush="#FF90CAF9"
-                    BorderThickness="1"
-                    Visibility="{Binding IsDisplayOverlayVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel>
-                    <TextBlock Text="{Binding DisplayOverlayMessage}"
-                               TextWrapping="Wrap"
-                               FontWeight="SemiBold"
-                               Foreground="#FF004085"/>
-                    <Button Content="Best?tigen"
-                            Margin="0,8,0,0"
-                            Visibility="{Binding IsDisplayConfirmationRequired, Converter={StaticResource BoolToVisibilityConverter}}"
-                            Click="OnAcknowledgeDisplayOverlay"
-                            AutomationProperties.AutomationId="DisplayConfirmButton"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Simulations-Ordner"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Margin="10,0,10,8" Text="{Binding SimulationModelFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Ordner..." Click="OnBrowseSimulationModelFolder"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Python-Geräteskript"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Margin="10,0,10,8" Text="{Binding PythonScriptPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Datei..." Click="OnBrowsePythonScript"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Aufgelöstes Programm"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Margin="10,0,10,0" Text="{Binding SelectedFilePath}" IsReadOnly="True" AutomationProperties.AutomationId="ProgramPathBox"/>
+                <Button Grid.Row="4" Grid.Column="2" Margin="0,0,8,0" Padding="14,8" Content="Simulation starten" Click="OnStartSimulation" IsEnabled="{Binding CanStartSimulation}" AutomationProperties.AutomationId="StartSimulationButton"/>
+                <Button Grid.Row="4" Grid.Column="3" Padding="14,8" Content="Abbrechen" Click="OnCancelSimulation" IsEnabled="{Binding IsSimulationRunning}" AutomationProperties.AutomationId="CancelSimulationButton"/>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Margin="0,12,0,12" Padding="12" Background="#FFFFFBF2" BorderBrush="#FFE6D6A8" BorderThickness="1" CornerRadius="8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock FontWeight="Bold" Text="Aktive Konfiguration"/>
+                    <TextBlock Margin="0,4,0,0" Text="{Binding ConfigurationSummary}" TextWrapping="Wrap"/>
+                    <TextBlock Margin="0,4,0,0" Foreground="#FF5A6470" Text="Wenn im Testprogramm-Ordner mehrere .ctxprg liegen, fragt die App beim Laden nach der gewünschten Datei." TextWrapping="Wrap"/>
                 </StackPanel>
-            </Border>
-        </Grid>
-    </Border>
-
-    <Border Margin="0,10,0,0"
-            Padding="10"
-            CornerRadius="6"
-            Background="#FFFEFAF2"
-            BorderBrush="#FFE0A800"
-            BorderThickness="1">
-        <StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Messwert-Warteschlange" FontWeight="Bold"/>
-                <TextBlock Text="{Binding MeasurementQueue.Count, StringFormat=  (Eintr?ge: {0})}"
-                           Margin="8,0,0,0"/>
-            </StackPanel>
-            <TextBlock Text="Die eingegebenen Werte werden bei Messabfragen der Reihe nach verbraucht. Kombiniere z.B. 10 V und 1000 V mit Schleifen = 2, um FAIL und PASS zu beobachten."
-                       TextWrapping="Wrap"
-                       Margin="0,4,0,0"/>
-            <Border Margin="0,6,0,0"
-                    Padding="8"
-                    Background="#FFFFF3CD"
-                    BorderBrush="#FFE0A800"
-                    BorderThickness="1"
-                    Visibility="{Binding IsMeasurementRequestActive, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel>
-                    <TextBlock Text="Messwert wird aktuell benötigt:" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding PendingMeasurementPrompt}" Margin="0,2,0,0"/>
-                    <TextBlock Text="Bitte Wert eingeben und &quot;Hinzuf?gen&quot; klicken."
-                               FontStyle="Italic"
-                               FontSize="12"
-                               Margin="0,4,0,0"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock FontWeight="Bold" Text="Aktueller Schritt"/>
+                    <TextBlock Margin="0,4,0,0" FontSize="16" Text="{Binding CurrentStep, TargetNullValue=-}"/>
                 </StackPanel>
-            </Border>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                <TextBox Width="140"
-                         Text="{Binding NewMeasurementValue, UpdateSourceTrigger=PropertyChanged}"
-                         AutomationProperties.AutomationId="MeasurementInputBox"/>
-                <Button Content="Hinzuf?gen"
-                        Margin="6,0,0,0"
-                        Click="OnAddMeasurement"
-                        AutomationProperties.AutomationId="AddMeasurementButton"/>
-                <Button Content="10 V (FAIL)"
-                        Margin="6,0,0,0"
-                        Click="OnAddFailMeasurement"
-                        AutomationProperties.AutomationId="AddFailMeasurementButton"/>
-                <Button Content="1000 V (PASS)"
-                        Margin="6,0,0,0"
-                        Click="OnAddPassMeasurement"
-                        AutomationProperties.AutomationId="AddPassMeasurementButton"/>
-                <Button Content="Leeren"
-                        Margin="6,0,0,0"
-                        Click="OnClearMeasurements"
-                        AutomationProperties.AutomationId="ClearMeasurementsButton"/>
-            </StackPanel>
-             <ListBox ItemsSource="{Binding MeasurementQueue}"
-                      Height="90"
-                      Margin="0,8,0,0"
-                      AutomationProperties.AutomationId="MeasurementQueueList"/>
-         </StackPanel>
-    </Border>
+            </Grid>
+        </Border>
 
-    <Border Margin="0,10,0,0"
-            Padding="10"
-            CornerRadius="6"
-            Background="#FFF2F8FF"
-            BorderBrush="#FF90CAF9"
-            BorderThickness="1">
-        <StackPanel>
-            <TextBlock Text="Testprogramme" FontWeight="Bold"/>
-            <TextBlock Text="Wähle einen Eintrag und klicke auf &quot;Auswahl laden&quot; oder doppelklicke für den Sofortstart."
-                       Margin="0,2,0,8"
-                       Foreground="#FF555555"/>
-            <ListBox ItemsSource="{Binding AvailablePrograms}"
-                     SelectedItem="{Binding SelectedSampleProgram}"
-                     Height="160"
-                     AutomationProperties.AutomationId="SampleProgramList"
-                     MouseDoubleClick="OnSampleProgramDoubleClick"
-                     VirtualizingStackPanel.IsVirtualizing="False">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Margin="0,0,0,6">
-                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding FilePath}" FontSize="11" Foreground="#FF666666"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </StackPanel>
-    </Border>
-</StackPanel>
-
-        <Grid Grid.Row="1" Margin="10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="3*"/>
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0" BorderBrush="#FFCCCCCC" BorderThickness="1" Padding="10" CornerRadius="4">
-                <DockPanel>
-                    <TextBlock Text="Ablauf" FontWeight="Bold" Margin="0,0,0,10"/>
-                    <TreeView ItemsSource="{Binding Nodes}" DockPanel.Dock="Bottom"
-                              AutomationProperties.AutomationId="AblaufTreeView"
-                              SelectedItemChanged="OnSelectedNodeChanged">
-                        <TreeView.Resources>
-                            <HierarchicalDataTemplate DataType="{x:Type vm:SimulationNodeViewModel}" ItemsSource="{Binding Children}">
-                                <TextBlock Text="{Binding Title}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="#FF444444"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:NodeStatus.Running}">
-                                                    <Setter Property="Foreground" Value="#FF0050EF"/>
-                                                    <Setter Property="FontWeight" Value="Bold"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:NodeStatus.Completed}">
-                                                    <Setter Property="Foreground" Value="#FF228B22"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:NodeStatus.Skipped}">
-                                                    <Setter Property="Foreground" Value="#FFB22222"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static vm:NodeStatus.Failed}">
-                                                    <Setter Property="Foreground" Value="#FFB22222"/>
-                                                    <Setter Property="FontWeight" Value="Bold"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </HierarchicalDataTemplate>
-                        </TreeView.Resources>
-                    </TreeView>
-                </DockPanel>
-            </Border>
-
-            <Border Grid.Column="1" BorderBrush="#FFCCCCCC" BorderThickness="1" Padding="10" CornerRadius="4">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <TextBlock Text="Details" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
-                        <TextBlock Text="{Binding SelectedNode.Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding SelectedNode.NodeType}" Margin="0,8,0,0"/>
-                        <TextBlock Text="{Binding SelectedNode.Status}" Margin="0,2,0,0"/>
-                        <TextBlock Text="{Binding SelectedNode.LastResult, StringFormat=Ergebnis: {0}}" Margin="0,2,0,0"/>
-                        <ContentControl Content="{Binding SelectedNode.Details}" Margin="0,10,0,0"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-        </Grid>
-
-        <Border Grid.Row="2" Margin="10" BorderBrush="#FFCCCCCC" BorderThickness="1" CornerRadius="4" Padding="10">
+        <Border Grid.Row="2" Padding="12" Background="White" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
             <DockPanel>
-                <TextBlock Text="Protokoll" FontWeight="Bold" DockPanel.Dock="Top" Margin="0,0,0,8"/>
-                <ListBox ItemsSource="{Binding Logs}"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         AutomationProperties.AutomationId="LogList">
+                <TextBlock DockPanel.Dock="Top" Margin="0,0,0,10" FontSize="18" FontWeight="Bold" Text="Testschritte"/>
+                <DataGrid ItemsSource="{Binding StepResults}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Schritt" Binding="{Binding StepName}" Width="2*"/>
+                        <DataGridTextColumn Header="Ergebnis" Binding="{Binding Outcome}" Width="*"/>
+                        <DataGridTextColumn Header="Wert" Binding="{Binding MeasuredValue}" Width="*"/>
+                        <DataGridTextColumn Header="Untergrenze" Binding="{Binding LowerLimit}" Width="*"/>
+                        <DataGridTextColumn Header="Obergrenze" Binding="{Binding UpperLimit}" Width="*"/>
+                        <DataGridTextColumn Header="Einheit" Binding="{Binding Unit}" Width="0.7*"/>
+                        <DataGridTextColumn Header="Hinweis" Binding="{Binding Details}" Width="2*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="3" Margin="0,12,0,0" Padding="12" Background="#FFF9FAFB" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Margin="0,0,0,10" FontWeight="Bold" Text="Protokoll"/>
+                <ListBox ItemsSource="{Binding Logs}" AutomationProperties.AutomationId="LogList">
                     <ListBox.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:LogEntryViewModel}">
+                        <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" FontWeight="Bold" Width="70"/>
+                                <TextBlock Width="70" FontWeight="Bold" Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}"/>
                                 <TextBlock Text="{Binding Message}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </DataTemplate>
@@ -653,6 +113,3 @@
         </Border>
     </Grid>
 </Window>
-
-
-

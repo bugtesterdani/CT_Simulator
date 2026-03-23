@@ -1,0 +1,46 @@
+connectors:
+  CT3:
+    bgcolor: WH
+    pins: [SC3_5_0, SC3_15_0, SC3_29_0, SC3_38_0]
+    pinlabels: [VCC_Plus, VCC_GND, ADC_IN, DIG_OUT]
+
+  DeviceBoard:
+    bgcolor: YE
+    pins: [VPLUS, GND, IN, OUT]
+    pinlabels: [VPLUS, GND, IN, OUT]
+
+cables:
+  Versorgung:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [VPLUS, GND]
+
+  Eingang:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [IN]
+
+  Ausgang:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [OUT]
+
+connections:
+  -
+    - CT3: [SC3_5_0, SC3_15_0]
+    - Versorgung: [VPLUS, GND]
+    - DeviceBoard: [VPLUS, GND]
+  -
+    - CT3: [SC3_29_0]
+    - Eingang: [IN]
+    - DeviceBoard: [IN]
+  -
+    - CT3: [SC3_38_0]
+    - Ausgang: [OUT]
+    - DeviceBoard: [OUT]

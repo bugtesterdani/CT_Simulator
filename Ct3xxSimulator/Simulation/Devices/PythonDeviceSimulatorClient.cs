@@ -63,6 +63,9 @@ internal sealed class PythonDeviceSimulatorClient : IDisposable
     public ExternalDeviceResponse ReadState(long simTimeMs, CancellationToken cancellationToken) =>
         Send("read_state", null, simTimeMs, cancellationToken);
 
+    public ExternalDeviceResponse Shutdown(long simTimeMs, CancellationToken cancellationToken) =>
+        Send("shutdown", null, simTimeMs, cancellationToken);
+
     private ExternalDeviceResponse Send(string action, JsonObject? payload, long simTimeMs, CancellationToken cancellationToken)
     {
         lock (_sync)

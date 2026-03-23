@@ -1,0 +1,10 @@
+elements:
+  - id: DeviceBoard
+    type: assembly
+    wiring: board_device_wireviz.yaml
+    simulation: board_device_simulation.yaml
+    ports:
+      VPLUS: BoardPort.VPLUS
+      GND: BoardPort.GND
+      IN: BoardPort.IN
+      OUT: BoardPort.OUT

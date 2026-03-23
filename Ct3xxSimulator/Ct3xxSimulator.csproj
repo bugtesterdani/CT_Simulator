@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Ct3xxProgramParser\Ct3xxProgramParser.csproj" />
+    <ProjectReference Include="..\Ct3xxSimulationModelParser\Ct3xxSimulationModelParser.csproj" />
     <ProjectReference Include="..\Ct3xxWireVizParser\Ct3xxWireVizParser.csproj" />
   </ItemGroup>
 

@@ -2,104 +2,64 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Input;
-using System.Globalization;
 using Microsoft.Win32;
+using Ct3xxProgramParser.Model;
+using Ct3xxProgramParser.Programs;
 using Ct3xxSimulator.Desktop.ViewModels;
 using Ct3xxSimulator.Desktop.Views;
-using Ct3xxProgramParser.Model;
-using Ct3xxProgramParser.Discovery;
-using Ct3xxProgramParser.Programs;
 using Ct3xxSimulator.Simulation;
-using System.Windows.Threading;
 
 namespace Ct3xxSimulator.Desktop;
 
 public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObserver, IInteractionProvider, IMeasurementInteractionProvider
 {
     private readonly Ct3xxProgramFileParser _fileParser = new();
-    private readonly Dictionary<object, SimulationNodeViewModel> _nodeLookup = new();
-    private readonly DispatcherTimer _displayMessageTimer;
-    private readonly ManualResetEventSlim _displayAcknowledgement = new(true);
-    private readonly ObservableCollection<string> _measurementQueue = new();
     private Ct3xxProgramFileSet? _fileSet;
     private Ct3xxProgram? _program;
-    private SimulationNodeViewModel? _selectedNode;
-    private string? _selectedFilePath;
-    private int _loopCount = 1;
-    private bool _isSimulationRunning;
     private CancellationTokenSource? _cts;
-    private string? _programDirectory;
-    private string? _displayOverlayMessage;
-    private string? _newMeasurementValue;
-    private bool _isDisplayConfirmationRequired;
-    private string? _sampleProgramSummary;
-    private SampleProgramViewModel? _selectedSampleProgram;
+    private PythonDeviceProcessHost? _pythonDeviceHost;
+    private string? _previousPythonPipe;
+    private string? _previousWireVizRoot;
+    private string? _previousSimulationModelRoot;
+    private string? _selectedFilePath;
+    private string? _loadedFilePath;
+    private string? _testProgramFolderPath;
+    private string? _wiringFolderPath;
+    private string? _simulationModelFolderPath;
+    private string? _pythonScriptPath;
+    private bool _isSimulationRunning;
+    private string? _currentStep;
+    private string? _configurationSummary;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = this;
-        _displayMessageTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(4)
-        };
-        _displayMessageTimer.Tick += (_, _) => ClearDisplayOverlay();
         Loaded += OnLoaded;
-        Closed += (_, _) => _displayAcknowledgement.Dispose();
+        Closed += OnClosed;
     }
 
-    public ObservableCollection<SimulationNodeViewModel> Nodes { get; } = new();
+    public ObservableCollection<StepResultViewModel> StepResults { get; } = new();
     public ObservableCollection<LogEntryViewModel> Logs { get; } = new();
-    public ObservableCollection<SampleProgramViewModel> AvailablePrograms { get; } = new();
 
-    public SimulationNodeViewModel? SelectedNode
+    public string? TestProgramFolderPath
     {
-        get => _selectedNode;
-        set => SetField(ref _selectedNode, value);
-    }
-
-    public SampleProgramViewModel? SelectedSampleProgram
-    {
-        get => _selectedSampleProgram;
+        get => _testProgramFolderPath;
         set
         {
-            if (SetField(ref _selectedSampleProgram, value))
+            if (SetField(ref _testProgramFolderPath, value))
             {
-                OnPropertyChanged(nameof(CanLoadSelectedSampleProgram));
-                if (value != null)
-                {
-                    SelectedFilePath = value.FilePath;
-                }
+                ResolveProgramFromCurrentFolder(promptIfMultiple: false);
+                OnPropertyChanged(nameof(CanStartSimulation));
             }
         }
-    }
-
-    private void LoadSamplePrograms()
-    {
-        AvailablePrograms.Clear();
-        var root = TestProgramDiscovery.FindRoot(AppContext.BaseDirectory);
-        if (string.IsNullOrWhiteSpace(root))
-        {
-            SampleProgramSummary = "Ordner 'testprogramme' wurde nicht gefunden.";
-            return;
-        }
-
-        var entries = TestProgramDiscovery.EnumeratePrograms(root);
-        foreach (var info in entries)
-        {
-            AvailablePrograms.Add(new SampleProgramViewModel(info));
-        }
-
-        SampleProgramSummary = entries.Count == 0
-            ? $"Keine CTX-Programme unter '{root}' gefunden."
-            : $"{entries.Count} Programme aus '{root}' verfügbar.";
     }
 
     public string? SelectedFilePath
@@ -114,13 +74,39 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         }
     }
 
-    public int LoopCount
+    public string? WiringFolderPath
     {
-        get => _loopCount;
+        get => _wiringFolderPath;
         set
         {
-            var normalized = Math.Max(1, value);
-            SetField(ref _loopCount, normalized);
+            if (SetField(ref _wiringFolderPath, value))
+            {
+                OnPropertyChanged(nameof(CanStartSimulation));
+            }
+        }
+    }
+
+    public string? SimulationModelFolderPath
+    {
+        get => _simulationModelFolderPath;
+        set
+        {
+            if (SetField(ref _simulationModelFolderPath, value))
+            {
+                OnPropertyChanged(nameof(CanStartSimulation));
+            }
+        }
+    }
+
+    public string? PythonScriptPath
+    {
+        get => _pythonScriptPath;
+        set
+        {
+            if (SetField(ref _pythonScriptPath, value))
+            {
+                OnPropertyChanged(nameof(CanStartSimulation));
+            }
         }
     }
 
@@ -136,116 +122,190 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         }
     }
 
-    public bool CanStartSimulation => !IsSimulationRunning && _program != null;
-    public string? DisplayOverlayMessage
+    public bool CanStartSimulation =>
+        !IsSimulationRunning &&
+        !string.IsNullOrWhiteSpace(SelectedFilePath) &&
+        !string.IsNullOrWhiteSpace(WiringFolderPath) &&
+        !string.IsNullOrWhiteSpace(SimulationModelFolderPath) &&
+        !string.IsNullOrWhiteSpace(PythonScriptPath);
+
+    public string? CurrentStep
     {
-        get => _displayOverlayMessage;
-        private set
-        {
-            if (SetField(ref _displayOverlayMessage, value))
-            {
-                OnPropertyChanged(nameof(IsDisplayOverlayVisible));
-            }
-        }
+        get => _currentStep;
+        private set => SetField(ref _currentStep, value);
     }
 
-    public bool IsDisplayOverlayVisible => !string.IsNullOrWhiteSpace(DisplayOverlayMessage);
-    public bool IsDisplayConfirmationRequired
+    public string? ConfigurationSummary
     {
-        get => _isDisplayConfirmationRequired;
-        private set => SetField(ref _isDisplayConfirmationRequired, value);
-    }
-    public bool CanLoadSelectedSampleProgram => SelectedSampleProgram != null;
-    public string? SampleProgramSummary
-    {
-        get => _sampleProgramSummary;
-        private set => SetField(ref _sampleProgramSummary, value);
-    }
-    public ObservableCollection<string> MeasurementQueue => _measurementQueue;
-
-    public string? NewMeasurementValue
-    {
-        get => _newMeasurementValue;
-        set => SetField(ref _newMeasurementValue, value);
-    }
-
-    private void OnOpenProgram(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog
-        {
-            Filter = "CT3xx Programm (*.ctxprg)|*.ctxprg|Alle Dateien (*.*)|*.*",
-            Title = "CT3xx Programm öffnen"
-        };
-
-        if (dialog.ShowDialog() != true)
-        {
-            return;
-        }
-
-        LoadProgramFile(dialog.FileName);
+        get => _configurationSummary;
+        private set => SetField(ref _configurationSummary, value);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
-        LoadSamplePrograms();
+        ApplyDefaultScenario();
+        UpdateConfigurationSummary();
     }
 
-    private void OnLoadSelectedSampleProgram(object sender, RoutedEventArgs e)
+    private void ApplyDefaultScenario()
     {
-        if (SelectedSampleProgram == null)
+        var simtestRoot = FindSimtestRoot();
+        if (simtestRoot == null)
         {
-            MessageBox.Show(this, "Bitte wählen Sie ein Testprogramm aus der Liste aus.", "Keine Auswahl", MessageBoxButton.OK, MessageBoxImage.Information);
+            ConfigurationSummary = "Keine Standardkonfiguration erkannt.";
             return;
         }
 
-        LoadProgramFile(SelectedSampleProgram.FilePath);
+        TestProgramFolderPath = Path.Combine(simtestRoot, "ct3xx");
+        WiringFolderPath = Path.Combine(simtestRoot, "wireplan");
+        SimulationModelFolderPath = Path.Combine(simtestRoot, "wireplan");
+        PythonScriptPath = Path.Combine(simtestRoot, "device", "device_39.py");
+
+        if (!string.IsNullOrWhiteSpace(SelectedFilePath))
+        {
+            LoadProgramFile(SelectedFilePath, showErrors: false);
+        }
     }
 
-    private void OnSampleProgramDoubleClick(object sender, MouseButtonEventArgs e)
+    private static string? FindSimtestRoot()
     {
-        if (SelectedSampleProgram == null)
+        var candidates = new[]
         {
-            return;
+            Path.Combine(Environment.CurrentDirectory, "simtest"),
+            Path.Combine(AppContext.BaseDirectory, "simtest"),
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "simtest")
+        };
+
+        foreach (var candidate in candidates)
+        {
+            var fullPath = Path.GetFullPath(candidate);
+            if (Directory.Exists(fullPath))
+            {
+                return fullPath;
+            }
         }
 
-        LoadProgramFile(SelectedSampleProgram.FilePath);
+        return null;
     }
 
-    private void OnLoadProgramFromPath(object sender, RoutedEventArgs e)
+    private void OnBrowseProgramFolder(object sender, RoutedEventArgs e)
     {
-        var path = SelectedFilePath?.Trim();
-        if (string.IsNullOrWhiteSpace(path))
+        var dialog = new OpenFolderDialog
         {
-            MessageBox.Show(this, "Bitte geben Sie einen Pfad zu einer CT3xx Programmdatei ein.", "Kein Pfad angegeben", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            Title = "Ordner mit CT3xx-Testprogramm wählen"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            TestProgramFolderPath = dialog.FolderName;
+            ResolveProgramFromCurrentFolder(promptIfMultiple: true);
+            if (!string.IsNullOrWhiteSpace(SelectedFilePath))
+            {
+                LoadProgramFile(SelectedFilePath, showErrors: true);
+            }
+        }
+    }
+
+    private void OnBrowseWiringFolder(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Ordner mit WireViz-Verdrahtung wählen"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            WiringFolderPath = dialog.FolderName;
+            UpdateConfigurationSummary();
+        }
+    }
+
+    private void OnBrowseSimulationModelFolder(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Ordner mit Simulationsmodell wählen"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            SimulationModelFolderPath = dialog.FolderName;
+            UpdateConfigurationSummary();
+        }
+    }
+
+    private void OnBrowsePythonScript(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Python-Geräteskript wählen",
+            Filter = "Python (*.py)|*.py|Alle Dateien (*.*)|*.*"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            PythonScriptPath = dialog.FileName;
+            UpdateConfigurationSummary();
+        }
+    }
+
+    private void OnLoadProgramFromResolvedSelection(object sender, RoutedEventArgs e)
+    {
+        ResolveProgramFromCurrentFolder(promptIfMultiple: true);
+        if (!string.IsNullOrWhiteSpace(SelectedFilePath))
+        {
+            LoadProgramFile(SelectedFilePath);
+        }
+    }
+
+    private void ResolveProgramFromCurrentFolder(bool promptIfMultiple)
+    {
+        SelectedFilePath = ResolveProgramFileFromFolder(TestProgramFolderPath, promptIfMultiple);
+        UpdateConfigurationSummary();
+    }
+
+    private string? ResolveProgramFileFromFolder(string? folderPath, bool promptIfMultiple)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+        {
+            return null;
         }
 
-        LoadProgramFile(path);
+        var programs = Directory.GetFiles(folderPath, "*.ctxprg", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (programs.Count == 0)
+        {
+            AddLog($"Im Ordner '{folderPath}' wurde keine .ctxprg gefunden.");
+            return null;
+        }
+
+        if (programs.Count == 1 || !promptIfMultiple)
+        {
+            return programs[0];
+        }
+
+        var choice = PromptSelection("Mehrere CT3xx-Programme gefunden. Bitte wählen:", programs);
+        return string.IsNullOrWhiteSpace(choice) ? programs[0] : choice;
     }
 
     private bool LoadProgramFile(string filePath, bool showErrors = true)
     {
         try
         {
-            _fileSet = null;
-            _program = null;
-            var resolvedPath = Path.GetFullPath(filePath);
-            if (!File.Exists(resolvedPath))
-            {
-                throw new FileNotFoundException($"Datei nicht gefunden: {resolvedPath}");
-            }
-
-            var fileSet = _fileParser.Load(resolvedPath);
-            _fileSet = fileSet;
-            _program = fileSet.Program;
-            OnPropertyChanged(nameof(CanStartSimulation));
-            SelectedFilePath = resolvedPath;
-            _programDirectory = Path.GetDirectoryName(resolvedPath);
-            BuildTree(fileSet.Program);
+            var fullPath = Path.GetFullPath(filePath);
+            _fileSet = _fileParser.Load(fullPath);
+            _program = _fileSet.Program;
+            _loadedFilePath = fullPath;
+            SelectedFilePath = fullPath;
+            StepResults.Clear();
             Logs.Clear();
-            AddLog($"Programm geladen: {Path.GetFileName(resolvedPath)}");
-            AddLog($"Externe CT3xx-Dateien: {fileSet.ExternalFiles.Count}");
+            CurrentStep = null;
+            AddLog($"Programm geladen: {Path.GetFileName(fullPath)}");
+            AddLog($"Externe Dateien: {_fileSet.ExternalFiles.Count}");
+            UpdateConfigurationSummary();
             return true;
         }
         catch (Exception ex)
@@ -254,384 +314,154 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
             {
                 MessageBox.Show(this, ex.Message, "Fehler beim Laden", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            else
-            {
-                AddLog($"Fehler beim automatischen Laden: {ex.Message}");
-            }
 
+            AddLog($"Fehler beim Laden: {ex.Message}");
             return false;
         }
     }
 
-    private void StartOverlayTimer(TimeSpan interval)
+    private async void OnStartSimulation(object sender, RoutedEventArgs e)
     {
-        _displayMessageTimer.Stop();
-        _displayMessageTimer.Interval = interval;
-        _displayMessageTimer.Start();
+        await StartSimulationAsync();
     }
-
-    private void OnAcknowledgeDisplayOverlay(object sender, RoutedEventArgs e)
-    {
-        CompleteDisplayAcknowledgement();
-    }
-
-    private void CompleteDisplayAcknowledgement()
-    {
-        IsDisplayConfirmationRequired = false;
-        StartOverlayTimer(TimeSpan.FromSeconds(3));
-        _displayAcknowledgement.Set();
-    }
-
-    private void ClearDisplayOverlay()
-    {
-        _displayMessageTimer.Stop();
-        DisplayOverlayMessage = null;
-        IsDisplayConfirmationRequired = false;
-    }
-
-    private async void OnStartSimulation(object sender, RoutedEventArgs e) => await StartSimulationAsync();
 
     private void OnCancelSimulation(object sender, RoutedEventArgs e)
     {
         _cts?.Cancel();
     }
 
-    private void OnAddMeasurement(object sender, RoutedEventArgs e)
+    private async Task StartSimulationAsync()
     {
-        if (TryProcessMeasurementInput(NewMeasurementValue))
-        {
-            NewMeasurementValue = string.Empty;
-        }
-    }
-
-    private void OnAddFailMeasurement(object sender, RoutedEventArgs e)
-    {
-        TryProcessMeasurementInput("10");
-    }
-
-    private void OnAddPassMeasurement(object sender, RoutedEventArgs e)
-    {
-        TryProcessMeasurementInput("1000");
-    }
-
-    private void OnClearMeasurements(object sender, RoutedEventArgs e)
-    {
-        if (_measurementQueue.Count == 0)
+        ResolveProgramFromCurrentFolder(promptIfMultiple: true);
+        if (string.IsNullOrWhiteSpace(SelectedFilePath) || !LoadProgramFile(SelectedFilePath, showErrors: true))
         {
             return;
         }
 
-        _measurementQueue.Clear();
-        AddLog("Messwert-Warteschlange geleert.");
+        if (!CanStartSimulation)
+        {
+            MessageBox.Show(this, "Bitte Testprogramm-Ordner, Verdrahtungs-Ordner, Simulations-Ordner und Python-Skript auswählen.", "Konfiguration unvollständig", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        StepResults.Clear();
+        Logs.Clear();
+        CurrentStep = null;
+        IsSimulationRunning = true;
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            var loadedProgram = _program;
+            if (loadedProgram == null)
+            {
+                return;
+            }
+
+            ApplySimulationOverrides();
+            EnsurePythonDevice();
+
+            await Task.Run(() =>
+            {
+                var simulator = new Ct3xxProgramSimulator(this, this);
+                if (_fileSet != null)
+                {
+                    simulator.Run(_fileSet, 1, _cts.Token);
+                }
+                else
+                {
+                    simulator.Run(loadedProgram, 1, _cts.Token);
+                }
+            });
+
+            AddLog("Simulation abgeschlossen.");
+        }
+        catch (OperationCanceledException)
+        {
+            AddLog("Simulation abgebrochen.");
+        }
+        catch (Exception ex)
+        {
+            AddLog($"Fehler: {ex.Message}");
+            MessageBox.Show(this, ex.Message, "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            DisposePythonDeviceHost();
+            RestoreSimulationOverrides();
+            _cts?.Dispose();
+            _cts = null;
+            IsSimulationRunning = false;
+            CurrentStep = null;
+        }
     }
 
-    private void BuildTree(Ct3xxProgram program)
+    private void ApplySimulationOverrides()
     {
-        Nodes.Clear();
-        _nodeLookup.Clear();
-        var programTitle = TestDetailsFactory.Clean(program.ProgramVersion) ??
-                           TestDetailsFactory.Clean(program.ProgramComment) ??
-                           program.Id ??
-                           "Programm";
-        var root = new SimulationNodeViewModel($"Programm: {programTitle}", NodeType.Program, program)
-        {
-            Details = ProgramDetailsFactory.CreateProgramDetails(program)
-        };
-        Nodes.Add(root);
+        _previousWireVizRoot = Environment.GetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", EnvironmentVariableTarget.Process);
+        _previousSimulationModelRoot = Environment.GetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", EnvironmentVariableTarget.Process);
 
-        AddTopLevelTables(root, program);
+        Environment.SetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", WiringFolderPath, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", SimulationModelFolderPath, EnvironmentVariableTarget.Process);
 
-        var (startItems, endItems) = SplitProgramItems(program);
-
-        if (startItems.Count > 0)
-        {
-            root.Children.Add(CreatePhaseNode("Test Start", startItems));
-        }
-
-        if (program.DutLoop != null)
-        {
-            var loopContainer = new SimulationNodeViewModel("Test Loop", NodeType.Section, program.DutLoop);
-            loopContainer.Children.Add(CreateDutLoopNode(program.DutLoop));
-            root.Children.Add(loopContainer);
-        }
-
-        if (endItems.Count > 0)
-        {
-            root.Children.Add(CreatePhaseNode("Test Ende", endItems));
-        }
-
-        if (program.DutLoop == null && startItems.Count == 0 && endItems.Count == 0)
-        {
-            root.Children.Add(new SimulationNodeViewModel("Keine Gruppen definiert", NodeType.Section, program));
-        }
-
-        SelectedNode = root;
+        AddLog($"WireViz-Ordner: {WiringFolderPath}");
+        AddLog($"Simulations-Ordner: {SimulationModelFolderPath}");
     }
 
-    private void AddTopLevelTables(SimulationNodeViewModel root, Ct3xxProgram program)
+    private void RestoreSimulationOverrides()
     {
-        if (program.Tables.Count == 0)
+        Environment.SetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", _previousWireVizRoot, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", _previousSimulationModelRoot, EnvironmentVariableTarget.Process);
+        _previousWireVizRoot = null;
+        _previousSimulationModelRoot = null;
+    }
+
+    private void EnsurePythonDevice()
+    {
+        DisposePythonDeviceHost();
+
+        if (string.IsNullOrWhiteSpace(PythonScriptPath))
         {
             return;
         }
 
-        var title = $"Tabellen & Bibliotheken ({program.Tables.Count})";
-        var container = new SimulationNodeViewModel(title, NodeType.Section, program.Tables);
-        foreach (var table in program.Tables)
+        _pythonDeviceHost = PythonDeviceProcessHost.Start(PythonScriptPath);
+        if (_pythonDeviceHost == null)
         {
-            container.Children.Add(CreateTableNode(table));
+            throw new InvalidOperationException("Das gewählte Python-Skript konnte nicht gestartet werden.");
         }
 
-        root.Children.Add(container);
+        _previousPythonPipe = Environment.GetEnvironmentVariable("CT3XX_PY_DEVICE_PIPE", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable("CT3XX_PY_DEVICE_PIPE", _pythonDeviceHost.PipePath, EnvironmentVariableTarget.Process);
+        AddLog($"Python-Gerätesimulation gestartet: {Path.GetFileName(PythonScriptPath)}");
     }
 
-    private (List<SequenceNode> StartItems, List<SequenceNode> EndItems) SplitProgramItems(Ct3xxProgram program)
+    private void DisposePythonDeviceHost()
     {
-        var startItems = new List<SequenceNode>();
-        var endItems = new List<SequenceNode>();
-        var encounteredEnd = false;
-
-        foreach (var item in program.RootItems)
+        if (_pythonDeviceHost == null)
         {
-            if (!encounteredEnd &&
-                item is Group marker &&
-                string.Equals(marker.Id, "END$", StringComparison.OrdinalIgnoreCase))
-            {
-                encounteredEnd = true;
-            }
-
-            if (encounteredEnd)
-            {
-                endItems.Add(item);
-            }
-            else
-            {
-                startItems.Add(item);
-            }
+            return;
         }
 
-        return (startItems, endItems);
+        _pythonDeviceHost.Dispose();
+        _pythonDeviceHost = null;
+        Environment.SetEnvironmentVariable("CT3XX_PY_DEVICE_PIPE", _previousPythonPipe, EnvironmentVariableTarget.Process);
+        _previousPythonPipe = null;
     }
 
-    private SimulationNodeViewModel CreatePhaseNode(string title, IEnumerable<SequenceNode> items)
+    private void OnClosed(object? sender, EventArgs e)
     {
-        var node = new SimulationNodeViewModel(title, NodeType.Section, items.ToList());
-        foreach (var item in items)
-        {
-            switch (item)
-            {
-                case Group group:
-                    node.Children.Add(CreateGroupNode(group));
-                    break;
-                case Test test:
-                    node.Children.Add(CreateTestNode(test));
-                    break;
-                case Table table:
-                    node.Children.Add(CreateTableNode(table));
-                    break;
-            }
-        }
-
-        return node;
+        DisposePythonDeviceHost();
+        RestoreSimulationOverrides();
     }
 
-    private SimulationNodeViewModel CreateTableNode(Table table)
+    private void UpdateConfigurationSummary()
     {
-        var title = TestDetailsFactory.Clean(table.Id) ?? TestDetailsFactory.Clean(table.File) ?? "Tabelle";
-        var node = new SimulationNodeViewModel($"Tabelle: {title}", NodeType.Table, table)
-        {
-            Details = ProgramDetailsFactory.CreateTableDetails(table)
-        };
-
-        foreach (var library in table.Libraries)
-        {
-            node.Children.Add(CreateLibraryNode(library));
-        }
-
-        return node;
-    }
-
-    private SimulationNodeViewModel CreateLibraryNode(LibraryDefinition library)
-    {
-        var title = TestDetailsFactory.Clean(library.Name) ?? library.Id ?? "Bibliothek";
-        var node = new SimulationNodeViewModel($"Bibliothek: {title}", NodeType.Library, library)
-        {
-            Details = ProgramDetailsFactory.CreateLibraryDetails(library)
-        };
-
-        foreach (var function in library.Functions)
-        {
-            node.Children.Add(CreateLibraryFunctionNode(function));
-        }
-
-        return node;
-    }
-
-    private SimulationNodeViewModel CreateLibraryFunctionNode(LibraryFunction function)
-    {
-        var title = TestDetailsFactory.Clean(function.Name) ?? function.Id ?? "Funktion";
-        var node = new SimulationNodeViewModel($"Funktion: {title}", NodeType.Function, function)
-        {
-            Details = ProgramDetailsFactory.CreateLibraryFunctionDetails(function)
-        };
-
-        foreach (var table in function.Tables)
-        {
-            node.Children.Add(CreateTableNode(table));
-        }
-
-        foreach (var item in function.Items)
-        {
-            switch (item)
-            {
-                case Group group:
-                    node.Children.Add(CreateGroupNode(group, isLibraryNode: true));
-                    break;
-                case Test test:
-                    node.Children.Add(CreateTestNode(test, isLibraryNode: true));
-                    break;
-            }
-        }
-
-        return node;
-    }
-
-    private bool TryProcessMeasurementInput(string? rawValue)
-    {
-        if (!TryNormalizeMeasurementValue(rawValue, out var normalized, out var display))
-        {
-            MessageBox.Show(this, "Bitte einen numerischen Wert (z.B. 10 oder 1000) eingeben.", "Ungültiger Messwert", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return false;
-        }
-
-
-        _measurementQueue.Add(normalized);
-        AddLog($"Messwert geplant: {display}");
-        return true;
-    }
-
-    private static bool TryNormalizeMeasurementValue(string? rawValue, out string normalized, out string display)
-    {
-        normalized = string.Empty;
-        display = string.Empty;
-        if (string.IsNullOrWhiteSpace(rawValue))
-        {
-            return false;
-        }
-
-        var cleaned = rawValue.Trim();
-        if (cleaned.EndsWith("V", StringComparison.OrdinalIgnoreCase))
-        {
-            cleaned = cleaned[..^1];
-        }
-
-        cleaned = cleaned.Replace(',', '.');
-        if (!double.TryParse(cleaned, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric))
-        {
-            return false;
-        }
-
-        normalized = numeric.ToString("0.###", CultureInfo.InvariantCulture);
-        display = $"{normalized} V";
-        return true;
-    }
-
-    private string? ConsumeQueuedMeasurementValue()
-    {
-        string? value = null;
-        Dispatcher.Invoke(() =>
-        {
-            if (_measurementQueue.Count > 0)
-            {
-                value = _measurementQueue[0];
-                _measurementQueue.RemoveAt(0);
-            }
-        });
-        return value;
-    }
-
-    private static string BuildMeasurementLabel(Test test, Record record, string? unit)
-    {
-        var label = record.DrawingReference ?? record.Text ?? record.Id ?? test.Parameters?.Name ?? test.Name ?? "Messwert";
-        label = string.IsNullOrWhiteSpace(label) ? "Messwert" : label.Trim();
-        if (!string.IsNullOrWhiteSpace(unit))
-        {
-            label = $"{label} [{unit.Trim()}]";
-        }
-
-        return label;
-    }
-
-    private SimulationNodeViewModel CreateGroupNode(Group group, bool isLibraryNode = false)
-    {
-        var title = string.IsNullOrWhiteSpace(group.Name) ? $"Gruppe {group.Id}" : group.Name;
-        var node = new SimulationNodeViewModel(title, NodeType.Group, group);
-        if (!isLibraryNode)
-        {
-            _nodeLookup[group] = node;
-        }
-        node.Details = GroupDetailsFactory.Create(group);
-        foreach (var item in group.Items)
-        {
-            switch (item)
-            {
-                case Group nested:
-                    node.Children.Add(CreateGroupNode(nested, isLibraryNode));
-                    break;
-                case Test test:
-                    node.Children.Add(CreateTestNode(test, isLibraryNode));
-                    break;
-            }
-        }
-
-        return node;
-    }
-
-    private SimulationNodeViewModel CreateDutLoopNode(DutLoop loop)
-    {
-        var title = string.IsNullOrWhiteSpace(loop.Name) ? "DUT Loop" : loop.Name;
-        var node = new SimulationNodeViewModel(title, NodeType.DutLoop, loop);
-        _nodeLookup[loop] = node;
-        foreach (var item in loop.Items)
-        {
-            switch (item)
-            {
-                case Group nested:
-                    node.Children.Add(CreateGroupNode(nested));
-                    break;
-                case Test test:
-                    node.Children.Add(CreateTestNode(test));
-                    break;
-            }
-        }
-
-        return node;
-    }
-
-    private SimulationNodeViewModel CreateTestNode(Test test, bool isLibraryNode = false)
-    {
-        var preferredName = test.Parameters?.Name;
-        if (string.IsNullOrWhiteSpace(preferredName))
-        {
-            preferredName = string.IsNullOrWhiteSpace(test.Name) ? null : test.Name;
-        }
-
-        var title = string.IsNullOrWhiteSpace(preferredName) ? $"Test {test.Id}" : preferredName!;
-        var node = new SimulationNodeViewModel(title, NodeType.Test, test);
-        if (!isLibraryNode)
-        {
-            _nodeLookup[test] = node;
-        }
-        node.Details = TestDetailsFactory.Create(test, _programDirectory);
-        return node;
-    }
-
-    private void ResetNodeStatuses()
-    {
-        foreach (var node in Nodes)
-        {
-            node.Reset();
-        }
+        ConfigurationSummary =
+            $"Programm: {Path.GetFileName(SelectedFilePath ?? string.Empty)} | " +
+            $"Verdrahtung: {Path.GetFileName(WiringFolderPath ?? string.Empty)} | " +
+            $"Simulation: {Path.GetFileName(SimulationModelFolderPath ?? string.Empty)} | " +
+            $"Python: {Path.GetFileName(PythonScriptPath ?? string.Empty)}";
     }
 
     private void AddLog(string message)
@@ -639,34 +469,74 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         Dispatcher.Invoke(() =>
         {
             Logs.Add(new LogEntryViewModel(message));
-            if (Logs.Count > 500)
+            if (Logs.Count > 200)
             {
                 Logs.RemoveAt(0);
             }
         });
     }
 
-    private void OnSelectedNodeChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    public void OnProgramStarted(Ct3xxProgram program)
     {
-        if (e.NewValue is SimulationNodeViewModel vm)
-        {
-            SelectedNode = vm;
-        }
+        AddLog($"Programm gestartet: {program.ProgramVersion ?? program.Id ?? "unbekannt"}");
     }
 
-    #region IInteractionProvider
+    public void OnLoopIteration(int iteration, int totalIterations)
+    {
+        AddLog($"DUT-Durchlauf {iteration}/{totalIterations}");
+    }
+
+    public void OnGroupStarted(Group group)
+    {
+        AddLog($"Gruppe: {group.Name}");
+    }
+
+    public void OnGroupSkipped(Group group, string reason)
+    {
+        AddLog($"Gruppe übersprungen: {group.Name} ({reason})");
+    }
+
+    public void OnGroupCompleted(Group group)
+    {
+    }
+
+    public void OnTestStarted(Test test)
+    {
+        CurrentStep = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
+        AddLog($"Starte: {CurrentStep}");
+    }
+
+    public void OnTestCompleted(Test test, TestOutcome outcome)
+    {
+        AddLog($"Ergebnis {CurrentStep}: {outcome.ToString().ToUpperInvariant()}");
+    }
+
+    public void OnStepEvaluated(Test test, StepEvaluation evaluation)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            StepResults.Add(new StepResultViewModel(
+                evaluation.StepName,
+                evaluation.Outcome.ToString().ToUpperInvariant(),
+                FormatNumber(evaluation.MeasuredValue),
+                FormatNumber(evaluation.LowerLimit),
+                FormatNumber(evaluation.UpperLimit),
+                evaluation.Unit ?? string.Empty,
+                evaluation.Details ?? string.Empty));
+        });
+    }
+
+    public void OnMessage(string message)
+    {
+        AddLog(message);
+    }
+
     public string PromptSelection(string message, IReadOnlyList<string> options)
     {
         return Dispatcher.Invoke(() =>
         {
-            if (options.Count == 0)
-            {
-                var dialog = new InputDialog(this, message);
-                return dialog.ShowDialog() == true ? dialog.Response : string.Empty;
-            }
-
-            var selectionDialog = new SelectionDialog(this, message, options);
-            return selectionDialog.ShowDialog() == true ? selectionDialog.SelectedOption : options.FirstOrDefault() ?? string.Empty;
+            var dialog = new SelectionDialog(this, message, options);
+            return dialog.ShowDialog() == true ? dialog.SelectedOption : options.Count > 0 ? options[0] : string.Empty;
         });
     }
 
@@ -681,171 +551,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
 
     public string PromptMeasurement(Test test, Record record, string prompt, string? unit)
     {
-        var label = BuildMeasurementLabel(test, record, unit);
-        var unitDisplay = string.IsNullOrWhiteSpace(unit) ? string.Empty : $" {unit?.Trim()}";
-        var queued = ConsumeQueuedMeasurementValue();
-        if (!string.IsNullOrWhiteSpace(queued))
-        {
-            AddLog($"Messwert aus Warteschlange für {label}: {queued}{unitDisplay}");
-            return queued!;
-        }
-
-        return Dispatcher.Invoke(() =>
-        {
-            var dialogPrompt = string.IsNullOrWhiteSpace(unit)
-                ? $"{label}:"
-                : $"{label} ({unit.Trim()}):";
-            var dialog = new InputDialog(this, dialogPrompt);
-            var result = dialog.ShowDialog() == true ? dialog.Response : string.Empty;
-            var display = string.IsNullOrWhiteSpace(result) ? "n/a" : result;
-            AddLog($"Messwert eingegeben: {label} = {display}{unitDisplay}");
-            return result;
-        });
+        return PromptInput(prompt);
     }
 
     public bool PromptPassFail(string message)
     {
-        return Dispatcher.Invoke(() =>
-        {
-            var result = MessageBox.Show(this, message, "Operator", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            return result == MessageBoxResult.Yes;
-        });
+        return Dispatcher.Invoke(() => MessageBox.Show(this, message, "Operator", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes);
     }
 
     public void ShowMessage(string message, bool requiresConfirmation)
     {
-        AddLog(message);
-        if (!requiresConfirmation)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                DisplayOverlayMessage = message;
-                IsDisplayConfirmationRequired = false;
-                StartOverlayTimer(TimeSpan.FromSeconds(4));
-            });
-            return;
-        }
-
-        _displayAcknowledgement.Reset();
         Dispatcher.Invoke(() =>
         {
-            DisplayOverlayMessage = message;
-            IsDisplayConfirmationRequired = true;
-            _displayMessageTimer.Stop();
+            MessageBox.Show(this, message, "CT3xx", MessageBoxButton.OK, MessageBoxImage.Information);
         });
-
-        _displayAcknowledgement.Wait();
     }
-
-    #endregion
-
-    #region ISimulationObserver
-    public void OnProgramStarted(Ct3xxProgram program)
-    {
-        AddLog($"Programm gestartet: {program.ProgramVersion ?? "Unbekannt"}");
-        if (Nodes.FirstOrDefault() is { } root)
-        {
-            Dispatcher.Invoke(() => root.Status = NodeStatus.Running);
-        }
-    }
-
-    public void OnLoopIteration(int iteration, int totalIterations)
-    {
-        AddLog($"== DUT Zyklus {iteration}/{totalIterations} ==");
-        if (_program?.DutLoop != null && _nodeLookup.TryGetValue(_program.DutLoop, out var node))
-        {
-            Dispatcher.Invoke(() =>
-            {
-                node.Status = NodeStatus.Running;
-                node.LastResult = $"Zyklus {iteration}/{totalIterations}";
-                if (iteration == totalIterations)
-                {
-                    node.LastResult = "Abgeschlossen";
-                }
-            });
-        }
-    }
-
-    public void OnGroupStarted(Group group)
-    {
-        AddLog($"-- Gruppe: {group.Name}");
-        if (_nodeLookup.TryGetValue(group, out var node))
-        {
-            Dispatcher.Invoke(() => node.Status = NodeStatus.Running);
-        }
-    }
-
-    public void OnGroupSkipped(Group group, string reason)
-    {
-        AddLog($"Gruppe übersprungen: {group.Name} ({reason})");
-        if (_nodeLookup.TryGetValue(group, out var node))
-        {
-            Dispatcher.Invoke(() =>
-            {
-                node.Status = NodeStatus.Skipped;
-                node.LastResult = reason;
-            });
-        }
-    }
-
-    public void OnGroupCompleted(Group group)
-    {
-        if (_nodeLookup.TryGetValue(group, out var node) && node.Status != NodeStatus.Skipped)
-        {
-            Dispatcher.Invoke(() => node.Status = NodeStatus.Completed);
-        }
-    }
-
-    public void OnTestStarted(Test test)
-    {
-        var title = test.Parameters?.Name;
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            title = test.Name;
-        }
-
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            title = test.Id;
-        }
-
-        title ??= "Unnamed Test";
-        AddLog($"   Test: {title}");
-        if (_nodeLookup.TryGetValue(test, out var node))
-        {
-            Dispatcher.Invoke(() =>
-            {
-                node.Status = NodeStatus.Running;
-                node.LastResult = null;
-            });
-        }
-    }
-
-    public void OnTestCompleted(Test test, TestOutcome outcome)
-    {
-        if (_nodeLookup.TryGetValue(test, out var node))
-        {
-            Dispatcher.Invoke(() =>
-            {
-                node.Status = outcome switch
-                {
-                    TestOutcome.Pass => NodeStatus.Completed,
-                    TestOutcome.Fail => NodeStatus.Failed,
-                    TestOutcome.Error => NodeStatus.Skipped,
-                    _ => NodeStatus.Completed
-                };
-                node.LastResult = outcome.ToString().ToUpperInvariant();
-            });
-        }
-
-        AddLog($"   Ergebnis: {outcome.ToString().ToUpperInvariant()}");
-    }
-
-    public void OnMessage(string message)
-    {
-        AddLog(message);
-    }
-    #endregion
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -866,70 +586,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    private async Task StartSimulationAsync()
+    private static string FormatNumber(double? value)
     {
-        AddLog("Simulation manuell gestartet.");
-        if (_program == null)
-        {
-            MessageBox.Show(this, "Bitte laden Sie zuerst ein CT3xx Programm.", "Kein Programm", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        if (IsSimulationRunning)
-        {
-            return;
-        }
-
-        ResetNodeStatuses();
-        _cts = new CancellationTokenSource();
-        IsSimulationRunning = true;
-
-        try
-        {
-            await Task.Run(() =>
-            {
-                var simulator = new Ct3xxProgramSimulator(this, this);
-                if (_fileSet != null)
-                {
-                    simulator.Run(_fileSet, LoopCount, _cts.Token);
-                }
-                else
-                {
-                    simulator.Run(_program, LoopCount, _cts.Token);
-                }
-            });
-            AddLog("Simulation abgeschlossen.");
-        }
-        catch (OperationCanceledException)
-        {
-            AddLog("Simulation abgebrochen.");
-        }
-        catch (Exception ex)
-        {
-            Dispatcher.Invoke(() => MessageBox.Show(this, ex.Message, "Fehler", MessageBoxButton.OK, MessageBoxImage.Error));
-            AddLog($"Fehler: {ex.Message}");
-        }
-        finally
-        {
-            _cts?.Dispose();
-            _cts = null;
-            IsSimulationRunning = false;
-            Dispatcher.Invoke(() =>
-            {
-                if (Nodes.FirstOrDefault() is { } root)
-                {
-                    root.Status = NodeStatus.Completed;
-                }
-            });
-        }
+        return value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";
     }
-
 }
-
-
-
-
-
-
-
-

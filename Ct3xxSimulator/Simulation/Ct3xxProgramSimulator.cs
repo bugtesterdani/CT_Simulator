@@ -22,6 +22,8 @@ public class Ct3xxProgramSimulator
     private WireVizHarnessResolver? _wireVizResolver;
     private bool _testerConfigurationAsked;
     private CancellationToken _cancellationToken;
+    private readonly Dictionary<string, string> _measurementBusSignals = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, object?> _signalState = new(StringComparer.OrdinalIgnoreCase);
 
     public Ct3xxProgramSimulator(IInteractionProvider? interactionProvider = null, ISimulationObserver? observer = null)
     {
@@ -35,6 +37,7 @@ public class Ct3xxProgramSimulator
         _externalDeviceSession?.Dispose();
         _externalDeviceSession = null;
         _wireVizResolver = null;
+        ResetSimulationState();
         RunCore(program, dutLoopIterations, cancellationToken);
     }
 
@@ -48,6 +51,7 @@ public class Ct3xxProgramSimulator
         _externalDeviceSession?.Dispose();
         _externalDeviceSession = CreateExternalDeviceSession();
         _wireVizResolver = WireVizHarnessResolver.Create(fileSet);
+        ResetSimulationState();
         RunCore(fileSet.Program, dutLoopIterations, cancellationToken);
     }
 
@@ -202,6 +206,8 @@ public class Ct3xxProgramSimulator
             "GSD^" => RunAssignmentTest(test),
             "PET$" => RunEvaluationTest(test),
             "PRT^" => RunOperatorTest(test),
+            "SC2C" => RunScannerConnectTest(test),
+            "CDMA" => RunCdmaTest(test),
             _ => RunGenericTest(test)
         };
 
@@ -299,6 +305,7 @@ public class Ct3xxProgramSimulator
 
                 var msg = $"{label}: {valueDisplay} {unit} (limits {lower?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-inf"} .. {upper?.ToString("0.###", CultureInfo.InvariantCulture) ?? "+inf"}) => {(pass ? "PASS" : "FAIL")}";
                 _observer.OnMessage(msg);
+                _observer.OnStepEvaluated(test, new StepEvaluation(label, pass ? TestOutcome.Pass : TestOutcome.Fail, measured, lower, upper, unit));
                 if (!pass)
                 {
                     overall = TestOutcome.Fail;
@@ -431,19 +438,93 @@ public class Ct3xxProgramSimulator
             _observer.OnMessage(info);
         }
 
+        PublishStepEvaluation(test, TestOutcome.Pass, details: string.IsNullOrWhiteSpace(info) ? null : info);
         return TestOutcome.Pass;
+    }
+
+    private TestOutcome RunScannerConnectTest(Test test)
+    {
+        var parameters = test.Parameters;
+        if (parameters?.AdditionalAttributes != null)
+        {
+            foreach (var attribute in parameters.AdditionalAttributes)
+            {
+                if (!attribute.Name.StartsWith("MBus", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var signal = ExtractSignalName(attribute.Value);
+                if (!string.IsNullOrWhiteSpace(signal))
+                {
+                    _measurementBusSignals[attribute.Name] = signal!;
+                }
+            }
+        }
+
+        var details = _measurementBusSignals.Count == 0
+            ? "Messbusse verbunden."
+            : string.Join(", ", _measurementBusSignals.OrderBy(item => item.Key).Select(item => $"{item.Key}={item.Value}"));
+        _observer.OnMessage($"SC2C: {details}");
+        RememberSignal("VCC_Plus", 24d);
+        TrySetExternalSignal("HELPER_SUPPLY", true);
+        PublishStepEvaluation(test, TestOutcome.Pass, details: details);
+        return TestOutcome.Pass;
+    }
+
+    private TestOutcome RunCdmaTest(Test test)
+    {
+        var parameters = test.Parameters;
+        if (parameters == null)
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "CDMA ohne Parameter.");
+            return TestOutcome.Error;
+        }
+
+        var inputSignal = ResolveMeasurementBusSignal("MBus3");
+        var outputSignal = ResolveMeasurementBusSignal("MBus7");
+        if (string.IsNullOrWhiteSpace(inputSignal) || string.IsNullOrWhiteSpace(outputSignal))
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "MBus3 oder MBus7 ist nicht zugeordnet.");
+            return TestOutcome.Error;
+        }
+
+        if (_externalDeviceSession == null)
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "Python-Gerätesimulation ist nicht verbunden.");
+            return TestOutcome.Error;
+        }
+
+        var sourceVoltage = ParseEngineeringValue(parameters.StimulusChannel1?.Voltage);
+        var lowerLimit = ParseEngineeringValue(parameters.AcquisitionChannel2?.LowerVoltageLimit);
+        var upperLimit = ParseEngineeringValue(parameters.AcquisitionChannel2?.UpperVoltageLimit);
+        if (sourceVoltage.HasValue)
+        {
+            WriteSignal(inputSignal!, sourceVoltage.Value);
+            _observer.OnMessage($"{inputSignal} <= {sourceVoltage.Value.ToString("0.###", CultureInfo.InvariantCulture)} V");
+        }
+
+        var measuredValue = TryReadSignal(outputSignal!, out var measured, out var details)
+            ? _evaluator.ToDouble(measured)
+            : null;
+        var outcome = EvaluateNumericOutcome(measuredValue, lowerLimit, upperLimit);
+        var label = test.Parameters?.Name ?? test.Name ?? test.Id ?? "CDMA";
+        var message = $"{label}: {measuredValue?.ToString("0.###", CultureInfo.InvariantCulture) ?? "n/a"} V (limits {FormatLimit(lowerLimit)} .. {FormatLimit(upperLimit)}) => {outcome.ToString().ToUpperInvariant()}";
+        _observer.OnMessage(message);
+        if (!string.IsNullOrWhiteSpace(details))
+        {
+            _observer.OnMessage(details);
+        }
+
+        _observer.OnStepEvaluated(test, new StepEvaluation(label, outcome, measuredValue, lowerLimit, upperLimit, "V", details));
+        return outcome;
     }
 
     private static bool IsDisabled(string? flag) => string.Equals(flag, "yes", StringComparison.OrdinalIgnoreCase);
 
     private static double? ParseNullable(string? text)
     {
-        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-        {
-            return value;
-        }
-
-        return null;
+        return ParseEngineeringValue(text);
     }
 
     private static IReadOnlyList<int> ParseResultIndexes(string? specification)
@@ -592,7 +673,8 @@ public class Ct3xxProgramSimulator
             return;
         }
 
-        if (!_wireVizResolver.TryResolve(candidate, out var resolutions))
+        if (!_wireVizResolver.TryResolve(candidate, _signalState, out var resolutions) &&
+            !_wireVizResolver.TryResolve(candidate, out resolutions))
         {
             return;
         }
@@ -616,7 +698,9 @@ public class Ct3xxProgramSimulator
             return;
         }
 
-        if (!_wireVizResolver.TryResolve(signalName, out var resolutions))
+        RememberSignal(signalName!, value);
+        if (!_wireVizResolver.TryResolve(signalName, _signalState, out var resolutions) &&
+            !_wireVizResolver.TryResolve(signalName, out resolutions))
         {
             return;
         }
@@ -640,7 +724,8 @@ public class Ct3xxProgramSimulator
 
         foreach (var candidate in EnumerateSignalCandidates(record))
         {
-            if (!_wireVizResolver.TryResolve(candidate, out var resolutions))
+            if (!_wireVizResolver.TryResolve(candidate, _signalState, out var resolutions) &&
+                !_wireVizResolver.TryResolve(candidate, out resolutions))
             {
                 continue;
             }
@@ -664,6 +749,122 @@ public class Ct3xxProgramSimulator
         }
 
         return null;
+    }
+
+    private void ResetSimulationState()
+    {
+        _measurementBusSignals.Clear();
+        _signalState.Clear();
+    }
+
+    private void PublishStepEvaluation(Test test, TestOutcome outcome, double? measured = null, double? lower = null, double? upper = null, string? unit = null, string? details = null)
+    {
+        var stepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
+        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details));
+    }
+
+    private string? ResolveMeasurementBusSignal(string busName)
+    {
+        return _measurementBusSignals.TryGetValue(busName, out var signal) ? signal : null;
+    }
+
+    private void WriteSignal(string signalName, object? value)
+    {
+        var normalized = ExtractSignalName(signalName);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return;
+        }
+
+        RememberSignal(normalized!, value);
+        TryWriteExternalSignal(normalized, value);
+    }
+
+    private bool TryReadSignal(string signalName, out object? value, out string? details)
+    {
+        details = null;
+        var normalized = ExtractSignalName(signalName);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            value = null;
+            return false;
+        }
+
+        if (_externalDeviceSession != null && _wireVizResolver != null &&
+            (_wireVizResolver.TryResolve(normalized, _signalState, out var resolutions) || _wireVizResolver.TryResolve(normalized, out resolutions)))
+        {
+            if (_externalDeviceSession.TryReadSignal(resolutions, _cancellationToken, out var resolvedSignal, out value, out var stateSummary, out var error))
+            {
+                details = string.IsNullOrWhiteSpace(stateSummary) ? $"Quelle: {resolvedSignal}" : $"Quelle: {resolvedSignal} | state {stateSummary}";
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                details = error;
+            }
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static TestOutcome EvaluateNumericOutcome(double? measured, double? lowerLimit, double? upperLimit)
+    {
+        if (!measured.HasValue)
+        {
+            return TestOutcome.Error;
+        }
+
+        if (lowerLimit.HasValue && measured.Value < lowerLimit.Value)
+        {
+            return TestOutcome.Fail;
+        }
+
+        if (upperLimit.HasValue && measured.Value > upperLimit.Value)
+        {
+            return TestOutcome.Fail;
+        }
+
+        return TestOutcome.Pass;
+    }
+
+    private static string FormatLimit(double? value)
+    {
+        return value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";
+    }
+
+    private static double? ParseEngineeringValue(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(text.Trim(), @"^\s*([-+]?\d+(?:[.,]\d+)?)\s*([A-Za-zµ]*)");
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var numericText = match.Groups[1].Value.Replace(',', '.');
+        if (!double.TryParse(numericText, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            return null;
+        }
+
+        var unit = match.Groups[2].Value.Trim();
+        return unit.ToLowerInvariant() switch
+        {
+            "" => value,
+            "v" => value,
+            "mv" => value / 1000d,
+            "a" => value,
+            "ma" => value / 1000d,
+            "s" => value,
+            "ms" => value / 1000d,
+            _ => value
+        };
     }
 
     private IEnumerable<string> EnumerateSignalCandidates(Record record)
@@ -734,5 +935,33 @@ public class Ct3xxProgramSimulator
             _externalDeviceSession?.Dispose();
             _externalDeviceSession = null;
         }
+    }
+
+    private void TrySetExternalSignal(string signalName, object? value)
+    {
+        RememberSignal(signalName, value);
+        if (_externalDeviceSession == null)
+        {
+            return;
+        }
+
+        if (_externalDeviceSession.TryWriteSignal(signalName, value, _cancellationToken, out var error))
+        {
+            _observer.OnMessage($"Python device input <= {signalName} = {_evaluator.ToText(value)}");
+        }
+        else if (!string.IsNullOrWhiteSpace(error))
+        {
+            _observer.OnMessage($"Python device input error for {signalName}: {error}");
+        }
+    }
+
+    private void RememberSignal(string signalName, object? value)
+    {
+        if (string.IsNullOrWhiteSpace(signalName))
+        {
+            return;
+        }
+
+        _signalState[signalName.Trim()] = value;
     }
 }

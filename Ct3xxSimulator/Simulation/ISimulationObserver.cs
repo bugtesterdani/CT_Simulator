@@ -11,6 +11,7 @@ public interface ISimulationObserver
     void OnGroupCompleted(Group group);
     void OnTestStarted(Test test);
     void OnTestCompleted(Test test, TestOutcome outcome);
+    void OnStepEvaluated(Test test, StepEvaluation evaluation);
     void OnMessage(string message);
 }
 
@@ -55,6 +56,15 @@ public sealed class ConsoleSimulationObserver : ISimulationObserver
         Console.WriteLine($"      Result: {outcome.ToString().ToUpperInvariant()}");
     }
 
+    public void OnStepEvaluated(Test test, StepEvaluation evaluation)
+    {
+        var unit = string.IsNullOrWhiteSpace(evaluation.Unit) ? string.Empty : $" {evaluation.Unit}";
+        var value = evaluation.MeasuredValue?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) ?? "-";
+        var lower = evaluation.LowerLimit?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) ?? "-";
+        var upper = evaluation.UpperLimit?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) ?? "-";
+        Console.WriteLine($"      Step {evaluation.StepName}: {evaluation.Outcome} | value {value}{unit} | limits {lower} .. {upper}");
+    }
+
     public void OnMessage(string message)
     {
         Console.WriteLine($"      {message}");
@@ -70,5 +80,6 @@ public sealed class NullSimulationObserver : ISimulationObserver
     public void OnGroupCompleted(Group group) { }
     public void OnTestStarted(Test test) { }
     public void OnTestCompleted(Test test, TestOutcome outcome) { }
+    public void OnStepEvaluated(Test test, StepEvaluation evaluation) { }
     public void OnMessage(string message) { }
 }

@@ -10,13 +10,32 @@ internal static class WireVizFileLocator
 {
     public static IReadOnlyList<string> FindCandidateFiles(string programDirectory)
     {
+        var overrideRoot = Environment.GetEnvironmentVariable("CT3XX_WIREVIZ_ROOT");
+        if (!string.IsNullOrWhiteSpace(overrideRoot) && Directory.Exists(overrideRoot))
+        {
+            return FindCandidateFilesInRoot(Path.GetFullPath(overrideRoot));
+        }
+
         if (string.IsNullOrWhiteSpace(programDirectory) || !Directory.Exists(programDirectory))
         {
             return Array.Empty<string>();
         }
 
-        var candidates = Directory.EnumerateFiles(programDirectory, "*.yml", SearchOption.TopDirectoryOnly)
-            .Concat(Directory.EnumerateFiles(programDirectory, "*.yaml", SearchOption.TopDirectoryOnly))
+        return FindCandidateFilesInRoots(EnumerateSearchRoots(programDirectory));
+    }
+
+    private static IReadOnlyList<string> FindCandidateFilesInRoot(string rootDirectory)
+    {
+        return FindCandidateFilesInRoots(new[] { rootDirectory });
+    }
+
+    private static IReadOnlyList<string> FindCandidateFilesInRoots(IEnumerable<string> roots)
+    {
+        var candidates = roots
+            .Where(Directory.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.yml", SearchOption.TopDirectoryOnly)
+                .Concat(Directory.EnumerateFiles(directory, "*.yaml", SearchOption.TopDirectoryOnly)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(path => Rank(Path.GetFileName(path)))
             .ThenBy(path => path, StringComparer.OrdinalIgnoreCase)
@@ -46,6 +65,22 @@ internal static class WireVizFileLocator
         }
 
         return valid;
+    }
+
+    private static IEnumerable<string> EnumerateSearchRoots(string programDirectory)
+    {
+        yield return programDirectory;
+
+        var parent = Directory.GetParent(programDirectory);
+        if (parent == null)
+        {
+            yield break;
+        }
+
+        foreach (var subDirectory in Directory.EnumerateDirectories(parent.FullName, "*", SearchOption.AllDirectories))
+        {
+            yield return subDirectory;
+        }
     }
 
     private static int Rank(string fileName)

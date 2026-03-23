@@ -1,0 +1,89 @@
+connectors:
+  BoardPort:
+    bgcolor: YE
+    pins: [VPLUS, GND, IN, OUT]
+    pinlabels: [VPLUS, GND, IN, OUT]
+
+  K1:
+    bgcolor: YE
+    pins: [COM, NO, COIL_P, COIL_N]
+    pinlabels: [COM, NO, COIL_P, COIL_N]
+
+  R1:
+    bgcolor: YE
+    pins: [A, B]
+    pinlabels: [A, B]
+
+  DevicePort:
+    bgcolor: YE
+    pins: [INPUT, GND, OUTPUT]
+    pinlabels: [INPUT, GND, OUTPUT]
+
+cables:
+  Relaisspule:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [VPLUS, GND]
+
+  Eingang:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [IN]
+
+  RelaisZuWiderstand:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [SIG]
+
+  WiderstandZumDut:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [SIG]
+
+  Masse:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [GND]
+
+  Ausgang:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [OUT]
+
+connections:
+  -
+    - BoardPort: [VPLUS, GND]
+    - Relaisspule: [VPLUS, GND]
+    - K1: [COIL_P, COIL_N]
+  -
+    - BoardPort: [IN]
+    - Eingang: [IN]
+    - K1: [COM]
+  -
+    - K1: [NO]
+    - RelaisZuWiderstand: [SIG]
+    - R1: [A]
+  -
+    - R1: [B]
+    - WiderstandZumDut: [SIG]
+    - DevicePort: [INPUT]
+  -
+    - BoardPort: [GND]
+    - Masse: [GND]
+    - DevicePort: [GND]
+  -
+    - BoardPort: [OUT]
+    - Ausgang: [OUT]
+    - DevicePort: [OUTPUT]

@@ -5,7 +5,7 @@ namespace Ct3xxSimulator.Simulation.WireViz;
 
 public sealed class WireVizEndpoint
 {
-    public WireVizEndpoint(string designator, string pin, string? pinLabel, string? ct3xxSignal, WireVizConnectorRole role, string? backgroundColor)
+    public WireVizEndpoint(string designator, string pin, string? pinLabel, WireVizConnectorRole role, string? backgroundColor)
     {
         if (string.IsNullOrWhiteSpace(designator))
         {
@@ -20,7 +20,6 @@ public sealed class WireVizEndpoint
         Designator = designator.Trim();
         Pin = pin.Trim();
         PinLabel = string.IsNullOrWhiteSpace(pinLabel) ? null : pinLabel.Trim();
-        Ct3xxSignal = string.IsNullOrWhiteSpace(ct3xxSignal) ? null : ct3xxSignal.Trim();
         Role = role;
         BackgroundColor = string.IsNullOrWhiteSpace(backgroundColor) ? null : backgroundColor.Trim();
     }
@@ -28,7 +27,6 @@ public sealed class WireVizEndpoint
     public string Designator { get; }
     public string Pin { get; }
     public string? PinLabel { get; }
-    public string? Ct3xxSignal { get; }
     public WireVizConnectorRole Role { get; }
     public string? BackgroundColor { get; }
 

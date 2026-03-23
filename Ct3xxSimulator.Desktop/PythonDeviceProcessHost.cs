@@ -1,0 +1,225 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.IO.Pipes;
+using System.Text;
+using System.Threading;
+
+namespace Ct3xxSimulator.Desktop;
+
+internal sealed class PythonDeviceProcessHost : IDisposable
+{
+    private readonly Process _process;
+    private readonly string _pipePath;
+    private readonly StringBuilder _stdout = new();
+    private readonly StringBuilder _stderr = new();
+    private readonly string _launchCommand;
+
+    private PythonDeviceProcessHost(Process process, string pipePath, string launchCommand)
+    {
+        _process = process;
+        _pipePath = pipePath;
+        _launchCommand = launchCommand;
+    }
+
+    public string PipePath => _pipePath;
+
+    public static PythonDeviceProcessHost? Start(string scriptPath)
+    {
+        if (scriptPath == null || !File.Exists(scriptPath))
+        {
+            return null;
+        }
+
+        var pipeName = $@"\\.\pipe\ct3xx-simtest-{Guid.NewGuid():N}";
+        var launcher = ResolvePythonLauncher()
+            ?? throw new InvalidOperationException("Kein geeigneter Python-Interpreter mit pywin32 gefunden. Getestet wurden CT3XX_PYTHON_EXE, py -3.13, py -3 und python.");
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = launcher.FileName,
+            Arguments = $"{launcher.Arguments} \"{scriptPath}\" --pipe \"{pipeName}\"".Trim(),
+            WorkingDirectory = Path.GetDirectoryName(scriptPath) ?? Environment.CurrentDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        var process = new Process
+        {
+            StartInfo = startInfo,
+            EnableRaisingEvents = true
+        };
+
+        var host = new PythonDeviceProcessHost(process, pipeName, $"{launcher.FileName} {launcher.Arguments}".Trim());
+        process.Start();
+        process.OutputDataReceived += (_, args) =>
+        {
+            if (!string.IsNullOrWhiteSpace(args.Data))
+            {
+                host._stdout.AppendLine(args.Data);
+            }
+        };
+        process.ErrorDataReceived += (_, args) =>
+        {
+            if (!string.IsNullOrWhiteSpace(args.Data))
+            {
+                host._stderr.AppendLine(args.Data);
+            }
+        };
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        WaitForPipe(pipeName, host);
+        return host;
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (!_process.HasExited)
+            {
+                _process.Kill(entireProcessTree: true);
+                _process.WaitForExit(1000);
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            _process.Dispose();
+        }
+    }
+
+    private static void WaitForPipe(string pipePath, PythonDeviceProcessHost host)
+    {
+        var (_, pipeName) = SplitPipePath(pipePath);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (host._process.HasExited)
+            {
+                var details = host.GetProcessOutput();
+                throw new InvalidOperationException($"Python-Gerätesimulation wurde sofort beendet. Command='{host._launchCommand}' ExitCode={host._process.ExitCode}{details}");
+            }
+
+            try
+            {
+                using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
+                client.Connect(200);
+                return;
+            }
+            catch (TimeoutException)
+            {
+            }
+            catch (IOException)
+            {
+            }
+
+            Thread.Sleep(100);
+        }
+
+        throw new TimeoutException($"Python-Gerätesimulation auf Pipe '{pipePath}' wurde nicht rechtzeitig gestartet. Command='{host._launchCommand}'.{host.GetProcessOutput()}");
+    }
+
+    private static (string Server, string PipeName) SplitPipePath(string pipePath)
+    {
+        var parts = pipePath.Split('\\', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3)
+        {
+            throw new FormatException($"Ungültiger Pipe-Pfad '{pipePath}'.");
+        }
+
+        return (parts[0], parts[2]);
+    }
+
+    private string GetProcessOutput()
+    {
+        var stdout = _stdout.ToString().Trim();
+        var stderr = _stderr.ToString().Trim();
+        if (string.IsNullOrWhiteSpace(stdout) && string.IsNullOrWhiteSpace(stderr))
+        {
+            return string.Empty;
+        }
+
+        return $"{Environment.NewLine}stdout:{Environment.NewLine}{stdout}{Environment.NewLine}stderr:{Environment.NewLine}{stderr}";
+    }
+
+    private static PythonLauncher? ResolvePythonLauncher()
+    {
+        var configured = Environment.GetEnvironmentVariable("CT3XX_PYTHON_EXE");
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            var launcher = SplitCommand(configured);
+            if (CanImportPyWin32(launcher))
+            {
+                return launcher;
+            }
+        }
+
+        var candidates = new[]
+        {
+            new PythonLauncher("py", "-3.13"),
+            new PythonLauncher("py", "-3"),
+            new PythonLauncher("python", string.Empty)
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (CanImportPyWin32(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool CanImportPyWin32(PythonLauncher launcher)
+    {
+        try
+        {
+            var args = string.IsNullOrWhiteSpace(launcher.Arguments)
+                ? "-c \"import pywintypes, win32pipe\""
+                : $"{launcher.Arguments} -c \"import pywintypes, win32pipe\"";
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = launcher.FileName,
+                Arguments = args,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            });
+            if (process == null)
+            {
+                return false;
+            }
+
+            process.WaitForExit(4000);
+            return process.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static PythonLauncher SplitCommand(string command)
+    {
+        var trimmed = command.Trim();
+        var firstSpace = trimmed.IndexOf(' ');
+        if (firstSpace < 0)
+        {
+            return new PythonLauncher(trimmed, string.Empty);
+        }
+
+        return new PythonLauncher(trimmed[..firstSpace], trimmed[(firstSpace + 1)..].Trim());
+    }
+
+    private readonly record struct PythonLauncher(string FileName, string Arguments);
+}
