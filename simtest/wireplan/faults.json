@@ -1,0 +1,31 @@
+{
+  "faults": [
+    {
+      "id": "fault_force_bad_output",
+      "type": "force_signal",
+      "enabled": false,
+      "signal": "DIG_OUT",
+      "value": 1.5
+    },
+    {
+      "id": "fault_stuck_relay_open",
+      "type": "force_relay",
+      "enabled": false,
+      "elementId": "DeviceBoard.K1",
+      "state": "open"
+    },
+    {
+      "id": "fault_break_contact",
+      "type": "open_connection",
+      "enabled": false,
+      "a": "DeviceBoard.K1.COM",
+      "b": "DeviceBoard.K1.NO"
+    },
+    {
+      "id": "fault_blown_fuse",
+      "type": "blow_fuse",
+      "enabled": false,
+      "elementId": "DeviceBoard.F1"
+    }
+  ]
+}

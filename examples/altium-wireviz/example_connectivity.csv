@@ -1,0 +1,13 @@
+Net,Designator,Pin,ComponentKind,PinName
+VIN,J1,1,Connector,IN_24V
+ENABLE,J1,2,Connector,ENABLE
+GND,J1,3,Connector,GND
+VIN,R1,1,Resistor,
+VIN,U1,8,IC,
+ENABLE,U1,4,IC,
+GND,U1,1,IC,
+SENSE,J2,1,Connector,SENSE_OUT
+GND,J2,2,Connector,GND
+SENSE,R2,2,Resistor,
+SENSE,U1,5,IC,
+GND,TP1,1,TestPoint,

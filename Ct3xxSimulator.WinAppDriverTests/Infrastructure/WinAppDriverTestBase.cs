@@ -14,13 +14,13 @@ namespace Ct3xxSimulator.WinAppDriverTests.Infrastructure;
 public abstract class WinAppDriverTestBase
 {
     private const string DefaultWinAppDriverUrl = "http://127.0.0.1:4723";
-    private WindowsDriver<WindowsElement>? _session;
+    private WindowsDriver? _session;
     private string? _mainWindowHandle;
     private string? _applicationPath;
     private string? _programPath;
 
     public TestContext? TestContext { get; set; }
-    protected WindowsDriver<WindowsElement> Session => _session ?? throw new InvalidOperationException("Session not initialized.");
+    protected WindowsDriver Session => _session ?? throw new InvalidOperationException("Session not initialized.");
     protected string MainWindowHandle => _mainWindowHandle ?? Session.CurrentWindowHandle;
     protected string ApplicationPath => _applicationPath ?? throw new InvalidOperationException("Application path not resolved.");
     protected string ProgramPath => _programPath ?? throw new InvalidOperationException("Program path not resolved.");
@@ -33,12 +33,12 @@ public abstract class WinAppDriverTestBase
         var driverUri = Environment.GetEnvironmentVariable("WINAPPDRIVER_URL") ?? DefaultWinAppDriverUrl;
 
         var options = new AppiumOptions();
-        options.AddAdditionalCapability("platformName", "Windows");
-        options.AddAdditionalCapability("deviceName", "WindowsPC");
-        options.AddAdditionalCapability("app", _applicationPath);
-        options.AddAdditionalCapability("ms:waitForAppLaunch", "15");
+        options.PlatformName = "Windows";
+        options.DeviceName = "WindowsPC";
+        options.App = _applicationPath;
+        options.AddAdditionalAppiumOption("ms:waitForAppLaunch", "15");
 
-        _session = new WindowsDriver<WindowsElement>(new Uri(driverUri), options, TimeSpan.FromSeconds(60));
+        _session = new WindowsDriver(new Uri(driverUri), options, TimeSpan.FromSeconds(60));
         _session.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(2);
         _mainWindowHandle = _session.CurrentWindowHandle;
     }
@@ -65,17 +65,17 @@ public abstract class WinAppDriverTestBase
         }
     }
 
-    protected WindowsElement WaitForElementByAccessibilityId(string automationId, int timeoutSeconds = 10)
+    protected AppiumElement WaitForElementByAccessibilityId(string automationId, int timeoutSeconds = 10)
     {
         var timeout = DateTime.UtcNow.AddSeconds(timeoutSeconds);
         while (DateTime.UtcNow < timeout)
         {
             try
             {
-                var element = Session.FindElementByAccessibilityId(automationId);
+                var element = Session.FindElement(MobileBy.AccessibilityId(automationId));
                 if (element != null)
                 {
-                    return element;
+                    return (AppiumElement)element;
                 }
             }
             catch (WebDriverException)

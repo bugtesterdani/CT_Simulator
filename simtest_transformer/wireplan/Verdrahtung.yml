@@ -1,0 +1,78 @@
+connectors:
+  CT3:
+    bgcolor: WH
+    pins: [SC3_5_0, SC3_15_0, SC3_29_0, SC3_38_0, SC3_40_0]
+    pinlabels: [VCC_Plus, VCC_GND, PRI_IN, VT_OUT, CT_SEC]
+
+  DevicePort:
+    bgcolor: YE
+    pins: [SUPPLY, GND, VT_INPUT, VT_OUTPUT]
+    pinlabels: [SUPPLY, GND, VT_INPUT, VT_OUTPUT]
+
+  T1:
+    bgcolor: BU
+    pins: [P1, P2, S1, S2]
+    pinlabels: [P1, P2, S1, S2]
+
+  CT1:
+    bgcolor: GN
+    pins: [S1, S2]
+    pinlabels: [S1, S2]
+
+cables:
+  Supply:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [VPLUS, GND]
+
+  Primary:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [PRI_P, PRI_N]
+
+  Secondary:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [SEC_P, SEC_N]
+
+  Output:
+    wirecount: 1
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [VOUT]
+
+  CtSecondary:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [CT_P, CT_N]
+
+connections:
+  -
+    - CT3: [SC3_5_0, SC3_15_0]
+    - Supply: [VPLUS, GND]
+    - DevicePort: [SUPPLY, GND]
+  -
+    - CT3: [SC3_29_0, SC3_15_0]
+    - Primary: [PRI_P, PRI_N]
+    - T1: [P1, P2]
+  -
+    - T1: [S1, S2]
+    - Secondary: [SEC_P, SEC_N]
+    - DevicePort: [VT_INPUT, GND]
+  -
+    - DevicePort: [VT_OUTPUT]
+    - Output: [VOUT]
+    - CT3: [SC3_38_0]
+  -
+    - CT3: [SC3_40_0, SC3_15_0]
+    - CtSecondary: [CT_P, CT_N]
+    - CT1: [S1, S2]

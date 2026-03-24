@@ -1,0 +1,38 @@
+name: TrafoStromwandler_good
+
+signals:
+  inputs:
+    - VT_INPUT
+  outputs:
+    - VT_OUTPUT
+    - LOAD_CURRENT
+  sources:
+    - SUPPLY
+    - GND
+    - HELPER_SUPPLY
+
+source_control:
+  minimums:
+    SUPPLY: 19.5
+
+outputs:
+  VT_OUTPUT:
+    default: 0.0
+    transfer_curve:
+      input: VT_INPUT
+      mode: linear
+      points:
+        - x: 0.0
+          y: 0.0
+        - x: 2.0
+          y: 2.0
+        - x: 5.0
+          y: 5.0
+
+  LOAD_CURRENT:
+    default: 0.0
+    rules:
+      - when:
+          input: VT_INPUT
+          gte: 1.5
+        value: 2.0

@@ -2,10 +2,13 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.IO.Pipes;
+using System.Buffers.Binary;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
+using Ct3xxSimulator.Simulation.Waveforms;
 
 namespace Ct3xxSimulator.Simulation.Devices;
 
@@ -14,8 +17,6 @@ internal sealed class PythonDeviceSimulatorClient : IDisposable
     private readonly string _pipeName;
     private readonly object _sync = new();
     private NamedPipeClientStream? _stream;
-    private StreamReader? _reader;
-    private StreamWriter? _writer;
     private int _requestCounter;
 
     public PythonDeviceSimulatorClient(string pipeName)
@@ -44,7 +45,7 @@ internal sealed class PythonDeviceSimulatorClient : IDisposable
         var payload = new JsonObject
         {
             ["name"] = name,
-            ["value"] = value == null ? null : JsonValue.Create(value)
+            ["value"] = ToJsonNode(value)
         };
 
         return Send("set_input", payload, simTimeMs, cancellationToken);
@@ -63,6 +64,60 @@ internal sealed class PythonDeviceSimulatorClient : IDisposable
     public ExternalDeviceResponse ReadState(long simTimeMs, CancellationToken cancellationToken) =>
         Send("read_state", null, simTimeMs, cancellationToken);
 
+    public ExternalDeviceResponse SendInterface(string name, object? payload, long simTimeMs, CancellationToken cancellationToken)
+    {
+        var request = new JsonObject
+        {
+            ["name"] = name,
+            ["payload"] = ToJsonNode(payload)
+        };
+
+        return Send("send_interface", request, simTimeMs, cancellationToken);
+    }
+
+    public ExternalDeviceResponse SetWaveform(string name, AppliedWaveform waveform, object? options, long simTimeMs, CancellationToken cancellationToken)
+    {
+        var payload = new JsonObject
+        {
+            ["name"] = name,
+            ["waveform"] = JsonSerializer.SerializeToNode(new
+            {
+                signal = waveform.SignalName,
+                name = waveform.WaveformName,
+                sample_time_ms = waveform.SampleTimeMs,
+                delay_ms = waveform.DelayMs,
+                periodic = waveform.Periodic,
+                cycles = waveform.Cycles,
+                points = waveform.Points.Select(point => new { time_ms = point.TimeMs, value = point.Value }).ToArray(),
+                metadata = waveform.Metadata
+            }),
+            ["options"] = ToJsonNode(options)
+        };
+
+        return Send("set_waveform", payload, simTimeMs, cancellationToken);
+    }
+
+    public ExternalDeviceResponse ReadWaveform(string name, object? options, long simTimeMs, CancellationToken cancellationToken)
+    {
+        var payload = new JsonObject
+        {
+            ["name"] = name,
+            ["options"] = ToJsonNode(options)
+        };
+
+        return Send("read_waveform", payload, simTimeMs, cancellationToken);
+    }
+
+    public ExternalDeviceResponse ReadInterface(string name, long simTimeMs, CancellationToken cancellationToken)
+    {
+        var request = new JsonObject
+        {
+            ["name"] = name
+        };
+
+        return Send("read_interface", request, simTimeMs, cancellationToken);
+    }
+
     public ExternalDeviceResponse Shutdown(long simTimeMs, CancellationToken cancellationToken) =>
         Send("shutdown", null, simTimeMs, cancellationToken);
 
@@ -78,17 +133,14 @@ internal sealed class PythonDeviceSimulatorClient : IDisposable
             request["action"] = action;
             request["sim_time_ms"] = simTimeMs;
 
-            var json = request.ToJsonString();
-            _writer!.WriteLine(json);
-            _writer.Flush();
-
-            var line = _reader!.ReadLine();
-            if (string.IsNullOrWhiteSpace(line))
+            WriteMessage(_stream!, request.ToJsonString());
+            var responseText = ReadMessage(_stream!);
+            if (string.IsNullOrWhiteSpace(responseText))
             {
                 throw new IOException("Pipe returned an empty response.");
             }
 
-            var responseJson = JsonNode.Parse(line)?.AsObject()
+            var responseJson = JsonNode.Parse(responseText)?.AsObject()
                 ?? throw new IOException("Pipe returned invalid JSON.");
 
             var ok = responseJson["ok"]?.GetValue<bool>() ?? false;
@@ -118,22 +170,52 @@ internal sealed class PythonDeviceSimulatorClient : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
 
         _stream = stream;
-        _reader = new StreamReader(stream, new UTF8Encoding(false), false, 4096, true);
-        _writer = new StreamWriter(stream, new UTF8Encoding(false), 4096, true)
-        {
-            AutoFlush = true,
-            NewLine = "\n"
-        };
     }
 
     private void DisposeConnection()
     {
-        _writer?.Dispose();
-        _reader?.Dispose();
         _stream?.Dispose();
-        _writer = null;
-        _reader = null;
         _stream = null;
+    }
+
+    private static void WriteMessage(Stream stream, string json)
+    {
+        var payload = Encoding.UTF8.GetBytes(json);
+        Span<byte> lengthPrefix = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(lengthPrefix, payload.Length);
+        stream.Write(lengthPrefix);
+        stream.Write(payload, 0, payload.Length);
+        stream.Flush();
+    }
+
+    private static string ReadMessage(Stream stream)
+    {
+        Span<byte> lengthPrefix = stackalloc byte[4];
+        ReadExact(stream, lengthPrefix);
+        var length = BinaryPrimitives.ReadInt32LittleEndian(lengthPrefix);
+        if (length <= 0)
+        {
+            throw new IOException("Pipe returned an invalid response length.");
+        }
+
+        var payload = new byte[length];
+        ReadExact(stream, payload);
+        return Encoding.UTF8.GetString(payload);
+    }
+
+    private static void ReadExact(Stream stream, Span<byte> buffer)
+    {
+        var offset = 0;
+        while (offset < buffer.Length)
+        {
+            var read = stream.Read(buffer[offset..]);
+            if (read <= 0)
+            {
+                throw new IOException("Pipe connection was closed while reading.");
+            }
+
+            offset += read;
+        }
     }
 
     private static string NormalizePipeName(string pipeName)
@@ -159,5 +241,10 @@ internal sealed class PythonDeviceSimulatorClient : IDisposable
         }
 
         return (parts[0], parts[2]);
+    }
+
+    private static JsonNode? ToJsonNode(object? value)
+    {
+        return value == null ? null : JsonSerializer.SerializeToNode(value);
     }
 }

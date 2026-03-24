@@ -1,135 +1,181 @@
 CT3xx Visual Simulator & Parser Toolkit
 ======================================
 
-Dieses Repository enthaelt mehrere zusammenarbeitende Projekte rund um CT3xx-Testprogramme, Verdrahtung und Simulation.
+Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fuer CT3xx-Testprogramme, Verdrahtung und DUT-Simulation.
+
+## Projekte
 
 - `Ct3xxSimulator.Desktop`
-  WPF-Oberflaeche zum Auswaehlen von Testprogramm, Verdrahtung, Simulationsmodell und Python-Geraeteskript.
+  WPF-App zum Auswaehlen, Starten und Auswerten von Simulationen.
 - `Ct3xxSimulator`
-  Kern-Simulatorlogik fuer Testschritte, WireViz-Aufloesung und Python-Geraeteanbindung.
+  Simulationskern fuer Testablauf, WireViz-Aufloesung, DUT-Anbindung und Auswertung.
+- `Ct3xxSimulation.Abstractions`
+  Gemeinsame DTOs und Interfaces fuer Simulation, UI und weitere Frontends.
+- `Ct3xxSimulator.Export`
+  Entkoppelte Ergebnis- und Diagrammexporte fuer `PDF`, `JSON` und `CSV`.
+- `Ct3xxSimulator.Validation`
+  Eigenstaendige Konfigurations- und Modellvalidierung fuer WireViz und `simulation.yaml`.
 - `Ct3xxProgramParser`
-  Parser fuer `.ctxprg` und referenzierte CT3xx-Dateien wie Signaltabellen.
+  Parser fuer `.ctxprg` und referenzierte CT3xx-Dateien wie `ctsit`, `ctarb` oder `ctict`.
 - `Ct3xxWireVizParser`
   Parser fuer standardkonformes WireViz-YAML.
 - `Ct3xxSimulationModelParser`
-  Parser fuer `simulation.yaml` mit Verhaltensmodellen wie Relais, Widerstand und verschachtelten Baugruppen.
+  Parser fuer `simulation.yaml` mit Verhaltensmodellen.
+- `Ct3xxAltiumWireVizExporter`
+  Exporter von Altium-Konnektivitaetsdaten nach WireViz.
 
-Repositorystruktur
-------------------
+## Struktur
 
 ```text
 CT3xx/
+|- Ct3xxAltiumWireVizExporter/
 |- Ct3xxProgramParser/
-|- Ct3xxSimulationModelParser/
-|- Ct3xxWireVizParser/
-|- Ct3xxSimulator/
-|- Ct3xxSimulator.Desktop/
 |- Ct3xxProgramParser.Tests/
-|- Ct3xxWireVizParser.Tests/
+|- Ct3xxSimulation.Abstractions/
+|- Ct3xxSimulationModelParser/
+|- Ct3xxSimulator/
+|- Ct3xxSimulator.Export/
+|- Ct3xxSimulator.Validation/
+|- Ct3xxSimulator.Desktop/
 |- Ct3xxSimulator.WinAppDriverTests/
+|- Ct3xxWireVizParser/
+|- Ct3xxWireVizParser.Tests/
 |- examples/
 |- simtest/
+|- simtest_transformer/
 `- testprogramme/
 ```
 
-Build
------
+## Build
 
 ```powershell
-dotnet build Ct3xxSimulator.Desktop\Ct3xxSimulator.Desktop.csproj
+dotnet build CT3xx.sln
 ```
 
-Desktop-App
------------
+Die Projektmappe liegt in [CT3xx.sln](C:/Users/hello/Desktop/CT3xx/CT3xx.sln).
+Die priorisierte Weiterentwicklungsplanung liegt in [ROADMAP.md](C:/Users/hello/Desktop/CT3xx/ROADMAP.md).
+
+## Paketverwaltung und Security
+
+- Zentrale NuGet-Versionen liegen in [Directory.Packages.props](C:/Users/hello/Desktop/CT3xx/Directory.Packages.props)
+- NuGet-Audit ist global aktiviert in [Directory.Build.props](C:/Users/hello/Desktop/CT3xx/Directory.Build.props)
+- Lokaler Security-Scan:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\security-scan.ps1
+```
+
+- CI-Workflow fuer Restore, Build sowie Vulnerability- und Outdated-Scan:
+  [security-scan.yml](C:/Users/hello/Desktop/CT3xx/.github/workflows/security-scan.yml)
+
+## Desktop-App
 
 ```powershell
 dotnet run --project Ct3xxSimulator.Desktop
 ```
 
-In der App koennen explizit ausgewaehlt werden:
+Die App unterstuetzt aktuell:
 
-- Testprogramm-Ordner
-- Verdrahtungs-Ordner
-- Simulationsmodell-Ordner
-- Python-Skript fuer das zu simulierende Geraet
+- Auswahl von Testprogramm-Ordner, Verdrahtungs-Ordner, Simulationsmodell-Ordner und DUT-Modell
+- DUT-Modelle als `.py`, `.json`, `.yaml` oder `.yml`
+- Szenario-Presets
+- Validierung der Konfiguration
+- Simulation komplett oder im Einzelschrittmodus mit `Weiter`, `Zurueck`, `Auto` und `Pause`
+- Ergebnisexport als `PDF`, `JSON` oder `CSV`
+- Detailfenster fuer Schrittergebnisse mit Verbindungsgraph und Messkurven
+- optionales Live-Zustandsfenster fuer Signale, DUT-Zustaende, Relais, Faults und Zeitverlauf
 
-Liegt im Testprogramm-Ordner genau eine `.ctxprg`, wird sie automatisch verwendet.
-Bei mehreren `.ctxprg` fragt die App nach der gewuenschten Datei.
+Liegt im Testprogramm-Ordner genau eine `.ctxprg`, wird sie automatisch verwendet. Bei mehreren Programmen kann die Datei explizit ausgewaehlt werden.
 
-Simulation: Verdrahtung und Verhalten
--------------------------------------
+## Simulationsmodell
 
-Die Simulation trennt jetzt bewusst zwischen zwei Ebenen:
+Die Simulation trennt sauber zwischen:
 
 1. `WireViz`
-   Beschreibt nur die physische Verdrahtung:
+   Nur physische Topologie:
    - Stecker
    - Pins
    - Kabel
-   - direkte Verbindungen
+   - Verbindungen
 
 2. `simulation.yaml`
-   Beschreibt das Verhalten von Elementen:
+   Verhaltens- und Bauteilmodell:
    - `relay`
    - `resistor`
    - `transformer`
    - `current_transformer`
    - `assembly`
+   - weitere Laufzeittypen wie `switch`, `fuse`, `diode`, `load`, `voltage_divider`
 
-Beispiel:
+`assembly` erlaubt verschachtelte Unterverdrahtungen und Untermodelle, z. B. fuer Platinen oder Baugruppen.
 
-```yaml
-elements:
-  - id: DeviceBoard
-    type: assembly
-    wiring: board_device_wireviz.yaml
-    simulation: board_device_simulation.yaml
-    ports:
-      VPLUS: BoardPort.VPLUS
-      GND: BoardPort.GND
-      IN: BoardPort.IN
-      OUT: BoardPort.OUT
-```
+## DUT-Modelle
 
-`assembly` erlaubt verschachtelte Sub-Simulationen. Damit koennen Platinen, Module und Baugruppen als eigene Untermodelle beschrieben und rekursiv in die Gesamtverdrahtung eingeblendet werden.
+Unter `simtest/device` gibt es zwei Wege fuer DUT-Simulationen:
 
-Vollstaendiges Beispiel
------------------------
+- Python-Modelle
+- deklarative JSON-/YAML-Profile
 
-Das hierarchische Beispiel liegt unter:
+Deklarative Profile unterstuetzen unter anderem:
 
-- `simtest/wireplan/Verdrahtung.yml`
-- `simtest/wireplan/simulation.yaml`
-- `simtest/wireplan/board_device_wireviz.yaml`
-- `simtest/wireplan/board_device_simulation.yaml`
-- `simtest/device/device_39.py`
+- mehrere Inputs, Outputs, Sources und Internal-Signale
+- Kennlinien
+- zeitliches Verhalten
+- Timer und einfache Zustandsautomaten
+- Schnittstellenantworten
+- Waveform-Stimuli und Response-Captures
 
-Dieses Beispiel zeigt:
+## Waveform- und AM2-Unterstuetzung
 
-- Hauptverdrahtung mit `DeviceBoard` als Baugruppe
-- Sub-WireViz fuer die interne Platinenverdrahtung
-- Sub-Simulationsmodell fuer Relais und Widerstand
-- Python-Geraetesimulation fuer verschiedene DUT-Szenarien
+Der Simulator verarbeitet jetzt explizit `2ARB`-/Waveform-Tests:
 
-Wichtige Umgebungsvariablen
----------------------------
+- `.ctarb`-Dateien werden geladen und in ein gemeinsames Kurvenmodell ueberfuehrt
+- Signalformen werden ueber die Named Pipe an das DUT weitergereicht
+- das DUT kann sofort auf angelegte Signalformen reagieren
+- optional koennen waehrend des Stimulus andere Signale beobachtet und als Response-Kurve zurueckgegeben werden
+- deklarative YAML-Profile koennen auf Kenngroessen wie `RMS`, `Peak`, `Average` und erkannte Formtypen reagieren
+
+## Fault-Injection
+
+Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
+
+- `force_signal`
+- `force_relay`
+- `open_connection`
+- `blow_fuse`
+- `short_connection`
+- `signal_drift`
+- `contact_problem`
+- `wrong_resistance`
+
+## Beispiele
+
+- `simtest/`
+  Hauptbeispiel fuer hierarchische Verdrahtung, Simulation und DUT-Profile
+- `simtest_transformer/`
+  End-to-End-Beispiel fuer Transformator und Stromwandler
+- `examples/PythonDeviceSimulator/`
+  einfaches Python-Pipe-Beispiel
+- `examples/altium-wireviz/`
+  Beispiel fuer den Altium-WireViz-Export
+
+## Wichtige Umgebungsvariablen
 
 - `CT3XX_TESTPROGRAM_ROOT`
-  Optionaler Standardpfad fuer Testprogramme.
+  Standardpfad fuer Testprogramme
 - `CT3XX_WIREVIZ_ROOT`
-  Verdrahtungsordner fuer die Simulation.
+  Verdrahtungsordner
 - `CT3XX_SIMULATION_MODEL_ROOT`
-  Ordner mit `simulation.yaml`.
+  Ordner mit `simulation.yaml`
 - `CT3XX_PY_DEVICE_PIPE`
-  Pipe zur Python-Geraetesimulation.
+  Named Pipe fuer die DUT-Simulation
 - `CT3XX_PYTHON_EXE`
-  Optionaler Python-Interpreter fuer das Starten des Geraeteskripts.
+  optionaler Python-Interpreter fuer den DUT-Start
 - `CT3XX_APP_PATH`
-  Pfad zur WPF-Anwendung fuer UI-Tests.
+  Pfad zur WPF-App fuer UI-Tests
 
-Hinweise
---------
+## Hinweise
 
-- `WireViz` wird nicht um projektspezifische Sonderfelder erweitert.
-- Simulationsverhalten gehoert in `simulation.yaml`.
-- Neue Elementtypen koennen ueber `Ct3xxSimulationModelParser` und die Simulatorlogik schrittweise ergaenzt werden.
+- `WireViz` bleibt frei von projektspezifischen Sonderfeldern.
+- Bauteilverhalten gehoert in `simulation.yaml`.
+- Neue DUT- oder Bauteilmodelle sollten ueber die Parser- und Simulationsschicht erweitert werden, nicht durch Hardcoding in der UI.

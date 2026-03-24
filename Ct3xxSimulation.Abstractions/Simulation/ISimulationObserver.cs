@@ -12,6 +12,7 @@ public interface ISimulationObserver
     void OnTestStarted(Test test);
     void OnTestCompleted(Test test, TestOutcome outcome);
     void OnStepEvaluated(Test test, StepEvaluation evaluation);
+    void OnStateChanged(SimulationStateSnapshot snapshot);
     void OnMessage(string message);
 }
 
@@ -65,6 +66,11 @@ public sealed class ConsoleSimulationObserver : ISimulationObserver
         Console.WriteLine($"      Step {evaluation.StepName}: {evaluation.Outcome} | value {value}{unit} | limits {lower} .. {upper}");
     }
 
+    public void OnStateChanged(SimulationStateSnapshot snapshot)
+    {
+        Console.WriteLine($"      State update: {snapshot.Signals.Count} signals, {snapshot.RelayStates.Count} relays");
+    }
+
     public void OnMessage(string message)
     {
         Console.WriteLine($"      {message}");
@@ -81,5 +87,6 @@ public sealed class NullSimulationObserver : ISimulationObserver
     public void OnTestStarted(Test test) { }
     public void OnTestCompleted(Test test, TestOutcome outcome) { }
     public void OnStepEvaluated(Test test, StepEvaluation evaluation) { }
+    public void OnStateChanged(SimulationStateSnapshot snapshot) { }
     public void OnMessage(string message) { }
 }

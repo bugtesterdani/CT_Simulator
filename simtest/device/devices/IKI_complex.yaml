@@ -1,0 +1,96 @@
+name: IKI_complex
+
+signals:
+  inputs:
+    - ADC_IN
+    - TEMP_IN
+    - MODE_SEL
+  outputs:
+    - DIG_OUT
+    - STATUS_OUT
+  sources:
+    - VCC_PLUS
+  internal:
+    - WAVE_A
+
+source_control:
+  minimums:
+    VCC_PLUS: 19.5
+
+initial_inputs:
+  MODE_SEL: 0
+  TEMP_IN: 25
+
+initial_internal:
+  WAVE_A: 0.0
+
+input_curves:
+  WAVE_A:
+    mode: linear
+    points:
+      - time_ms: 0
+        value: 0.0
+      - time_ms: 100
+        value: 1.2
+      - time_ms: 200
+        value: 3.3
+      - time_ms: 300
+        value: 0.0
+
+outputs:
+  DIG_OUT:
+    default: 0.0
+    rules:
+      - when:
+          all:
+            - source: VCC_PLUS
+              gte: 19.5
+            - input: MODE_SEL
+              gte: 1
+            - input: TEMP_IN
+              lte: 80
+        transfer_curve:
+          input: ADC_IN
+          mode: linear
+          points:
+            - x: 0.0
+              y: 0.0
+            - x: 1.5
+              y: 1.5
+            - x: 3.3
+              y: 3.3
+        delay_ms: 40
+        slew_per_ms: 0.05
+      - when:
+          any:
+            - input: TEMP_IN
+              gt: 80
+            - input: MODE_SEL
+              lt: 1
+        value: 0.5
+
+  STATUS_OUT:
+    default: 0.0
+    rules:
+      - when:
+          signal: WAVE_A
+          gte: 1.0
+        value: 1.0
+      - when:
+          signal: WAVE_A
+          lt: 1.0
+        value: 0.0
+
+interfaces:
+  UART1:
+    default_response: "ERR"
+    requests:
+      - when:
+          contains: "PING"
+        response: "PONG"
+      - when:
+          equals: "READ:STATUS"
+        response: "STATUS=OK"
+      - when:
+          contains: "READ:WAVE"
+        response: "WAVE=SIMULATED"

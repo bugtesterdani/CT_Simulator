@@ -8,7 +8,7 @@ using Ct3xxProgramParser.Discovery;
 using Ct3xxSimulator.WinAppDriverTests.Infrastructure;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Appium.Windows;
+using OpenQA.Selenium.Appium;
 
 namespace Ct3xxSimulator.WinAppDriverTests;
 
@@ -90,7 +90,7 @@ public sealed class StartupTests : WinAppDriverTestBase
             {
                 try
                 {
-                    var item = Session.FindElementByName(displayName);
+                    var item = Session.FindElement(By.Name(displayName));
                     item.Click();
                     return true;
                 }
@@ -195,11 +195,11 @@ public sealed class StartupTests : WinAppDriverTestBase
     {
         try
         {
-            var inputBox = Session.FindElementByAccessibilityId("PromptInputBox");
+            var inputBox = Session.FindElement(MobileBy.AccessibilityId("PromptInputBox"));
             var promptLabel = SafeGetText("PromptLabel");
             inputBox.Clear();
             inputBox.SendKeys(ResolveInputValue(promptLabel));
-            Session.FindElementByAccessibilityId("PromptOkButton").Click();
+            Session.FindElement(MobileBy.AccessibilityId("PromptOkButton")).Click();
             return true;
         }
         catch (WebDriverException)
@@ -212,14 +212,14 @@ public sealed class StartupTests : WinAppDriverTestBase
     {
         try
         {
-            var list = Session.FindElementByAccessibilityId("SelectionListBox");
-            var items = list.FindElementsByClassName("ListBoxItem");
+            var list = Session.FindElement(MobileBy.AccessibilityId("SelectionListBox"));
+            var items = list.FindElements(By.ClassName("ListBoxItem"));
             if (items.Count > 0)
             {
                 items[0].Click();
             }
 
-            Session.FindElementByAccessibilityId("SelectionOkButton").Click();
+            Session.FindElement(MobileBy.AccessibilityId("SelectionOkButton")).Click();
             return true;
         }
         catch (WebDriverException)
@@ -233,7 +233,7 @@ public sealed class StartupTests : WinAppDriverTestBase
         dialogText = null;
         try
         {
-            var okButtons = Session.FindElementsByName("OK");
+            var okButtons = Session.FindElements(By.Name("OK"));
             if (okButtons.Count == 0)
             {
                 return false;
@@ -293,7 +293,7 @@ public sealed class StartupTests : WinAppDriverTestBase
     {
         try
         {
-            var button = Session.FindElementByAccessibilityId("DisplayConfirmButton");
+            var button = Session.FindElement(MobileBy.AccessibilityId("DisplayConfirmButton"));
             if (button.Displayed && button.Enabled)
             {
                 button.Click();
@@ -311,8 +311,8 @@ public sealed class StartupTests : WinAppDriverTestBase
         {
             try
             {
-                var logList = Session.FindElementByAccessibilityId("LogList");
-                var items = logList.FindElementsByClassName("ListBoxItem");
+                var logList = Session.FindElement(MobileBy.AccessibilityId("LogList"));
+                var items = logList.FindElements(By.ClassName("ListBoxItem"));
                 if (items.Any(item => (item.Text ?? string.Empty).IndexOf(expectedText, StringComparison.OrdinalIgnoreCase) >= 0))
                 {
                     return;
@@ -332,7 +332,7 @@ public sealed class StartupTests : WinAppDriverTestBase
     {
         try
         {
-            return Session.FindElementByAccessibilityId(automationId).Text ?? string.Empty;
+            return Session.FindElement(MobileBy.AccessibilityId(automationId)).Text ?? string.Empty;
         }
         catch (WebDriverException)
         {

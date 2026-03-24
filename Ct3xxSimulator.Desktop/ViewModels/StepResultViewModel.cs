@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using Ct3xxSimulator.Simulation;
+
 namespace Ct3xxSimulator.Desktop.ViewModels;
 
 public sealed class StepResultViewModel
@@ -9,7 +13,9 @@ public sealed class StepResultViewModel
         string lowerLimit,
         string upperLimit,
         string unit,
-        string details)
+        string details,
+        IReadOnlyList<StepConnectionTrace>? traces = null,
+        IReadOnlyList<MeasurementCurvePoint>? curvePoints = null)
     {
         StepName = stepName;
         Outcome = outcome;
@@ -18,6 +24,8 @@ public sealed class StepResultViewModel
         UpperLimit = upperLimit;
         Unit = unit;
         Details = details;
+        Traces = traces ?? Array.Empty<StepConnectionTrace>();
+        CurvePoints = curvePoints ?? Array.Empty<MeasurementCurvePoint>();
     }
 
     public string StepName { get; }
@@ -27,4 +35,6 @@ public sealed class StepResultViewModel
     public string UpperLimit { get; }
     public string Unit { get; }
     public string Details { get; }
+    public IReadOnlyList<StepConnectionTrace> Traces { get; }
+    public IReadOnlyList<MeasurementCurvePoint> CurvePoints { get; }
 }

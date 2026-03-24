@@ -18,6 +18,7 @@ Parser library for simulation-side YAML models that complement WireViz.
 - `transformer`
 - `current_transformer`
 - `assembly`
+- `switch`, `fuse`, `diode`, `load`, `voltage_divider` via generic element metadata
 
 This keeps the wiring model clean and lets the simulator apply electrical or logical behavior separately.
 
@@ -71,11 +72,39 @@ The current simulator runtime actively evaluates:
 - `relay`
 - `resistor`
 - `assembly`
-
-The following types are already parsed and available for future runtime semantics:
-
 - `transformer`
 - `current_transformer`
+- `switch`
+- `fuse`
+- `diode`
+- `load`
+
+## Transformer semantics
+
+The runtime treats transformers as coupled pin pairs, not as shorts across a winding.
+
+- `primary_a` couples to `secondary_a`
+- `primary_b` couples to `secondary_b`
+- `ratio` means `primary / secondary`
+
+So with `ratio: 10.0`:
+
+- writing `10 V` on the primary side yields `1 V` on the secondary side
+- reading `1 V` on the secondary side resolves to `10 V` on the primary side
+
+This keeps the galvanic separation intact while still allowing signal propagation through the simulation graph.
+
+## Current transformer semantics
+
+`current_transformer` is modeled as a sensing element and not as a direct wire between `secondary_a` and `secondary_b`.
+
+- `primary_signal` names the simulated primary-side current signal
+- `ratio` means `primary / secondary`
+- when a measurement reaches the CT secondary side, the simulator can resolve it back to `primary_signal`
+
+So with `ratio: 2000`:
+
+- a primary current signal of `2.0 A` appears as `0.001 A` on the secondary side
 
 ## Example in this repository
 

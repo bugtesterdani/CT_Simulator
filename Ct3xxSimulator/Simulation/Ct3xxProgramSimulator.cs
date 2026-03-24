@@ -8,27 +8,41 @@ using System.Threading;
 using Ct3xxProgramParser.Model;
 using Ct3xxProgramParser.Programs;
 using Ct3xxSimulator.Simulation.Devices;
+using Ct3xxSimulator.Simulation.FaultInjection;
 using Ct3xxSimulator.Simulation.WireViz;
+using Ct3xxSimulator.Simulation.Waveforms;
 
 namespace Ct3xxSimulator.Simulation;
 
-public class Ct3xxProgramSimulator
+public partial class Ct3xxProgramSimulator
 {
     private readonly SimulationContext _context = new();
     private readonly ExpressionEvaluator _evaluator;
     private readonly IInteractionProvider _interaction;
     private readonly ISimulationObserver _observer;
+    private readonly ISimulationExecutionController _executionController;
     private ExternalDeviceSession? _externalDeviceSession;
     private WireVizHarnessResolver? _wireVizResolver;
+    private Ct3xxProgramFileSet? _fileSet;
+    private SimulationFaultSet _faults = SimulationFaultSet.Empty;
     private bool _testerConfigurationAsked;
     private CancellationToken _cancellationToken;
     private readonly Dictionary<string, string> _measurementBusSignals = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, object?> _signalState = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> _signalChangedAtMs = new(StringComparer.OrdinalIgnoreCase);
+    private List<MeasurementCurvePoint> _currentCurvePoints = new();
+    private ExternalDeviceStateSnapshot _externalDeviceState = ExternalDeviceStateSnapshot.Empty;
+    private string? _currentStepName;
+    private long _simulatedTimeMs;
 
-    public Ct3xxProgramSimulator(IInteractionProvider? interactionProvider = null, ISimulationObserver? observer = null)
+    public Ct3xxProgramSimulator(
+        IInteractionProvider? interactionProvider = null,
+        ISimulationObserver? observer = null,
+        ISimulationExecutionController? executionController = null)
     {
         _interaction = interactionProvider ?? new ConsoleInteractionProvider();
         _observer = observer ?? new ConsoleSimulationObserver();
+        _executionController = executionController ?? new NullSimulationExecutionController();
         _evaluator = new ExpressionEvaluator(_context);
     }
 
@@ -37,6 +51,8 @@ public class Ct3xxProgramSimulator
         _externalDeviceSession?.Dispose();
         _externalDeviceSession = null;
         _wireVizResolver = null;
+        _fileSet = null;
+        _faults = SimulationFaultSet.Empty;
         ResetSimulationState();
         RunCore(program, dutLoopIterations, cancellationToken);
     }
@@ -51,6 +67,8 @@ public class Ct3xxProgramSimulator
         _externalDeviceSession?.Dispose();
         _externalDeviceSession = CreateExternalDeviceSession();
         _wireVizResolver = WireVizHarnessResolver.Create(fileSet);
+        _fileSet = fileSet;
+        _faults = SimulationFaultSet.Load(Environment.GetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT") ?? fileSet.ProgramDirectory);
         ResetSimulationState();
         RunCore(fileSet.Program, dutLoopIterations, cancellationToken);
     }
@@ -67,6 +85,11 @@ public class Ct3xxProgramSimulator
         if (_wireVizResolver?.SignalCount > 0)
         {
             _observer.OnMessage($"WireViz loaded: {_wireVizResolver.SignalCount} Signalzuordnungen gefunden.");
+        }
+
+        if (_faults.HasFaults)
+        {
+            _observer.OnMessage($"Faults loaded: {string.Join(", ", _faults.DescribeActiveFaults())}");
         }
 
         _context.ApplyTables(program.Tables, _evaluator);
@@ -199,7 +222,12 @@ public class Ct3xxProgramSimulator
             return;
         }
 
+        AdvanceTime(GetStepDurationMs(test));
+        _currentCurvePoints = new List<MeasurementCurvePoint>();
+        _executionController.WaitBeforeTest(test, _cancellationToken);
         _observer.OnTestStarted(test);
+        _currentStepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
+        PublishStateSnapshot();
 
         var outcome = test.Id?.ToUpperInvariant() switch
         {
@@ -208,11 +236,15 @@ public class Ct3xxProgramSimulator
             "PRT^" => RunOperatorTest(test),
             "SC2C" => RunScannerConnectTest(test),
             "CDMA" => RunCdmaTest(test),
+            "2ARB" => RunWaveformTest(test),
+            "SA1T" => RunWaveformTest(test),
+            "TRGA" => RunWaveformTest(test),
             _ => RunGenericTest(test)
         };
 
         _context.MarkOutcome(outcome);
         _observer.OnTestCompleted(test, outcome);
+        _executionController.WaitAfterTest(test, _cancellationToken);
     }
 
     private TestOutcome RunAssignmentTest(Test test)
@@ -273,7 +305,9 @@ public class Ct3xxProgramSimulator
                 var externalValue = ResolveExternalMeasurement(record);
                 var manualValue = externalValue ?? ResolveMeasurementInput(test, record);
                 var value = manualValue ?? _evaluator.Evaluate(record.Expression);
+                var traces = CollectRecordTraces(record);
                 var measured = _evaluator.ToDouble(value);
+                RecordCurvePoint(label: record.DrawingReference ?? record.Expression ?? record.Id ?? "Messung", value: measured, unit: record.Unit);
                 var lower = ParseNullable(record.LowerLimit);
                 var upper = ParseNullable(record.UpperLimit);
                 var pass = true;
@@ -305,7 +339,7 @@ public class Ct3xxProgramSimulator
 
                 var msg = $"{label}: {valueDisplay} {unit} (limits {lower?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-inf"} .. {upper?.ToString("0.###", CultureInfo.InvariantCulture) ?? "+inf"}) => {(pass ? "PASS" : "FAIL")}";
                 _observer.OnMessage(msg);
-                _observer.OnStepEvaluated(test, new StepEvaluation(label, pass ? TestOutcome.Pass : TestOutcome.Fail, measured, lower, upper, unit));
+                _observer.OnStepEvaluated(test, new StepEvaluation(label, pass ? TestOutcome.Pass : TestOutcome.Fail, measured, lower, upper, unit, traces: traces, curvePoints: CaptureCurvePoints()));
                 if (!pass)
                 {
                     overall = TestOutcome.Fail;
@@ -442,6 +476,98 @@ public class Ct3xxProgramSimulator
         return TestOutcome.Pass;
     }
 
+    private TestOutcome RunWaveformTest(Test test)
+    {
+        if (_externalDeviceSession == null)
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "Waveform-Test ohne aktive Gerätesimulation.");
+            return TestOutcome.Error;
+        }
+
+        if (!ArbitraryWaveformLoader.TryLoad(_fileSet, test, out var waveform, out var error))
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: error);
+            return TestOutcome.Error;
+        }
+
+        var stimulusSignal = ResolveWaveformRuntimeSignal(waveform.SignalName, waveform.Metadata, "MBUS_ARB", "TP_ARB");
+        var observeSignal = ResolveWaveformRuntimeSignal(waveform.SignalName, waveform.Metadata, "MBUS_SCO", "TP_SCO");
+        var externalStimulusSignal = ResolveExternalWaveformTarget(stimulusSignal, true);
+        var externalObserveSignal = string.IsNullOrWhiteSpace(observeSignal) ? null : ResolveExternalWaveformTarget(observeSignal!, false);
+        var observeSignals = new List<string>();
+        if (!string.IsNullOrWhiteSpace(externalObserveSignal))
+        {
+            observeSignals.Add(externalObserveSignal!);
+        }
+
+        var options = new
+        {
+            observe_signals = observeSignals,
+            capture_signals = observeSignals,
+            capture_sample_count = Math.Min(Math.Max(waveform.Points.Count, 16), 128),
+            capture_duration_ms = waveform.DurationMs
+        };
+
+        var externalWaveform = new AppliedWaveform(externalStimulusSignal, waveform.WaveformName, waveform.Points, waveform.SampleTimeMs, waveform.DelayMs, waveform.Periodic, waveform.Cycles, waveform.Metadata);
+        if (!_externalDeviceSession.TrySetWaveform(externalStimulusSignal, externalWaveform, options, _cancellationToken, out var response, out error, _simulatedTimeMs))
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: $"Waveform konnte nicht gesetzt werden: {error}");
+            return TestOutcome.Error;
+        }
+
+        LogWaveformResponse(test, response);
+
+        var stepCount = Math.Min(Math.Max(waveform.Points.Count, 8), 96);
+        var totalDurationMs = Math.Max(1d, waveform.DurationMs);
+        var traces = new List<StepConnectionTrace>();
+        traces.AddRange(CollectSignalTraces(stimulusSignal, "Waveform Stimulus"));
+        if (!string.IsNullOrWhiteSpace(observeSignal))
+        {
+            traces.AddRange(CollectSignalTraces(observeSignal!, "Waveform Response"));
+        }
+
+        double? lastObserved = null;
+        var waveformStartTime = _simulatedTimeMs;
+        for (var index = 0; index < stepCount; index++)
+        {
+            var relativeTimeMs = totalDurationMs * index / Math.Max(stepCount - 1, 1);
+            var targetTime = (long)Math.Round(relativeTimeMs, MidpointRounding.AwayFromZero);
+            var currentRelativeTime = Math.Max(0L, _simulatedTimeMs - waveformStartTime);
+            AdvanceTime(Math.Max(0L, targetTime - currentRelativeTime));
+
+            var currentStimulus = waveform.GetValueAt(relativeTimeMs);
+            RememberSignal(stimulusSignal, currentStimulus);
+            RecordCurvePoint($"WF {stimulusSignal}", currentStimulus, "V");
+
+            if (string.IsNullOrWhiteSpace(observeSignal))
+            {
+                continue;
+            }
+
+            if (TryReadSignal(observeSignal!, out var observedValue, out var details))
+            {
+                var numeric = _evaluator.ToDouble(observedValue);
+                lastObserved = numeric;
+                RecordCurvePoint($"WF {observeSignal}", numeric, "V");
+                if (!string.IsNullOrWhiteSpace(details))
+                {
+                    _observer.OnMessage($"Waveform read {observeSignal}: {details}");
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(externalObserveSignal) &&
+            _externalDeviceSession.TryReadWaveform(externalObserveSignal!, new { }, _cancellationToken, out var responseWaveform, out error, _simulatedTimeMs) &&
+            responseWaveform?["result"] is JsonObject readResult)
+        {
+            _observer.OnMessage($"Waveform readback fuer {externalObserveSignal}: {readResult.ToJsonString()}");
+        }
+
+        TryPublishWaveformVariables(stimulusSignal, observeSignal, response);
+        PublishStepEvaluation(test, TestOutcome.Pass, measured: lastObserved, unit: "V", details: $"{waveform.WaveformName} -> {stimulusSignal}", traces: traces);
+        return TestOutcome.Pass;
+    }
+
     private TestOutcome RunScannerConnectTest(Test test)
     {
         var parameters = test.Parameters;
@@ -501,12 +627,18 @@ public class Ct3xxProgramSimulator
         if (sourceVoltage.HasValue)
         {
             WriteSignal(inputSignal!, sourceVoltage.Value);
+            RecordCurvePoint($"Stimulus {inputSignal}", sourceVoltage.Value, "V");
             _observer.OnMessage($"{inputSignal} <= {sourceVoltage.Value.ToString("0.###", CultureInfo.InvariantCulture)} V");
         }
+
+        var traces = new List<StepConnectionTrace>();
+        traces.AddRange(CollectSignalTraces(inputSignal!, "Ansteuerung"));
+        traces.AddRange(CollectSignalTraces(outputSignal!, "Messpfad"));
 
         var measuredValue = TryReadSignal(outputSignal!, out var measured, out var details)
             ? _evaluator.ToDouble(measured)
             : null;
+        RecordCurvePoint($"Messung {outputSignal}", measuredValue, "V");
         var outcome = EvaluateNumericOutcome(measuredValue, lowerLimit, upperLimit);
         var label = test.Parameters?.Name ?? test.Name ?? test.Id ?? "CDMA";
         var message = $"{label}: {measuredValue?.ToString("0.###", CultureInfo.InvariantCulture) ?? "n/a"} V (limits {FormatLimit(lowerLimit)} .. {FormatLimit(upperLimit)}) => {outcome.ToString().ToUpperInvariant()}";
@@ -516,7 +648,7 @@ public class Ct3xxProgramSimulator
             _observer.OnMessage(details);
         }
 
-        _observer.OnStepEvaluated(test, new StepEvaluation(label, outcome, measuredValue, lowerLimit, upperLimit, "V", details));
+        _observer.OnStepEvaluated(test, new StepEvaluation(label, outcome, measuredValue, lowerLimit, upperLimit, "V", details, traces, CaptureCurvePoints()));
         return outcome;
     }
 
@@ -673,7 +805,7 @@ public class Ct3xxProgramSimulator
             return;
         }
 
-        if (!_wireVizResolver.TryResolve(candidate, _signalState, out var resolutions) &&
+        if (!_wireVizResolver.TryResolve(candidate, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, out var resolutions) &&
             !_wireVizResolver.TryResolve(candidate, out resolutions))
         {
             return;
@@ -699,14 +831,14 @@ public class Ct3xxProgramSimulator
         }
 
         RememberSignal(signalName!, value);
-        if (!_wireVizResolver.TryResolve(signalName, _signalState, out var resolutions) &&
-            !_wireVizResolver.TryResolve(signalName, out resolutions))
+        if (!_wireVizResolver.TryResolveRuntimeTargets(signalName, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, true, out var runtimeTargets))
         {
             return;
         }
 
-        if (_externalDeviceSession.TryWriteSignal(resolutions, value, _cancellationToken, out var writtenSignals, out var error))
+        if (_externalDeviceSession.TryWriteSignal(runtimeTargets, value, _cancellationToken, out var writtenSignals, out var error, _simulatedTimeMs))
         {
+            RefreshExternalDeviceState();
             _observer.OnMessage($"Python device input <= {string.Join(", ", writtenSignals)} = {_evaluator.ToText(value)}");
         }
         else if (!string.IsNullOrWhiteSpace(error))
@@ -724,18 +856,41 @@ public class Ct3xxProgramSimulator
 
         foreach (var candidate in EnumerateSignalCandidates(record))
         {
-            if (!_wireVizResolver.TryResolve(candidate, _signalState, out var resolutions) &&
-                !_wireVizResolver.TryResolve(candidate, out resolutions))
+            var forcedValue = _faults.TryGetForcedSignal(candidate);
+            if (forcedValue.HasValue)
+            {
+                var drifted = _faults.ApplySignalDrift(candidate, forcedValue.Value);
+                _observer.OnMessage($"Fault value => {candidate} = {drifted.ToString("0.###", CultureInfo.InvariantCulture)}");
+                return drifted;
+            }
+
+            if (!_wireVizResolver.TryResolveRuntimeTargets(candidate, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, false, out var runtimeTargets))
             {
                 continue;
             }
 
-            if (_externalDeviceSession.TryReadSignal(resolutions, _cancellationToken, out var signalName, out var value, out var stateSummary, out var error))
+            if (_externalDeviceSession.TryReadSignal(runtimeTargets, _cancellationToken, out var signalName, out var value, out var stateSummary, out var error, _simulatedTimeMs))
             {
+                RefreshExternalDeviceState();
                 _observer.OnMessage($"Python device read => {signalName} = {_evaluator.ToText(value)} @ {_externalDeviceSession.CurrentSimTimeMs} ms");
                 if (!string.IsNullOrWhiteSpace(stateSummary))
                 {
                     _observer.OnMessage($"Python state: {stateSummary}");
+                }
+
+                if (value is double numeric)
+                {
+                    return _faults.ApplySignalDrift(signalName, numeric);
+                }
+
+                if (value is float numericFloat)
+                {
+                    return _faults.ApplySignalDrift(signalName, numericFloat);
+                }
+
+                if (value is int numericInt)
+                {
+                    return _faults.ApplySignalDrift(signalName, numericInt);
                 }
 
                 return value;
@@ -755,12 +910,17 @@ public class Ct3xxProgramSimulator
     {
         _measurementBusSignals.Clear();
         _signalState.Clear();
+        _signalChangedAtMs.Clear();
+        _currentCurvePoints = new List<MeasurementCurvePoint>();
+        _externalDeviceState = ExternalDeviceStateSnapshot.Empty;
+        _simulatedTimeMs = 0;
+        PublishStateSnapshot();
     }
 
-    private void PublishStepEvaluation(Test test, TestOutcome outcome, double? measured = null, double? lower = null, double? upper = null, string? unit = null, string? details = null)
+    private void PublishStepEvaluation(Test test, TestOutcome outcome, double? measured = null, double? lower = null, double? upper = null, string? unit = null, string? details = null, IReadOnlyList<StepConnectionTrace>? traces = null)
     {
         var stepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
-        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details));
+        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details, traces, CaptureCurvePoints()));
     }
 
     private string? ResolveMeasurementBusSignal(string busName)
@@ -790,11 +950,37 @@ public class Ct3xxProgramSimulator
             return false;
         }
 
-        if (_externalDeviceSession != null && _wireVizResolver != null &&
-            (_wireVizResolver.TryResolve(normalized, _signalState, out var resolutions) || _wireVizResolver.TryResolve(normalized, out resolutions)))
+        var directlyForced = _faults.TryGetForcedSignal(normalized);
+        if (directlyForced.HasValue)
         {
-            if (_externalDeviceSession.TryReadSignal(resolutions, _cancellationToken, out var resolvedSignal, out value, out var stateSummary, out var error))
+            value = _faults.ApplySignalDrift(normalized, directlyForced.Value);
+            details = "Quelle: Fault Injection";
+            return true;
+        }
+
+        if (_externalDeviceSession != null && _wireVizResolver != null &&
+            _wireVizResolver.TryResolveRuntimeTargets(normalized, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, false, out var runtimeTargets))
+        {
+            if (_externalDeviceSession.TryReadSignal(runtimeTargets, _cancellationToken, out var resolvedSignal, out value, out var stateSummary, out var error, _simulatedTimeMs))
             {
+                RefreshExternalDeviceState();
+                var forcedValue = _faults.TryGetForcedSignal(resolvedSignal) ?? _faults.TryGetForcedSignal(normalized);
+                if (forcedValue.HasValue)
+                {
+                    value = _faults.ApplySignalDrift(resolvedSignal, forcedValue.Value);
+                }
+                else if (value is double numeric)
+                {
+                    value = _faults.ApplySignalDrift(resolvedSignal, numeric);
+                }
+                else if (value is float numericFloat)
+                {
+                    value = _faults.ApplySignalDrift(resolvedSignal, numericFloat);
+                }
+                else if (value is int numericInt)
+                {
+                    value = _faults.ApplySignalDrift(resolvedSignal, numericInt);
+                }
                 details = string.IsNullOrWhiteSpace(stateSummary) ? $"Quelle: {resolvedSignal}" : $"Quelle: {resolvedSignal} | state {stateSummary}";
                 return true;
             }
@@ -863,6 +1049,9 @@ public class Ct3xxProgramSimulator
             "ma" => value / 1000d,
             "s" => value,
             "ms" => value / 1000d,
+            "us" => value / 1_000_000d,
+            "µs" => value / 1_000_000d,
+            "ns" => value / 1_000_000_000d,
             _ => value
         };
     }
@@ -919,9 +1108,10 @@ public class Ct3xxProgramSimulator
     {
         try
         {
-            var response = _externalDeviceSession!.Hello(_cancellationToken);
+            var response = _externalDeviceSession!.Hello(_cancellationToken, _simulatedTimeMs);
             if (response.Ok)
             {
+                RefreshExternalDeviceState();
                 _observer.OnMessage($"Python device connected @ {response.SimTimeMs ?? 0} ms");
             }
             else
@@ -945,8 +1135,9 @@ public class Ct3xxProgramSimulator
             return;
         }
 
-        if (_externalDeviceSession.TryWriteSignal(signalName, value, _cancellationToken, out var error))
+        if (_externalDeviceSession.TryWriteSignal(signalName, value, _cancellationToken, out var error, _simulatedTimeMs))
         {
+            RefreshExternalDeviceState();
             _observer.OnMessage($"Python device input <= {signalName} = {_evaluator.ToText(value)}");
         }
         else if (!string.IsNullOrWhiteSpace(error))
@@ -963,5 +1154,108 @@ public class Ct3xxProgramSimulator
         }
 
         _signalState[signalName.Trim()] = value;
+        _signalChangedAtMs[signalName.Trim()] = _simulatedTimeMs;
+        PublishStateSnapshot();
+    }
+
+    private void PublishStateSnapshot()
+    {
+        var signalSnapshot = _signalState
+            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                item => item.Key,
+                item => _evaluator.ToText(item.Value),
+                StringComparer.OrdinalIgnoreCase);
+
+        var measurementBusSnapshot = _measurementBusSignals
+            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                item => item.Key,
+                item => item.Value,
+                StringComparer.OrdinalIgnoreCase);
+
+        var relayStates = _wireVizResolver?.DescribeRelayStates(_signalState, _signalChangedAtMs, _simulatedTimeMs, _faults) ?? Array.Empty<string>();
+        var elementStates = _wireVizResolver?.DescribeElementStates(_signalState, _signalChangedAtMs, _simulatedTimeMs, _faults) ?? Array.Empty<string>();
+        _observer.OnStateChanged(new SimulationStateSnapshot(_currentStepName, _simulatedTimeMs, signalSnapshot, measurementBusSnapshot, relayStates, _faults.DescribeActiveFaults(), _externalDeviceState, elementStates));
+    }
+
+    private IReadOnlyList<StepConnectionTrace> CollectSignalTraces(string signalName, string traceKind)
+    {
+        if (_wireVizResolver == null || string.IsNullOrWhiteSpace(signalName))
+        {
+            return Array.Empty<StepConnectionTrace>();
+        }
+
+        if (!_wireVizResolver.TryTrace(signalName, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, out var traces))
+        {
+            return Array.Empty<StepConnectionTrace>();
+        }
+
+        return traces
+            .Select(trace => new StepConnectionTrace($"{traceKind}: {trace.SignalName}", trace.Nodes))
+            .ToList();
+    }
+
+    private IReadOnlyList<StepConnectionTrace> CollectRecordTraces(Record record)
+    {
+        var result = new List<StepConnectionTrace>();
+        foreach (var candidate in EnumerateSignalCandidates(record).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            result.AddRange(CollectSignalTraces(candidate, "Messpfad"));
+        }
+
+        return result;
+    }
+
+    private void AdvanceTime(long milliseconds)
+    {
+        _simulatedTimeMs += Math.Max(0L, milliseconds);
+        PublishStateSnapshot();
+    }
+
+    private static long GetStepDurationMs(Test test)
+    {
+        if (test.Parameters?.AdditionalAttributes != null)
+        {
+            var attribute = test.Parameters.AdditionalAttributes.FirstOrDefault(item =>
+                string.Equals(item.Name, "DelayMs", StringComparison.OrdinalIgnoreCase));
+            if (attribute != null && long.TryParse(attribute.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return 100L;
+    }
+
+    private void RecordCurvePoint(string label, double? value, string? unit = null)
+    {
+        _currentCurvePoints.Add(new MeasurementCurvePoint(_simulatedTimeMs, label, value, unit));
+    }
+
+    private void RefreshExternalDeviceState()
+    {
+        if (_externalDeviceSession == null)
+        {
+            _externalDeviceState = ExternalDeviceStateSnapshot.Empty;
+            return;
+        }
+
+        try
+        {
+            if (_externalDeviceSession.TryReadState(_cancellationToken, out var snapshot, out _, _simulatedTimeMs))
+            {
+                _externalDeviceState = snapshot;
+            }
+        }
+        catch
+        {
+            // Keep last known external state.
+        }
+    }
+
+    private IReadOnlyList<MeasurementCurvePoint> CaptureCurvePoints()
+    {
+        return _currentCurvePoints.ToList();
     }
 }

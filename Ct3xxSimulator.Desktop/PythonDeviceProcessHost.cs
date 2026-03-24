@@ -35,11 +35,12 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         var launcher = ResolvePythonLauncher()
             ?? throw new InvalidOperationException("Kein geeigneter Python-Interpreter mit pywin32 gefunden. Getestet wurden CT3XX_PYTHON_EXE, py -3.13, py -3 und python.");
 
+        var launchSpec = ResolveDeviceLaunchSpec(scriptPath);
         var startInfo = new ProcessStartInfo
         {
             FileName = launcher.FileName,
-            Arguments = $"{launcher.Arguments} \"{scriptPath}\" --pipe \"{pipeName}\"".Trim(),
-            WorkingDirectory = Path.GetDirectoryName(scriptPath) ?? Environment.CurrentDirectory,
+            Arguments = $"{launcher.Arguments} {launchSpec.Arguments} --pipe \"{pipeName}\"".Trim(),
+            WorkingDirectory = launchSpec.WorkingDirectory,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -52,7 +53,7 @@ internal sealed class PythonDeviceProcessHost : IDisposable
             EnableRaisingEvents = true
         };
 
-        var host = new PythonDeviceProcessHost(process, pipeName, $"{launcher.FileName} {launcher.Arguments}".Trim());
+        var host = new PythonDeviceProcessHost(process, pipeName, $"{launcher.FileName} {launcher.Arguments} {launchSpec.Arguments}".Trim());
         process.Start();
         process.OutputDataReceived += (_, args) =>
         {
@@ -221,5 +222,58 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         return new PythonLauncher(trimmed[..firstSpace], trimmed[(firstSpace + 1)..].Trim());
     }
 
+    private static DeviceLaunchSpec ResolveDeviceLaunchSpec(string modelPath)
+    {
+        var fullPath = Path.GetFullPath(modelPath);
+        var extension = Path.GetExtension(fullPath);
+        if (extension.Equals(".json", StringComparison.OrdinalIgnoreCase) ||
+            extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase) ||
+            extension.Equals(".yml", StringComparison.OrdinalIgnoreCase))
+        {
+            var mainPath = FindSimtestMain(fullPath)
+                ?? throw new InvalidOperationException($"Kein simtest/device/main.py fuer Profil '{modelPath}' gefunden.");
+            return new DeviceLaunchSpec($"\"{mainPath}\" --profile \"{fullPath}\"", Path.GetDirectoryName(mainPath) ?? Environment.CurrentDirectory);
+        }
+
+        if (extension.Equals(".py", StringComparison.OrdinalIgnoreCase))
+        {
+            var parentName = Path.GetFileName(Path.GetDirectoryName(fullPath));
+            if (string.Equals(parentName, "devices", StringComparison.OrdinalIgnoreCase))
+            {
+                var devicesDirectory = Path.GetDirectoryName(fullPath) ?? throw new InvalidOperationException("Ungueltiger Geraetemodellpfad.");
+                var mainPath = Path.Combine(Directory.GetParent(devicesDirectory)!.FullName, "main.py");
+                if (!File.Exists(mainPath))
+                {
+                    throw new InvalidOperationException($"Kein simtest/device/main.py fuer Modul '{modelPath}' gefunden.");
+                }
+
+                var deviceName = Path.GetFileNameWithoutExtension(fullPath);
+                return new DeviceLaunchSpec($"\"{mainPath}\" \"{deviceName}\"", Path.GetDirectoryName(mainPath) ?? Environment.CurrentDirectory);
+            }
+
+            return new DeviceLaunchSpec($"\"{fullPath}\"", Path.GetDirectoryName(fullPath) ?? Environment.CurrentDirectory);
+        }
+
+        throw new InvalidOperationException($"Nicht unterstuetzter Geraetemodell-Typ '{extension}'.");
+    }
+
+    private static string? FindSimtestMain(string modelPath)
+    {
+        var directory = Path.GetDirectoryName(modelPath);
+        while (!string.IsNullOrWhiteSpace(directory))
+        {
+            var candidate = Path.Combine(directory, "main.py");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = Directory.GetParent(directory)?.FullName;
+        }
+
+        return null;
+    }
+
     private readonly record struct PythonLauncher(string FileName, string Arguments);
+    private readonly record struct DeviceLaunchSpec(string Arguments, string WorkingDirectory);
 }

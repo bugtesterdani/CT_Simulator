@@ -1,0 +1,31 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  dotnet-security:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore CT3xx.sln
+
+      - name: Build
+        run: dotnet build CT3xx.sln --no-restore
+
+      - name: Vulnerable packages
+        run: dotnet list CT3xx.sln package --vulnerable --include-transitive
+
+      - name: Outdated packages
+        run: dotnet list CT3xx.sln package --outdated --include-transitive

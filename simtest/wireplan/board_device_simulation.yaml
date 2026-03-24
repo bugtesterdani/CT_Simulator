@@ -4,6 +4,7 @@ elements:
     coil:
       signal: VCC_Plus
       threshold_v: 10.0
+    delay_ms: 150
     contacts:
       - a: K1.COM
         b: K1.NO
@@ -29,3 +30,26 @@ elements:
     secondary_a: CT1.S1
     secondary_b: CT1.S2
     ratio: 2000
+
+  - id: S1
+    type: switch
+    a: S1.A
+    b: S1.B
+    control_signal: SWITCH_ENABLE
+    threshold_v: 1.0
+
+  - id: F1
+    type: fuse
+    a: F1.A
+    b: F1.B
+
+  - id: D1
+    type: diode
+    anode: D1.A
+    cathode: D1.K
+
+  - id: L1
+    type: load
+    a: L1.A
+    b: L1.B
+    ohms: 2200

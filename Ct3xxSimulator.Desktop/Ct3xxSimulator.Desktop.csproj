@@ -9,6 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\\Ct3xxSimulation.Abstractions\\Ct3xxSimulation.Abstractions.csproj" />
+    <ProjectReference Include="..\\Ct3xxSimulator.Export\\Ct3xxSimulator.Export.csproj" />
+    <ProjectReference Include="..\\Ct3xxSimulator.Validation\\Ct3xxSimulator.Validation.csproj" />
     <ProjectReference Include="..\\Ct3xxSimulator\\Ct3xxSimulator.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,27 @@
+{
+  "name": "IKI_bad",
+  "signals": {
+    "inputs": ["ADC_IN"],
+    "outputs": ["DIG_OUT"],
+    "sources": ["VCC_PLUS"]
+  },
+  "source_control": {
+    "minimums": {
+      "VCC_PLUS": 19.5
+    }
+  },
+  "outputs": {
+    "DIG_OUT": {
+      "default": 0.0,
+      "rules": [
+        {
+          "when": {
+            "input": "ADC_IN",
+            "gte": 3.2
+          },
+          "value": 1.5
+        }
+      ]
+    }
+  }
+}

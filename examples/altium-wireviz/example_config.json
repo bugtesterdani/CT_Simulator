@@ -1,0 +1,16 @@
+{
+  "boardName": "ExampleDeviceBoard",
+  "connectorType": "altium_connector",
+  "connectorSubtype": "board_connector",
+  "defaultRole": "harness",
+  "connectorPrefixes": ["J"],
+  "connectorAliases": {
+    "J1": "BoardIn",
+    "J2": "BoardOut"
+  },
+  "roleMappings": {
+    "J1": "device",
+    "J2": "harness"
+  },
+  "excludeNets": []
+}

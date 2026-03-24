@@ -1,0 +1,58 @@
+name: IKI_waveform
+
+signals:
+  inputs:
+    - ADC_IN
+  outputs:
+    - DIG_OUT
+    - RMS_OUT
+  sources:
+    - VCC_PLUS
+  internal:
+    - WF_ADC_IN_CURRENT
+    - WF_ADC_IN_PEAK
+    - WF_ADC_IN_RMS
+    - WF_ADC_IN_AVG
+    - WF_ADC_IN_IS_SINE_LIKE
+
+source_control:
+  minimums:
+    VCC_PLUS: 19.5
+
+outputs:
+  DIG_OUT:
+    default: 0.0
+    rules:
+      - when:
+          all:
+            - source: VCC_PLUS
+              gte: 19.5
+            - signal: WF_ADC_IN_IS_SINE_LIKE
+              gte: 1.0
+        transfer_curve:
+          input: ADC_IN
+          mode: linear
+          points:
+            - x: -1.0
+              y: -0.5
+            - x: 0.0
+              y: 0.0
+            - x: 1.0
+              y: 0.5
+
+  RMS_OUT:
+    default: 0.0
+    rules:
+      - when:
+          source: VCC_PLUS
+          gte: 19.5
+        transfer_curve:
+          input: WF_ADC_IN_RMS
+          mode: linear
+          points:
+            - x: 0.0
+              y: 0.0
+            - x: 0.5
+              y: 1.0
+            - x: 0.707
+              y: 1.414

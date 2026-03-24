@@ -1,0 +1,20 @@
+# Generated from Altium connectivity export
+# Board: ExampleDeviceBoard
+connectors:
+  BoardIn:
+    type: "altium_connector"
+    subtype: "board_connector"
+    role: "device"
+    pins: ["1", "2", "3"]
+    pinlabels: ["J1_1", "J1_2", "J1_3"]
+  BoardOut:
+    type: "altium_connector"
+    subtype: "board_connector"
+    role: "harness"
+    pins: ["1", "2"]
+    pinlabels: ["J2_1", "J2_2"]
+connections:
+  # Net: GND
+  -
+    - BoardIn: ["3"]
+    - BoardOut: ["2"]

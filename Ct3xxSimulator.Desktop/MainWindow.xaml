@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="CT3xx Visual Simulator"
-        Height="780"
-        Width="1240">
+        Height="820"
+        Width="1280">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -23,6 +23,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="200"/>
@@ -31,27 +32,44 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Testprogramm-Ordner"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Margin="10,0,10,8" Text="{Binding TestProgramFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
-                <Button Grid.Row="0" Grid.Column="2" Margin="0,0,8,8" Padding="14,8" Content="Ordner..." Click="OnBrowseProgramFolder"/>
-                <Button Grid.Row="0" Grid.Column="3" Margin="0,0,0,8" Padding="14,8" Content="Programm laden" Click="OnLoadProgramFromResolvedSelection" AutomationProperties.AutomationId="LoadProgramButton"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Szenario"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Margin="10,0,10,8" ItemsSource="{Binding ScenarioPresets}" SelectedItem="{Binding SelectedScenarioPreset}" DisplayMemberPath="Name"/>
+                <StackPanel Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Margin="0,0,8,8" Padding="14,8" Content="Laden" Click="OnApplyScenarioPreset"/>
+                    <Button Margin="0,0,8,8" Padding="14,8" Content="Speichern" Click="OnSaveScenarioPreset"/>
+                    <Button Margin="0,0,0,8" Padding="14,8" Content="Loeschen" Click="OnDeleteScenarioPreset"/>
+                </StackPanel>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Verdrahtungs-Ordner"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Margin="10,0,10,8" Text="{Binding WiringFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
-                <Button Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Ordner..." Click="OnBrowseWiringFolder"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Testprogramm-Ordner"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Margin="10,0,10,8" Text="{Binding TestProgramFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="1" Grid.Column="2" Margin="0,0,8,8" Padding="14,8" Content="Ordner..." Click="OnBrowseProgramFolder"/>
+                <Button Grid.Row="1" Grid.Column="3" Margin="0,0,0,8" Padding="14,8" Content="Programm laden" Click="OnLoadProgramFromResolvedSelection" AutomationProperties.AutomationId="LoadProgramButton"/>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Simulations-Ordner"/>
-                <TextBox Grid.Row="2" Grid.Column="1" Margin="10,0,10,8" Text="{Binding SimulationModelFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
-                <Button Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Ordner..." Click="OnBrowseSimulationModelFolder"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Verdrahtungs-Ordner"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Margin="10,0,10,8" Text="{Binding WiringFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Ordner..." Click="OnBrowseWiringFolder"/>
 
-                <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Python-Geräteskript"/>
-                <TextBox Grid.Row="3" Grid.Column="1" Margin="10,0,10,8" Text="{Binding PythonScriptPath, UpdateSourceTrigger=PropertyChanged}"/>
-                <Button Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Datei..." Click="OnBrowsePythonScript"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Simulations-Ordner"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Margin="10,0,10,8" Text="{Binding SimulationModelFolderPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Ordner..." Click="OnBrowseSimulationModelFolder"/>
 
-                <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Aufgelöstes Programm"/>
-                <TextBox Grid.Row="4" Grid.Column="1" Margin="10,0,10,0" Text="{Binding SelectedFilePath}" IsReadOnly="True" AutomationProperties.AutomationId="ProgramPathBox"/>
-                <Button Grid.Row="4" Grid.Column="2" Margin="0,0,8,0" Padding="14,8" Content="Simulation starten" Click="OnStartSimulation" IsEnabled="{Binding CanStartSimulation}" AutomationProperties.AutomationId="StartSimulationButton"/>
-                <Button Grid.Row="4" Grid.Column="3" Padding="14,8" Content="Abbrechen" Click="OnCancelSimulation" IsEnabled="{Binding IsSimulationRunning}" AutomationProperties.AutomationId="CancelSimulationButton"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Geraetemodell / Python"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Margin="10,0,10,8" Text="{Binding PythonScriptPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Datei..." Click="OnBrowsePythonScript"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Text="Aufgeloestes Programm"/>
+                <TextBox Grid.Row="5" Grid.Column="1" Margin="10,0,10,0" Text="{Binding SelectedFilePath}" IsReadOnly="True" AutomationProperties.AutomationId="ProgramPathBox"/>
+                <StackPanel Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <CheckBox Margin="0,0,8,0" VerticalAlignment="Center" IsChecked="{Binding IsStepModeEnabled}" Content="Einzelschritt"/>
+                    <Button Margin="0,0,8,0" Padding="14,8" Content="Zurueck" Click="OnStepBack" IsEnabled="{Binding CanStepBackward}"/>
+                    <Button Margin="0,0,8,0" Padding="14,8" Content="Weiter" Click="OnContinueStep"/>
+                    <Button Margin="0,0,8,0" Padding="14,8" Content="Auto" Click="OnResumeAutomaticRun"/>
+                    <Button Margin="0,0,8,0" Padding="14,8" Content="Pause" Click="OnPauseAtNextStep"/>
+                    <Button Margin="0,0,8,0" Padding="14,8" Content="Validieren" Click="OnValidateConfiguration"/>
+                    <Button Margin="0,0,8,0" Padding="14,8" Content="Live-Zustand" Click="OnShowLiveState"/>
+                    <Button Margin="0,0,8,0" Padding="14,8" Content="Simulation starten" Click="OnStartSimulation" IsEnabled="{Binding CanStartSimulation}" AutomationProperties.AutomationId="StartSimulationButton"/>
+                    <Button Padding="14,8" Content="Abbrechen" Click="OnCancelSimulation" IsEnabled="{Binding IsSimulationRunning}" AutomationProperties.AutomationId="CancelSimulationButton"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -65,7 +83,8 @@
                 <StackPanel Grid.Column="0">
                     <TextBlock FontWeight="Bold" Text="Aktive Konfiguration"/>
                     <TextBlock Margin="0,4,0,0" Text="{Binding ConfigurationSummary}" TextWrapping="Wrap"/>
-                    <TextBlock Margin="0,4,0,0" Foreground="#FF5A6470" Text="Wenn im Testprogramm-Ordner mehrere .ctxprg liegen, fragt die App beim Laden nach der gewünschten Datei." TextWrapping="Wrap"/>
+                    <TextBlock Margin="0,4,0,0" FontWeight="Bold" Text="{Binding ValidationSummary}" TextWrapping="Wrap"/>
+                    <TextBlock Margin="0,4,0,0" Foreground="#FF5A6470" Text="Wenn im Testprogramm-Ordner mehrere .ctxprg liegen, fragt die App beim Laden nach der gewuenschten Datei. Beim Geraetemodell sind .py, .json, .yaml und .yml moeglich." TextWrapping="Wrap"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock FontWeight="Bold" Text="Aktueller Schritt"/>
@@ -76,13 +95,17 @@
 
         <Border Grid.Row="2" Padding="12" Background="White" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Margin="0,0,0,10" FontSize="18" FontWeight="Bold" Text="Testschritte"/>
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10" Orientation="Horizontal">
+                    <TextBlock FontSize="18" FontWeight="Bold" Text="Testschritte"/>
+                    <Button Margin="12,0,0,0" Padding="12,6" Content="Exportieren" Click="OnExportResults"/>
+                </StackPanel>
                 <DataGrid ItemsSource="{Binding StepResults}"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
                           IsReadOnly="True"
                           HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal">
+                          GridLinesVisibility="Horizontal"
+                          SelectionChanged="OnStepResultSelected">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Schritt" Binding="{Binding StepName}" Width="2*"/>
                         <DataGridTextColumn Header="Ergebnis" Binding="{Binding Outcome}" Width="*"/>

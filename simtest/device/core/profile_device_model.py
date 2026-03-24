@@ -1,0 +1,305 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from .base_device_model import BaseDeviceModel
+from .profile_curves import (
+    apply_input_curves,
+    apply_slew,
+    apply_waveform_inputs,
+    evaluate_curve_points,
+    evaluate_transfer_curve,
+    publish_waveform_metrics,
+)
+from .profile_document import load_profile_document
+from .profile_helpers import (
+    are_sources_enabled,
+    compare,
+    condition_matches,
+    interface_request_matches,
+    lookup_numeric,
+    normalize_mapping,
+    read_signal_value,
+)
+from .profile_state import (
+    apply_state_actions,
+    set_state_flags,
+    timer_output_signal,
+    update_state_machines,
+    update_timers,
+)
+
+
+class DeclarativeDeviceModel(BaseDeviceModel):
+    def __init__(self, profile_path: str):
+        self.profile_path = profile_path
+        self.profile = load_profile_document(profile_path)
+        self.device_name = str(self.profile.get("name") or Path(profile_path).stem)
+
+        signals = self.profile.get("signals") or {}
+        self.signal_inputs = {str(item).strip().upper() for item in signals.get("inputs", [])}
+        self.signal_outputs = {str(item).strip().upper() for item in signals.get("outputs", [])}
+        self.signal_sources = {str(item).strip().upper() for item in signals.get("sources", [])}
+        self.signal_internal = {str(item).strip().upper() for item in signals.get("internal", [])}
+        self.all_signals = sorted(self.signal_inputs | self.signal_outputs | self.signal_sources | self.signal_internal)
+
+        self.source_control = self.profile.get("source_control") or {}
+        self.output_definitions = self._normalize_mapping(self.profile.get("outputs") or {})
+        self.initial_inputs = self._normalize_mapping(self.profile.get("initial_inputs") or {})
+        self.initial_sources = self._normalize_mapping(self.profile.get("initial_sources") or {})
+        self.initial_internal = self._normalize_mapping(self.profile.get("initial_internal") or {})
+        self.input_curves = self._normalize_mapping(self.profile.get("input_curves") or {})
+        self.interfaces = self._normalize_mapping(self.profile.get("interfaces") or {})
+        self.timer_definitions = self._normalize_mapping(self.profile.get("timers") or {})
+        self.state_machine_definitions = self._normalize_mapping(self.profile.get("state_machines") or {})
+
+        super().__init__()
+
+    def reset(self) -> None:
+        self.now_ms = 0
+        self.input_waveforms = {}
+        self.waveform_captures = {}
+        self.inputs: dict[str, float] = {}
+        self.sources: dict[str, float] = {}
+        self.internal: dict[str, float] = {}
+        self.interface_state: dict[str, dict[str, Any]] = {}
+        self.output_state: dict[str, dict[str, Any]] = {}
+        self.timer_state: dict[str, dict[str, Any]] = {}
+        self.state_machine_state: dict[str, dict[str, Any]] = {}
+        self.manual_override: set[str] = set()
+
+        for name in self.signal_inputs:
+            self.inputs[name] = self._lookup_numeric(self.initial_inputs, name, 0.0)
+
+        for name in self.signal_sources:
+            self.sources[name] = self._lookup_numeric(self.initial_sources, name, 0.0)
+
+        for name in self.signal_internal:
+            self.internal[name] = self._lookup_numeric(self.initial_internal, name, 0.0)
+
+        for name in self.interfaces:
+            self.interface_state[name] = {"last_request": None, "last_response": None, "history": []}
+
+        for name in self.timer_definitions:
+            timer_signal = self._timer_output_signal(name, self.timer_definitions[name])
+            self.internal.setdefault(timer_signal, 0.0)
+            self.timer_state[name] = {"active_since_ms": None, "done": False}
+
+        for name, definition in self.state_machine_definitions.items():
+            initial_state = str((definition or {}).get("initial_state") or (definition or {}).get("initial") or "IDLE").strip().upper()
+            self.state_machine_state[name] = {"state": initial_state}
+            self._set_state_flags(name, initial_state, definition if isinstance(definition, dict) else {})
+
+    def move_to_time(self, target_time_ms: int) -> None:
+        super().move_to_time(target_time_ms)
+        self._apply_waveform_inputs()
+        self._apply_input_curves()
+        self._update_timers()
+        self._update_state_machines()
+
+    def set_input(self, name: str, value: Any) -> None:
+        signal = name.strip().upper()
+        numeric = float(value)
+        if signal in self.signal_inputs:
+            self.inputs[signal] = numeric
+            self.manual_override.add(signal)
+            return
+        if signal in self.signal_sources:
+            self.sources[signal] = numeric
+            return
+        if signal in self.signal_internal:
+            self.internal[signal] = numeric
+            return
+        raise KeyError(f"Unknown input '{name}'.")
+
+    def get_signal(self, name: str) -> float:
+        signal = name.strip().upper()
+        if signal in self.signal_internal:
+            return float(self.internal.get(signal, 0.0))
+        if signal not in self.signal_outputs:
+            raise KeyError(f"Unknown signal '{name}'.")
+        if not self._are_sources_enabled():
+            return 0.0
+
+        definition = self.output_definitions.get(signal) or {}
+        default_value = float(definition.get("default", 0.0))
+        state = self.output_state.setdefault(
+            signal,
+            {
+                "current_value": default_value,
+                "target_value": default_value,
+                "pending_target": default_value,
+                "pending_since_ms": self.now_ms,
+                "last_update_ms": self.now_ms,
+                "active_rule_key": "",
+            },
+        )
+
+        rule_key, target_value = self._evaluate_output_target(signal, definition, default_value)
+        if rule_key != state["active_rule_key"] or target_value != state["pending_target"]:
+            state["active_rule_key"] = rule_key
+            state["pending_target"] = target_value
+            state["pending_since_ms"] = self.now_ms
+
+        active_rule = self._find_active_rule(definition, rule_key)
+        delay_ms = int(active_rule.get("delay_ms", definition.get("delay_ms", 0)) or 0) if active_rule else int(definition.get("delay_ms", 0) or 0)
+        if self.now_ms - int(state["pending_since_ms"]) >= delay_ms:
+            state["target_value"] = state["pending_target"]
+
+        elapsed_ms = max(0, self.now_ms - int(state["last_update_ms"]))
+        state["current_value"] = self._apply_slew(float(state["current_value"]), float(state["target_value"]), elapsed_ms, active_rule, definition)
+        state["last_update_ms"] = self.now_ms
+        return float(state["current_value"])
+
+    def read_state(self) -> dict[str, Any]:
+        return {
+            "time_ms": self.now_ms,
+            "inputs": dict(sorted(self.inputs.items())),
+            "sources": dict(sorted(self.sources.items())),
+            "internal": dict(sorted(self.internal.items())),
+            "outputs": {name: self.get_signal(name) for name in sorted(self.signal_outputs)},
+            "timers": self.timer_state,
+            "state_machines": self.state_machine_state,
+            "waveforms": self.waveform_captures,
+            "interfaces": self.interface_state,
+        }
+
+    def state_marker(self) -> dict[str, Any]:
+        return {
+            "time_ms": self.now_ms,
+            "inputs": dict(sorted(self.inputs.items())),
+            "sources": dict(sorted(self.sources.items())),
+            "internal": dict(sorted(self.internal.items())),
+        }
+
+    def get_device_info(self) -> dict[str, Any]:
+        return {
+            "name": self.device_name,
+            "signals": self.all_signals,
+            "profile_path": self.profile_path,
+            "kind": "declarative",
+            "supports_waveforms": True,
+            "interfaces": sorted(self.interfaces.keys()),
+        }
+
+    def set_waveform(self, name: str, waveform: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any]:
+        result = super().set_waveform(name, waveform, options)
+        self._publish_waveform_metrics(name.strip().upper())
+        return result
+
+    def send_interface(self, name: str, payload: Any) -> Any:
+        interface_name = name.strip().upper()
+        definition = self.interfaces.get(interface_name)
+        if definition is None:
+            raise KeyError(f"Unknown interface '{name}'.")
+
+        requests = definition.get("requests") or []
+        state = self.interface_state.setdefault(interface_name, {"last_request": None, "last_response": None, "history": []})
+        state["last_request"] = payload
+
+        for request in requests:
+            if isinstance(request, dict) and self._interface_request_matches(request.get("when") or {}, payload):
+                response = request.get("response")
+                state["last_response"] = response
+                state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+                return response
+
+        default_response = definition.get("default_response")
+        state["last_response"] = default_response
+        state["history"].append({"request": payload, "response": default_response, "time_ms": self.now_ms})
+        return default_response
+
+    def read_interface(self, name: str) -> Any:
+        interface_name = name.strip().upper()
+        if interface_name not in self.interfaces:
+            raise KeyError(f"Unknown interface '{name}'.")
+
+        return self.interface_state.get(interface_name, {}).get("last_response")
+
+    def _evaluate_output_target(self, signal: str, definition: dict[str, Any], default_value: float) -> tuple[str, float]:
+        rules = definition.get("rules") or []
+        for index, rule in enumerate(rules):
+            if not isinstance(rule, dict):
+                continue
+            if self._condition_matches(rule.get("when") or {}):
+                if "transfer_curve" in rule:
+                    return f"rule:{index}", self._evaluate_transfer_curve(rule["transfer_curve"])
+                return f"rule:{index}", float(rule.get("value", default_value))
+
+        if "transfer_curve" in definition:
+            return "transfer_curve", self._evaluate_transfer_curve(definition["transfer_curve"])
+
+        return "default", default_value
+
+    def _find_active_rule(self, definition: dict[str, Any], rule_key: str) -> dict[str, Any] | None:
+        if not rule_key.startswith("rule:"):
+            return definition if rule_key == "transfer_curve" else None
+
+        try:
+            index = int(rule_key.split(":", 1)[1])
+        except ValueError:
+            return None
+
+        rules = definition.get("rules") or []
+        if 0 <= index < len(rules) and isinstance(rules[index], dict):
+            return rules[index]
+        return None
+
+    def _apply_slew(self, current: float, target: float, elapsed_ms: int, active_rule: dict[str, Any] | None, definition: dict[str, Any]) -> float:
+        return apply_slew(current, target, elapsed_ms, active_rule, definition)
+
+    def _apply_input_curves(self) -> None:
+        apply_input_curves(self)
+
+    def _apply_waveform_inputs(self) -> None:
+        apply_waveform_inputs(self)
+
+    def _update_timers(self) -> None:
+        update_timers(self)
+
+    def _update_state_machines(self) -> None:
+        update_state_machines(self)
+
+    def _apply_state_actions(self, machine_name: str, state_name: str, state_config: dict[str, Any]) -> None:
+        apply_state_actions(self, machine_name, state_name, state_config)
+
+    def _set_state_flags(self, machine_name: str, active_state: str, definition: dict[str, Any]) -> None:
+        set_state_flags(self, machine_name, active_state, definition)
+
+    @staticmethod
+    def _timer_output_signal(name: str, definition: dict[str, Any]) -> str:
+        return timer_output_signal(name, definition)
+
+    def _evaluate_transfer_curve(self, definition: Any) -> float:
+        return evaluate_transfer_curve(self, definition)
+
+    def _evaluate_curve_points(self, points: list[Any], x_value: float, mode: str) -> float:
+        return evaluate_curve_points(points, x_value, mode)
+
+    def _condition_matches(self, condition: Any) -> bool:
+        return condition_matches(self, condition)
+
+    def _interface_request_matches(self, condition: Any, payload: Any) -> bool:
+        return interface_request_matches(condition, payload)
+
+    def _read_signal_value(self, signal: str) -> float:
+        return read_signal_value(self, signal)
+
+    def _publish_waveform_metrics(self, signal: str) -> None:
+        publish_waveform_metrics(self, signal)
+
+    def _are_sources_enabled(self) -> bool:
+        return are_sources_enabled(self)
+
+    @staticmethod
+    def _normalize_mapping(raw: Any) -> dict[str, Any]:
+        return normalize_mapping(raw)
+
+    @staticmethod
+    def _lookup_numeric(values: dict[str, Any], key: str, default: float) -> float:
+        return lookup_numeric(values, key, default)
+
+    @staticmethod
+    def _compare(value: float, conditions: dict[str, Any]) -> bool:
+        return compare(value, conditions)
