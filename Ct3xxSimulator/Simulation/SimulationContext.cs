@@ -11,6 +11,19 @@ public class SimulationContext
     private readonly Dictionary<string, ProgramArray> _arrays = new(StringComparer.OrdinalIgnoreCase);
 
     public string LastResult { get; private set; } = "PASS";
+    public string ProgramDirectory { get; private set; } = Directory.GetCurrentDirectory();
+    public string? ProgramPath { get; private set; }
+
+    public void SetProgramContext(string? programPath)
+    {
+        ProgramPath = string.IsNullOrWhiteSpace(programPath) ? null : Path.GetFullPath(programPath);
+        ProgramDirectory = ProgramPath == null
+            ? Directory.GetCurrentDirectory()
+            : Path.GetDirectoryName(ProgramPath) ?? Directory.GetCurrentDirectory();
+
+        _scalars["$TestProgramPath"] = ProgramDirectory;
+        _scalars["$TestProgramFile"] = ProgramPath ?? string.Empty;
+    }
 
     public void ApplyTables(IEnumerable<Table> tables, ExpressionEvaluator evaluator)
     {

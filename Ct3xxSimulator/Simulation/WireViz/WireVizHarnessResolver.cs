@@ -68,6 +68,11 @@ public sealed partial class WireVizHarnessResolver
             .Select(parser.ParseFile)
             .Select(document => BuildGraph(document, simulationModel, string.Empty, new HashSet<string>(StringComparer.OrdinalIgnoreCase)))
             .ToList();
+        var flattenedSimulationElements = graphs
+            .SelectMany(graph => graph.SimulationElements)
+            .GroupBy(element => element.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
 
         var resolutions = new Dictionary<string, List<WireVizConnectionResolution>>(StringComparer.OrdinalIgnoreCase);
         var resolutionSeeds = new Dictionary<string, List<ResolutionSeed>>(StringComparer.OrdinalIgnoreCase);
@@ -106,7 +111,7 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
-        return new WireVizHarnessResolver(resolutions, resolutionSeeds, simulationModel?.Elements?.ToList());
+        return new WireVizHarnessResolver(resolutions, resolutionSeeds, flattenedSimulationElements);
     }
 
     public bool TryResolve(string signalOrTestpoint, out IReadOnlyList<WireVizConnectionResolution> resolutions)
@@ -280,6 +285,95 @@ public sealed partial class WireVizHarnessResolver
         return states;
     }
 
+    public bool TryResolveTesterOutputValue(
+        string signalName,
+        string ioState,
+        IReadOnlyDictionary<string, object?> signalState,
+        out object? value,
+        out string? description)
+    {
+        value = null;
+        description = null;
+        if (string.IsNullOrWhiteSpace(signalName) || string.IsNullOrWhiteSpace(ioState))
+        {
+            return false;
+        }
+
+        var testerOutput = _simulationElements
+            .OfType<UnknownElementDefinition>()
+            .FirstOrDefault(element =>
+                string.Equals(element.Type, "tester_output", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(ReadMetadataValue(element, "signal"), signalName.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (testerOutput == null)
+        {
+            return false;
+        }
+
+        var normalizedState = ioState.Trim().Trim('\'', '"').ToUpperInvariant();
+        var modeKeyPrefix = normalizedState is "H" or "1" or "TRUE" ? "high" : "low";
+        var mode = ReadMetadataValue(testerOutput, $"{modeKeyPrefix}_mode");
+        if (string.IsNullOrWhiteSpace(mode))
+        {
+            mode = "value";
+        }
+
+        switch (mode.Trim().ToLowerInvariant())
+        {
+            case "open":
+                value = null;
+                description = $"{signalName} => open";
+                return true;
+            case "supply":
+                var supplySignal = ReadMetadataValue(testerOutput, $"{modeKeyPrefix}_supply");
+                if (string.IsNullOrWhiteSpace(supplySignal))
+                {
+                    return false;
+                }
+
+                if (!TryResolveTesterSupplyVoltage(supplySignal, signalState, out var supplyValue))
+                {
+                    return false;
+                }
+
+                value = supplyValue;
+                description = $"{signalName} => supply {supplySignal} ({supplyValue.ToString("0.###", CultureInfo.InvariantCulture)} V)";
+                return true;
+            default:
+                var rawValue = ReadMetadataValue(testerOutput, $"{modeKeyPrefix}_value");
+                if (double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric))
+                {
+                    value = numeric;
+                    description = $"{signalName} => {numeric.ToString("0.###", CultureInfo.InvariantCulture)} V";
+                    return true;
+                }
+
+                if (bool.TryParse(rawValue, out var boolean))
+                {
+                    value = boolean;
+                    description = $"{signalName} => {boolean}";
+                    return true;
+                }
+
+                return false;
+        }
+    }
+
+    public IReadOnlyList<string> DescribeTesterOutputConfigurations()
+    {
+        return _simulationElements
+            .OfType<UnknownElementDefinition>()
+            .Where(element => string.Equals(element.Type, "tester_output", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(element => element.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(element =>
+            {
+                var signal = ReadMetadataValue(element, "signal");
+                var highMode = ReadMetadataValue(element, "high_mode");
+                var lowMode = ReadMetadataValue(element, "low_mode");
+                return $"{element.Id}: tester_output {signal} high={highMode} low={lowMode}";
+            })
+            .ToList();
+    }
+
     private static string DescribeUnknownElementState(
         UnknownElementDefinition definition,
         IReadOnlyDictionary<string, object?> signalState,
@@ -305,6 +399,53 @@ public sealed partial class WireVizHarnessResolver
     private static string ReadMetadataValue(UnknownElementDefinition definition, string key)
     {
         return definition.Metadata.TryGetValue(key, out var value) ? value ?? string.Empty : string.Empty;
+    }
+
+    private bool TryResolveTesterSupplyVoltage(
+        string supplySignal,
+        IReadOnlyDictionary<string, object?> signalState,
+        out double voltage)
+    {
+        voltage = 0d;
+        if (signalState.TryGetValue(supplySignal, out var liveValue))
+        {
+            switch (liveValue)
+            {
+                case double d:
+                    voltage = d;
+                    return true;
+                case float f:
+                    voltage = f;
+                    return true;
+                case int i:
+                    voltage = i;
+                    return true;
+                case long l:
+                    voltage = l;
+                    return true;
+                case string s when double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed):
+                    voltage = parsed;
+                    return true;
+            }
+        }
+
+        var testerSupply = _simulationElements
+            .OfType<UnknownElementDefinition>()
+            .FirstOrDefault(element =>
+                string.Equals(element.Type, "tester_supply", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(ReadMetadataValue(element, "signal"), supplySignal.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (testerSupply == null)
+        {
+            return false;
+        }
+
+        var rawVoltage = ReadMetadataValue(testerSupply, "voltage");
+        if (!double.TryParse(rawVoltage, NumberStyles.Float, CultureInfo.InvariantCulture, out voltage))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static SimulationModelDocument? LoadSimulationModel(string programDirectory)

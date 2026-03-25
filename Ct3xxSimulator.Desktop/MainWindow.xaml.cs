@@ -18,7 +18,7 @@ namespace Ct3xxSimulator.Desktop;
 public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObserver, IInteractionProvider, IMeasurementInteractionProvider, ISimulationExecutionController
 {
     private readonly Ct3xxProgramFileParser _fileParser = new();
-    private readonly ScenarioPresetStore _scenarioPresetStore = new();
+    private ScenarioPresetStore _scenarioPresetStore = new();
     private readonly ManualResetEventSlim _stepGate = new(initialState: true);
     private Ct3xxProgramFileSet? _fileSet;
     private Ct3xxProgram? _program;
@@ -37,6 +37,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     private string? _wiringFolderPath;
     private string? _simulationModelFolderPath;
     private string? _pythonScriptPath;
+    private string? _scenarioPresetFilePath = ScenarioPresetStore.GetDefaultPath();
     private bool _isSimulationRunning;
     private string? _currentStep;
     private string? _configurationSummary;
@@ -125,6 +126,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
                 OnPropertyChanged(nameof(CanStartSimulation));
                 UpdateConfigurationSummary();
                 ValidateCurrentConfiguration(false);
+            }
+        }
+    }
+
+    public string? ScenarioPresetFilePath
+    {
+        get => _scenarioPresetFilePath;
+        set
+        {
+            if (SetField(ref _scenarioPresetFilePath, value))
+            {
+                _scenarioPresetStore = new ScenarioPresetStore(value);
+                UpdateConfigurationSummary();
             }
         }
     }

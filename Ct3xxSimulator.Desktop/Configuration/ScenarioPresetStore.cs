@@ -10,13 +10,20 @@ public sealed class ScenarioPresetStore
 {
     private readonly string _path;
 
-    public ScenarioPresetStore(string? path = null)
+    public static string GetDefaultPath()
     {
-        _path = path ?? Path.Combine(
+        return System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Ct3xxSimulatorDesktop",
             "scenarios.json");
     }
+
+    public ScenarioPresetStore(string? path = null)
+    {
+        _path = path ?? GetDefaultPath();
+    }
+
+    public string FilePath => _path;
 
     public IReadOnlyList<ScenarioPreset> Load()
     {
@@ -34,7 +41,7 @@ public sealed class ScenarioPresetStore
 
     public void Save(IEnumerable<ScenarioPreset> presets)
     {
-        var directory = Path.GetDirectoryName(_path);
+        var directory = System.IO.Path.GetDirectoryName(_path);
         if (!string.IsNullOrWhiteSpace(directory))
         {
             Directory.CreateDirectory(directory);

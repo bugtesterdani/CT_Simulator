@@ -54,6 +54,9 @@ internal static class SimulationModelDeepValidator
     private static void ValidateWireVizDocument(WireVizDocument document, List<string> issues)
     {
         var connectorPins = BuildConnectorPins(document);
+        var connectorNames = document.Connectors.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var cableNames = document.Cables.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var bundleNames = document.Bundles.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var usage = connectorPins.Keys.ToDictionary(key => key, _ => 0, StringComparer.OrdinalIgnoreCase);
         var adjacency = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -72,9 +75,16 @@ internal static class SimulationModelDeepValidator
 
             foreach (var segment in segments)
             {
-                if (!connectorPins.ContainsKey(segment.Designator))
+                if (!connectorNames.Contains(segment.Designator) &&
+                    !cableNames.Contains(segment.Designator) &&
+                    !bundleNames.Contains(segment.Designator))
                 {
-                    issues.Add($"WireViz '{Path.GetFileName(document.SourcePath)}': unbekannter Stecker '{segment.Designator}' in Verbindung.");
+                    issues.Add($"WireViz '{Path.GetFileName(document.SourcePath)}': unbekanntes Verbindungselement '{segment.Designator}' in Verbindung.");
+                    continue;
+                }
+
+                if (!connectorNames.Contains(segment.Designator))
+                {
                     continue;
                 }
 
@@ -147,29 +157,33 @@ internal static class SimulationModelDeepValidator
             return;
         }
 
-        var baseDirectory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory();
-        var localWirePath = Path.Combine(baseDirectory, "Verdrahtung.yml");
-        if (!File.Exists(localWirePath))
-        {
-            localWirePath = Path.Combine(baseDirectory, "Verdrahtung.yaml");
-        }
-
         WireVizDocument? localWireViz = parentWireViz;
-        if (File.Exists(localWirePath))
+        var baseDirectory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory();
+        if (localWireViz == null)
         {
-            try
+            var localWirePath = Path.Combine(baseDirectory, "Verdrahtung.yml");
+            if (!File.Exists(localWirePath))
             {
-                localWireViz = new WireVizParser().ParseFile(localWirePath);
+                localWirePath = Path.Combine(baseDirectory, "Verdrahtung.yaml");
             }
-            catch (Exception ex)
+
+            if (File.Exists(localWirePath))
             {
-                issues.Add($"WireViz fuer '{Path.GetFileName(fullPath)}' konnte nicht geparst werden: {ex.Message}");
+                try
+                {
+                    localWireViz = new WireVizParser().ParseFile(localWirePath);
+                }
+                catch (Exception ex)
+                {
+                    issues.Add($"WireViz fuer '{Path.GetFileName(fullPath)}' konnte nicht geparst werden: {ex.Message}");
+                }
             }
         }
 
         var knownNodes = localWireViz == null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : BuildConnectorPins(localWireViz).Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var elementIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var elementNodeMap = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var elementTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var element in document.Elements)
         {
             ValidateName(element.Id, "Element-ID", issues, fullPath);
@@ -180,6 +194,7 @@ internal static class SimulationModelDeepValidator
 
             var referencedNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             elementNodeMap[element.Id] = referencedNodes;
+            elementTypeMap[element.Id] = element.Type;
 
             switch (element)
             {
@@ -291,7 +306,7 @@ internal static class SimulationModelDeepValidator
             }
         }
 
-        foreach (var issue in ValidateSimulationConnectivity(fullPath, elementNodeMap))
+        foreach (var issue in ValidateSimulationConnectivity(fullPath, elementNodeMap, elementTypeMap))
         {
             issues.Add(issue);
         }
@@ -420,41 +435,22 @@ internal static class SimulationModelDeepValidator
         }
     }
 
-    private static IReadOnlyList<string> ValidateSimulationConnectivity(string sourcePath, IReadOnlyDictionary<string, HashSet<string>> elementNodeMap)
+    private static IReadOnlyList<string> ValidateSimulationConnectivity(
+        string sourcePath,
+        IReadOnlyDictionary<string, HashSet<string>> elementNodeMap,
+        IReadOnlyDictionary<string, string> elementTypeMap)
     {
         var issues = new List<string>();
-        var graph = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-
-        var elements = elementNodeMap.Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase).ToList();
-        for (var index = 0; index < elements.Count; index++)
-        {
-            for (var otherIndex = index + 1; otherIndex < elements.Count; otherIndex++)
-            {
-                var left = elements[index];
-                var right = elements[otherIndex];
-                if (!elementNodeMap[left].Overlaps(elementNodeMap[right]))
-                {
-                    continue;
-                }
-
-                AddGraphEdge(graph, left, right);
-                AddGraphEdge(graph, right, left);
-            }
-        }
-
         foreach (var item in elementNodeMap.Where(item => item.Value.Count == 0))
         {
+            if (elementTypeMap.TryGetValue(item.Key, out var elementType) &&
+                (string.Equals(elementType, "tester_supply", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(elementType, "tester_output", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
             issues.Add($"Simulation '{Path.GetFileName(sourcePath)}': Element '{item.Key}' ist isoliert und referenziert keine Verdrahtungsknoten.");
-        }
-
-        foreach (var item in elementNodeMap.Where(item => item.Value.Count > 0 && !graph.ContainsKey(item.Key)))
-        {
-            issues.Add($"Simulation '{Path.GetFileName(sourcePath)}': Element '{item.Key}' ist nicht mit anderen Simulationselementen verbunden.");
-        }
-
-        foreach (var cycle in FindCycles(graph).Take(10))
-        {
-            issues.Add($"Simulation '{Path.GetFileName(sourcePath)}': Element-Zyklus erkannt ({cycle}).");
         }
 
         return issues;

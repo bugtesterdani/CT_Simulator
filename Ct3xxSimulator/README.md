@@ -8,9 +8,12 @@ Simulationskern fuer CT3xx-Testprogramme.
 - Aufloesen von Signalen gegen Signaltabelle und WireViz
 - Einbinden von `simulation.yaml`
 - DUT-Kommunikation ueber Python/Named Pipe
+- DUT-Profile in `JSON` / `YAML`
 - Auswertung von Grenzwerten und Schrittresultaten
 - Fault-Injection
 - Zustandssnapshots fuer die Desktop-Oberflaeche
+- Ausfuehrung externer Testprogramm-Skripte und Exit-Code-Auswertung
+- deklarative Tester-Ausgangslogik ueber `tester_supply` / `tester_output`
 
 ## Wichtige Bereiche
 
@@ -29,6 +32,8 @@ Simulationskern fuer CT3xx-Testprogramme.
 
 - `SC2C`
 - `CDMA`
+- `IOXX`
+- Datei-/Skriptausfuehrung aus Testprogrammen
 - `2ARB` / AM2-Waveform
 - generische Testschritte mit Ergebnis- und Statuspublikation
 

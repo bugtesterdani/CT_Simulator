@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.IO;
+using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Threading;
 using Ct3xxProgramParser.Model;
@@ -53,6 +54,7 @@ public partial class Ct3xxProgramSimulator
         _wireVizResolver = null;
         _fileSet = null;
         _faults = SimulationFaultSet.Empty;
+        _context.SetProgramContext(null);
         ResetSimulationState();
         RunCore(program, dutLoopIterations, cancellationToken);
     }
@@ -69,6 +71,7 @@ public partial class Ct3xxProgramSimulator
         _wireVizResolver = WireVizHarnessResolver.Create(fileSet);
         _fileSet = fileSet;
         _faults = SimulationFaultSet.Load(Environment.GetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT") ?? fileSet.ProgramDirectory);
+        _context.SetProgramContext(fileSet.ProgramPath);
         ResetSimulationState();
         RunCore(fileSet.Program, dutLoopIterations, cancellationToken);
     }
@@ -232,8 +235,11 @@ public partial class Ct3xxProgramSimulator
         var outcome = test.Id?.ToUpperInvariant() switch
         {
             "GSD^" => RunAssignmentTest(test),
+            "IOXX" => RunDigitalIoControlTest(test),
             "PET$" => RunEvaluationTest(test),
             "PRT^" => RunOperatorTest(test),
+            "ECLL" => RunExecutableCallTest(test),
+            "PWT$" => RunWaitTest(test),
             "SC2C" => RunScannerConnectTest(test),
             "CDMA" => RunCdmaTest(test),
             "2ARB" => RunWaveformTest(test),
@@ -252,9 +258,12 @@ public partial class Ct3xxProgramSimulator
         var parameters = test.Parameters;
         if (parameters == null)
         {
+            PublishStepEvaluation(test, TestOutcome.Pass);
             return TestOutcome.Pass;
         }
 
+        var assignments = new List<string>();
+        var traces = new List<StepConnectionTrace>();
         foreach (var table in parameters.Tables)
         {
             foreach (var record in table.Records)
@@ -272,11 +281,26 @@ public partial class Ct3xxProgramSimulator
                 var address = VariableAddress.From(record.Destination);
                 var value = _evaluator.Evaluate(record.Expression);
                 _context.SetValue(address, value);
-                _observer.OnMessage($"{address} := {_evaluator.ToText(value)}");
+                var assignmentText = $"{address} := {_evaluator.ToText(value)}";
+                assignments.Add(assignmentText);
+                _observer.OnMessage(assignmentText);
                 TryWriteExternalSignal(record.Destination, value);
+                var signalName = ExtractSignalName(record.Destination);
+                if (!string.IsNullOrWhiteSpace(signalName))
+                {
+                    traces.AddRange(CollectSignalTraces(signalName!, "Ansteuerung"));
+                }
             }
         }
 
+        PublishStepEvaluation(
+            test,
+            TestOutcome.Pass,
+            details: assignments.Count == 0 ? null : string.Join(", ", assignments),
+            traces: traces
+                .GroupBy(trace => $"{trace.Title}|{string.Join(">", trace.Nodes)}", StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList());
         return TestOutcome.Pass;
     }
 
@@ -463,6 +487,96 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    private TestOutcome RunDigitalIoControlTest(Test test)
+    {
+        var parameters = test.Parameters;
+        if (parameters?.ExtraElements == null || parameters.ExtraElements.Length == 0)
+        {
+            PublishStepEvaluation(test, TestOutcome.Pass, details: "IOXX ohne Datensaetze.");
+            return TestOutcome.Pass;
+        }
+
+        var actions = new List<string>();
+        var traces = new List<StepConnectionTrace>();
+        long maxWaitMs = 0;
+
+        foreach (var element in parameters.ExtraElements)
+        {
+            if (!string.Equals(element.Name, "Record", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var disabled = element.GetAttribute("Disabled");
+            if (string.Equals(disabled, "yes", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var direction = element.GetAttribute("Direction");
+            if (!string.Equals(direction, "Send", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var channelName = ExtractSignalName(element.GetAttribute("ChannelName"));
+            if (string.IsNullOrWhiteSpace(channelName))
+            {
+                continue;
+            }
+
+            var outState = element.GetAttribute("Out").Trim().Trim('\'', '"');
+            object? value = ResolveDigitalIoValue(channelName!, outState, out var valueDescription);
+
+            WriteSignal(channelName!, value);
+            traces.AddRange(CollectSignalTraces(channelName!, "Ansteuerung"));
+
+            var relayState = element.GetAttribute("RelayState").Trim().Trim('\'', '"');
+            var waitMs = ParseDurationMilliseconds(element.GetAttribute("WaitTime"));
+            maxWaitMs = Math.Max(maxWaitMs, waitMs);
+
+            actions.Add(string.IsNullOrWhiteSpace(valueDescription)
+                ? $"{channelName}={_evaluator.ToText(value)} Relay={relayState}"
+                : $"{channelName}={_evaluator.ToText(value)} Relay={relayState} ({valueDescription})");
+        }
+
+        if (maxWaitMs > 0)
+        {
+            AdvanceTime(maxWaitMs);
+        }
+
+        PublishStepEvaluation(
+            test,
+            TestOutcome.Pass,
+            details: actions.Count == 0 ? "IOXX ohne wirksame Send-Datensaetze." : string.Join(", ", actions),
+            traces: traces
+                .GroupBy(trace => $"{trace.Title}|{string.Join(">", trace.Nodes)}", StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList());
+        return TestOutcome.Pass;
+    }
+
+    private object? ResolveDigitalIoValue(string signalName, string outState, out string? description)
+    {
+        description = null;
+        if (_wireVizResolver != null &&
+            _wireVizResolver.TryResolveTesterOutputValue(signalName, outState, _signalState, out var configuredValue, out description))
+        {
+            return configuredValue;
+        }
+
+        return outState.ToUpperInvariant() switch
+        {
+            "H" => 24d,
+            "L" => 0d,
+            "1" => 24d,
+            "0" => 0d,
+            "TRUE" => true,
+            "FALSE" => false,
+            _ => true
+        };
+    }
+
     private TestOutcome RunGenericTest(Test test)
     {
         var info = test.Parameters?.DrawingReference ?? test.Parameters?.Message;
@@ -473,6 +587,80 @@ public partial class Ct3xxProgramSimulator
         }
 
         PublishStepEvaluation(test, TestOutcome.Pass, details: string.IsNullOrWhiteSpace(info) ? null : info);
+        return TestOutcome.Pass;
+    }
+
+    private TestOutcome RunExecutableCallTest(Test test)
+    {
+        var parameters = test.Parameters;
+        if (parameters == null)
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "ECLL ohne Parameter.");
+            return TestOutcome.Error;
+        }
+
+        var fileExpression = GetParameterAttribute(parameters, "ExeFileName");
+        var executablePath = _evaluator.ResolveText(fileExpression);
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "ECLL ohne ExeFileName.");
+            return TestOutcome.Error;
+        }
+
+        executablePath = Path.GetFullPath(executablePath);
+        if (!File.Exists(executablePath))
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: $"Datei nicht gefunden: {executablePath}");
+            return TestOutcome.Error;
+        }
+
+        var waitForFinish = ParseYesNo(GetParameterAttribute(parameters, "WaitForFinish"), defaultValue: true);
+        var evaluateExitCode = ParseYesNo(GetParameterAttribute(parameters, "EvaluateExitCode"), defaultValue: false);
+        if (evaluateExitCode && !waitForFinish)
+        {
+            waitForFinish = true;
+            _observer.OnMessage("ECLL: WaitForFinish wurde aktiviert, weil EvaluateExitCode ausgewertet werden soll.");
+        }
+
+        var startInfo = BuildExecutableStartInfo(executablePath);
+        _observer.OnMessage($"ECLL: starte {startInfo.FileName} {startInfo.Arguments}".Trim());
+
+        using var process = new Process { StartInfo = startInfo };
+        process.Start();
+
+        if (!waitForFinish)
+        {
+            PublishStepEvaluation(test, TestOutcome.Pass, details: $"Gestartet: {Path.GetFileName(executablePath)}");
+            return TestOutcome.Pass;
+        }
+
+        process.WaitForExit();
+        var exitCode = process.ExitCode;
+        _observer.OnMessage($"ECLL: ExitCode={exitCode}");
+
+        if (!evaluateExitCode)
+        {
+            PublishStepEvaluation(test, TestOutcome.Pass, measured: exitCode, details: $"ExitCode={exitCode}");
+            return TestOutcome.Pass;
+        }
+
+        var expectedExitCode = ParseExpectedExitCode(parameters);
+        var outcome = exitCode == expectedExitCode ? TestOutcome.Pass : TestOutcome.Fail;
+        PublishStepEvaluation(test, outcome, measured: exitCode, lower: expectedExitCode, upper: expectedExitCode, details: $"ExitCode={exitCode}, erwartet={expectedExitCode}");
+        return outcome;
+    }
+
+    private TestOutcome RunWaitTest(Test test)
+    {
+        var waitExpression = GetParameterAttribute(test.Parameters, "WaitTime");
+        var delayMs = ParseDurationMilliseconds(waitExpression);
+        if (delayMs > 0)
+        {
+            Thread.Sleep((int)Math.Min(delayMs, 5_000));
+            AdvanceTime(delayMs);
+        }
+
+        PublishStepEvaluation(test, TestOutcome.Pass, details: $"WaitTime={delayMs} ms");
         return TestOutcome.Pass;
     }
 
@@ -592,7 +780,7 @@ public partial class Ct3xxProgramSimulator
             ? "Messbusse verbunden."
             : string.Join(", ", _measurementBusSignals.OrderBy(item => item.Key).Select(item => $"{item.Key}={item.Value}"));
         _observer.OnMessage($"SC2C: {details}");
-        RememberSignal("VCC_Plus", 24d);
+        WriteSignal("VCC_Plus", 24d);
         TrySetExternalSignal("HELPER_SUPPLY", true);
         PublishStepEvaluation(test, TestOutcome.Pass, details: details);
         return TestOutcome.Pass;
@@ -1056,6 +1244,117 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    private static string? GetParameterAttribute(TestParameters? parameters, string attributeName)
+    {
+        if (parameters?.AdditionalAttributes == null || string.IsNullOrWhiteSpace(attributeName))
+        {
+            return null;
+        }
+
+        var attribute = parameters.AdditionalAttributes.FirstOrDefault(item =>
+            string.Equals(item.Name, attributeName, StringComparison.OrdinalIgnoreCase));
+        return attribute?.Value;
+    }
+
+    private static bool ParseYesNo(string? value, bool defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return defaultValue;
+        }
+
+        var normalized = value.Trim().Trim('\'', '"');
+        return normalized.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("on", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int ParseExpectedExitCode(TestParameters parameters)
+    {
+        var candidates = new[] { "ExpectedExitCode", "ExitCode", "PassExitCode" };
+        foreach (var candidate in candidates)
+        {
+            var raw = GetParameterAttribute(parameters, candidate);
+            if (int.TryParse(raw?.Trim().Trim('\'', '"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return 0;
+    }
+
+    private static long ParseDurationMilliseconds(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return 0L;
+        }
+
+        var trimmed = raw.Trim().Trim('\'', '"');
+        var match = System.Text.RegularExpressions.Regex.Match(trimmed, @"^\s*([-+]?\d+(?:[.,]\d+)?)\s*([A-Za-zµ]*)\s*$");
+        if (!match.Success)
+        {
+            return 0L;
+        }
+
+        var numericText = match.Groups[1].Value.Replace(',', '.');
+        if (!double.TryParse(numericText, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+        {
+            return 0L;
+        }
+
+        var unit = match.Groups[2].Value.Trim().ToLowerInvariant();
+        var milliseconds = unit switch
+        {
+            "" => number,
+            "ms" => number,
+            "s" => number * 1000d,
+            "us" => number / 1000d,
+            "µs" => number / 1000d,
+            _ => number
+        };
+
+        return (long)Math.Max(0d, Math.Round(milliseconds, MidpointRounding.AwayFromZero));
+    }
+
+    private ProcessStartInfo BuildExecutableStartInfo(string executablePath)
+    {
+        var extension = Path.GetExtension(executablePath);
+        var workingDirectory = Path.GetDirectoryName(executablePath) ?? _context.ProgramDirectory;
+        if (extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase) || extension.Equals(".bat", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c \"{executablePath}\"",
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+
+        if (extension.Equals(".ps1", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-ExecutionPolicy Bypass -File \"{executablePath}\"",
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+
+        return new ProcessStartInfo
+        {
+            FileName = executablePath,
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+    }
+
     private IEnumerable<string> EnumerateSignalCandidates(Record record)
     {
         var candidates = new[]
@@ -1238,6 +1537,7 @@ public partial class Ct3xxProgramSimulator
         if (_externalDeviceSession == null)
         {
             _externalDeviceState = ExternalDeviceStateSnapshot.Empty;
+            PublishStateSnapshot();
             return;
         }
 
@@ -1246,6 +1546,7 @@ public partial class Ct3xxProgramSimulator
             if (_externalDeviceSession.TryReadState(_cancellationToken, out var snapshot, out _, _simulatedTimeMs))
             {
                 _externalDeviceState = snapshot;
+                PublishStateSnapshot();
             }
         }
         catch

@@ -65,6 +65,8 @@ dotnet run --project Ct3xxAltiumWireVizExporter -- `
   --output .\examples\altium-wireviz\generated_wireviz.yaml
 ```
 
+Die verfuegbaren CLI- und JSON-Optionen sind in [OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxAltiumWireVizExporter/OPTIONS.md) zusammengefasst.
+
 ## Ausgabe
 
 Die Ausgabe ist standardkonformes WireViz-YAML mit:

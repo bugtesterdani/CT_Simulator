@@ -13,6 +13,20 @@ public sealed partial class WireVizHarnessResolver
 {
     private sealed partial class WireVizGraph
     {
+        private static readonly HashSet<string> GenericBoundaryLabels = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "IN",
+            "OUT",
+            "GND",
+            "VPLUS",
+            "VMINUS",
+            "VIN",
+            "VOUT",
+            "SIG",
+            "INPUT",
+            "OUTPUT"
+        };
+
         private readonly Dictionary<string, List<WireVizEndpoint>> _connectors;
         private readonly Dictionary<string, HashSet<string>> _edges;
         private readonly IReadOnlyList<SimulationElementDefinition> _simulationElements;
@@ -91,7 +105,7 @@ public sealed partial class WireVizHarnessResolver
             var resolved = traversal.Visited
                 .SelectMany(key => ResolveEndpointByKey(key))
                 .ToList();
-            return SelectPreferredTargets(source, resolved);
+            return SelectPreferredTargets(source, resolved, preserveSourceSignalName: false);
         }
 
         public IReadOnlyList<WireVizSignalTrace> TraceSignalPaths(WireVizEndpoint source, IReadOnlyDictionary<string, object?>? signalState)
@@ -111,7 +125,7 @@ public sealed partial class WireVizHarnessResolver
                 .SelectMany(key => ResolveEndpointByKey(key))
                 .ToList();
 
-            var targets = SelectPreferredTargets(source, resolved)
+            var targets = SelectPreferredTargets(source, resolved, preserveSourceSignalName: true)
                 .DistinctBy(endpoint => endpoint.Key, StringComparer.OrdinalIgnoreCase)
                 .ToList();
             if (targets.Count == 0)
@@ -148,7 +162,10 @@ public sealed partial class WireVizHarnessResolver
                 .SelectMany(key => ResolveEndpointByKey(key))
                 .ToList();
 
-            var selectedEndpoints = SelectPreferredTargets(source, resolvedEndpoints)
+            var selectedEndpoints = SelectPreferredTargets(source, resolvedEndpoints, preserveSourceSignalName: forWrite)
+                .OrderBy(endpoint => endpoint.Role == WireVizConnectorRole.Device ? 0 : endpoint.Role == WireVizConnectorRole.Harness ? 1 : 2)
+                .ThenBy(endpoint => IsGenericBoundaryLabel(endpoint.PinLabel) ? 1 : 0)
+                .ThenByDescending(endpoint => endpoint.Key.Count(ch => ch == '.'))
                 .DistinctBy(endpoint => endpoint.Key, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -179,7 +196,7 @@ public sealed partial class WireVizHarnessResolver
                     continue;
                 }
 
-                var signalName = string.IsNullOrWhiteSpace(endpoint.PinLabel) ? endpoint.Key : endpoint.PinLabel!;
+                var signalName = GetRuntimeSignalName(source, endpoint, preserveSourceSignalName: forWrite);
                 var scale = traversal.SourceToNodeScale.TryGetValue(endpoint.Key, out var endpointScale)
                     ? endpointScale
                     : 1d;
@@ -291,17 +308,102 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
-        private IReadOnlyList<WireVizEndpoint> SelectPreferredTargets(WireVizEndpoint source, IReadOnlyList<WireVizEndpoint> resolved)
+        private IReadOnlyList<WireVizEndpoint> SelectPreferredTargets(
+            WireVizEndpoint source,
+            IReadOnlyList<WireVizEndpoint> resolved,
+            bool preserveSourceSignalName)
         {
-            var preferredTargets = resolved
-                .Where(endpoint =>
-                    !string.Equals(endpoint.Key, source.Key, StringComparison.OrdinalIgnoreCase) &&
-                    endpoint.Role is WireVizConnectorRole.Harness or WireVizConnectorRole.Device)
+            var candidates = resolved
+                .Where(endpoint => !string.Equals(endpoint.Key, source.Key, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            return preferredTargets.Count > 0
-                ? preferredTargets
-                : resolved;
+            var deviceTargets = candidates
+                .Where(IsDeviceLikeEndpoint)
+                .ToList();
+            if (deviceTargets.Count > 0)
+            {
+                candidates = deviceTargets;
+            }
+            else
+            {
+                var preferredTargets = candidates
+                    .Where(endpoint => endpoint.Role is WireVizConnectorRole.Harness or WireVizConnectorRole.Device)
+                    .ToList();
+                if (preferredTargets.Count > 0)
+                {
+                    candidates = preferredTargets;
+                }
+            }
+
+            return candidates
+                .GroupBy(endpoint => GetRuntimeSignalName(source, endpoint, preserveSourceSignalName), StringComparer.OrdinalIgnoreCase)
+                .Select(group => group
+                    .OrderByDescending(GetTargetSpecificityScore)
+                    .ThenBy(endpoint => endpoint.Key, StringComparer.OrdinalIgnoreCase)
+                    .First())
+                .ToList();
+        }
+
+        private static int GetTargetSpecificityScore(WireVizEndpoint endpoint)
+        {
+            var score = 0;
+            score += IsDeviceLikeEndpoint(endpoint) ? 100 : endpoint.Role switch
+            {
+                WireVizConnectorRole.Harness => 50,
+                _ => 0
+            };
+
+            if (!IsGenericBoundaryLabel(endpoint.PinLabel))
+            {
+                score += 20;
+            }
+
+            if (endpoint.Designator.Contains("DevicePort", StringComparison.OrdinalIgnoreCase))
+            {
+                score += 30;
+            }
+
+            if (endpoint.Designator.Contains("BoardPort", StringComparison.OrdinalIgnoreCase))
+            {
+                score -= 30;
+            }
+
+            score += endpoint.Key.Count(ch => ch == '.') * 10;
+            score += endpoint.Designator.Count(ch => ch == '.');
+            return score;
+        }
+
+        private static string GetRuntimeSignalName(WireVizEndpoint source, WireVizEndpoint target, bool preserveSourceSignalName)
+        {
+            if (IsDeviceLikeEndpoint(target) &&
+                !string.IsNullOrWhiteSpace(target.PinLabel) &&
+                !IsGenericBoundaryLabel(target.PinLabel))
+            {
+                return target.PinLabel!;
+            }
+
+            if (preserveSourceSignalName && !string.IsNullOrWhiteSpace(source.PinLabel))
+            {
+                return source.PinLabel!;
+            }
+
+            if (!string.IsNullOrWhiteSpace(source.PinLabel))
+            {
+                return source.PinLabel!;
+            }
+
+            return target.Key;
+        }
+
+        private static bool IsGenericBoundaryLabel(string? label)
+        {
+            return !string.IsNullOrWhiteSpace(label) && GenericBoundaryLabels.Contains(label.Trim());
+        }
+
+        private static bool IsDeviceLikeEndpoint(WireVizEndpoint endpoint)
+        {
+            return endpoint.Role == WireVizConnectorRole.Device ||
+                   endpoint.Designator.Contains("DevicePort", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool TryReconstructPath(

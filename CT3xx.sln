@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ct3xxSimulator.WinAppDriver
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ct3xxAltiumWireVizExporter", "Ct3xxAltiumWireVizExporter\Ct3xxAltiumWireVizExporter.csproj", "{199EBBB6-ABA3-4836-9474-6CBDA9E105B5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ct3xxSimulator.Tests", "Ct3xxSimulator.Tests\Ct3xxSimulator.Tests.csproj", "{39EB2AF9-5176-444D-B46E-239728CED82F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -181,6 +183,18 @@ Global
 		{199EBBB6-ABA3-4836-9474-6CBDA9E105B5}.Release|x64.Build.0 = Release|Any CPU
 		{199EBBB6-ABA3-4836-9474-6CBDA9E105B5}.Release|x86.ActiveCfg = Release|Any CPU
 		{199EBBB6-ABA3-4836-9474-6CBDA9E105B5}.Release|x86.Build.0 = Release|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Debug|x64.Build.0 = Debug|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Debug|x86.Build.0 = Debug|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Release|x64.ActiveCfg = Release|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Release|x64.Build.0 = Release|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Release|x86.ActiveCfg = Release|Any CPU
+		{39EB2AF9-5176-444D-B46E-239728CED82F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -4,6 +4,16 @@ connectors:
     pins: [SC3_5_0, SC3_15_0, SC3_29_0, SC3_38_0]
     pinlabels: [VCC_Plus, VCC_GND, ADC_IN, DIG_OUT]
 
+  UIF:
+    bgcolor: GN
+    pins: [OUT1, 24V]
+    pinlabels: [UIF_OUT1, UIF_P_24V]
+
+  RELAIS:
+    bgcolor: YE
+    pins: [REL_L, REL_K, COM1, NO1]
+    pinlabels: [REL_L, REL_K, COM1, NO1]
+
   DeviceBoard:
     bgcolor: YE
     pins: [VPLUS, GND, IN, OUT]
@@ -16,13 +26,6 @@ cables:
     show_wirenumbers: false
     color_code: DIN
     wirelabels: [VPLUS, GND]
-
-  Eingang:
-    wirecount: 1
-    show_wirecount: false
-    show_wirenumbers: false
-    color_code: DIN
-    wirelabels: [IN]
 
   Ausgang:
     wirecount: 1
@@ -38,9 +41,14 @@ connections:
     - DeviceBoard: [VPLUS, GND]
   -
     - CT3: [SC3_29_0]
-    - Eingang: [IN]
+    - RELAIS: [COM1]
+  -
+    - RELAIS: [NO1]
     - DeviceBoard: [IN]
   -
     - CT3: [SC3_38_0]
     - Ausgang: [OUT]
     - DeviceBoard: [OUT]
+  -
+    - UIF: [OUT1, 24V]
+    - RELAIS: [REL_K, REL_L]

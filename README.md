@@ -15,6 +15,8 @@ Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fue
   Entkoppelte Ergebnis- und Diagrammexporte fuer `PDF`, `JSON` und `CSV`.
 - `Ct3xxSimulator.Validation`
   Eigenstaendige Konfigurations- und Modellvalidierung fuer WireViz und `simulation.yaml`.
+- `Ct3xxSimulator.Tests`
+  Regressionstests fuer Simulationskern, Signalauflosung und End-to-End-Beispiele.
 - `Ct3xxProgramParser`
   Parser fuer `.ctxprg` und referenzierte CT3xx-Dateien wie `ctsit`, `ctarb` oder `ctict`.
 - `Ct3xxWireVizParser`
@@ -35,6 +37,7 @@ CT3xx/
 |- Ct3xxSimulationModelParser/
 |- Ct3xxSimulator/
 |- Ct3xxSimulator.Export/
+|- Ct3xxSimulator.Tests/
 |- Ct3xxSimulator.Validation/
 |- Ct3xxSimulator.Desktop/
 |- Ct3xxSimulator.WinAppDriverTests/
@@ -52,8 +55,13 @@ CT3xx/
 dotnet build CT3xx.sln
 ```
 
+```powershell
+dotnet test Ct3xxSimulator.Tests\Ct3xxSimulator.Tests.csproj
+```
+
 Die Projektmappe liegt in [CT3xx.sln](C:/Users/hello/Desktop/CT3xx/CT3xx.sln).
 Die priorisierte Weiterentwicklungsplanung liegt in [ROADMAP.md](C:/Users/hello/Desktop/CT3xx/ROADMAP.md).
+Format- und Konfigurationshinweise liegen gesammelt in [OPTIONS.md](C:/Users/hello/Desktop/CT3xx/OPTIONS.md).
 
 ## Paketverwaltung und Security
 
@@ -76,7 +84,7 @@ dotnet run --project Ct3xxSimulator.Desktop
 
 Die App unterstuetzt aktuell:
 
-- Auswahl von Testprogramm-Ordner, Verdrahtungs-Ordner, Simulationsmodell-Ordner und DUT-Modell
+- Auswahl von Szenario-Datei, Testprogramm-Ordner, Verdrahtungs-Ordner, Simulationsmodell-Ordner und DUT-Modell
 - DUT-Modelle als `.py`, `.json`, `.yaml` oder `.yml`
 - Szenario-Presets
 - Validierung der Konfiguration
@@ -84,8 +92,17 @@ Die App unterstuetzt aktuell:
 - Ergebnisexport als `PDF`, `JSON` oder `CSV`
 - Detailfenster fuer Schrittergebnisse mit Verbindungsgraph und Messkurven
 - optionales Live-Zustandsfenster fuer Signale, DUT-Zustaende, Relais, Faults und Zeitverlauf
+- Ausfuehrung externer Testprogramm-Skripte/Dateien inklusive optionaler Exit-Code-Auswertung
+- explizites Laden und Speichern von Szenario-Preset-Dateien als `.json`
 
 Liegt im Testprogramm-Ordner genau eine `.ctxprg`, wird sie automatisch verwendet. Bei mehreren Programmen kann die Datei explizit ausgewaehlt werden.
+
+In der Verbindungsansicht gilt aktuell:
+
+- Hauptansicht zeigt je Trace die drei Gruppen `Pruefsystem`, `Verdrahtung / Baugruppe`, `Geraet / Signal`
+- Inline-Bauteile wie ein einzelnes Relais bleiben im Hauptpfad sichtbar, oeffnen aber kein eigenes Unterfenster
+- nur echte Unterbaugruppen mit internem Teilpfad sind klickbar
+- Unteransichten uebernehmen die Signalrichtung aus dem uebergeordneten Fenster
 
 ## Simulationsmodell
 
@@ -105,7 +122,9 @@ Die Simulation trennt sauber zwischen:
    - `transformer`
    - `current_transformer`
    - `assembly`
-   - weitere Laufzeittypen wie `switch`, `fuse`, `diode`, `load`, `voltage_divider`
+   - `tester_supply`
+   - `tester_output`
+   - weitere Laufzeittypen wie `switch`, `fuse`, `diode`, `load`, `voltage_divider`, `sensor`, `opto`, `transistor`
 
 `assembly` erlaubt verschachtelte Unterverdrahtungen und Untermodelle, z. B. fuer Platinen oder Baugruppen.
 
@@ -151,7 +170,7 @@ Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
 ## Beispiele
 
 - `simtest/`
-  Hauptbeispiel fuer hierarchische Verdrahtung, Simulation und DUT-Profile
+  Hauptbeispiel fuer hierarchische Verdrahtung, UIF-gesteuertes Relais im Hauptplan, Simulation und DUT-Profile
 - `simtest_transformer/`
   End-to-End-Beispiel fuer Transformator und Stromwandler
 - `examples/PythonDeviceSimulator/`
@@ -178,4 +197,5 @@ Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
 
 - `WireViz` bleibt frei von projektspezifischen Sonderfeldern.
 - Bauteilverhalten gehoert in `simulation.yaml`.
+- Tester-seitige Ausgangsspannungen oder Open-Circuit-Verhalten koennen deklarativ ueber `tester_supply` und `tester_output` beschrieben werden.
 - Neue DUT- oder Bauteilmodelle sollten ueber die Parser- und Simulationsschicht erweitert werden, nicht durch Hardcoding in der UI.

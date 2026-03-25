@@ -70,6 +70,8 @@ You can override it:
 py -3 device_simulator.py --pipe \\.\pipe\my-ct3xx-device
 ```
 
+The configurable options and supported pipe actions are summarized in [OPTIONS.md](C:/Users/hello/Desktop/CT3xx/examples/PythonDeviceSimulator/OPTIONS.md).
+
 ## Test with the mock client
 
 In a second terminal:

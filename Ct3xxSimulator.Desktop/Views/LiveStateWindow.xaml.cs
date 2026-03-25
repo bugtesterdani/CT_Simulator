@@ -13,6 +13,7 @@ namespace Ct3xxSimulator.Desktop.Views;
 public partial class LiveStateWindow : Window
 {
     private readonly Dictionary<string, IReadOnlyList<MeasurementCurvePoint>> _history = new(StringComparer.OrdinalIgnoreCase);
+    private bool _updatingSelector;
 
     public LiveStateWindow()
     {
@@ -35,11 +36,19 @@ public partial class LiveStateWindow : Window
             .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
             .Select(item => new SimulationStateItemViewModel(item.Key, item.Value))
             .ToList();
+        DeviceSourcesGrid.ItemsSource = snapshot.ExternalDeviceState.Sources
+            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new SimulationStateItemViewModel(item.Key, item.Value))
+            .ToList();
         DeviceOutputsGrid.ItemsSource = snapshot.ExternalDeviceState.Outputs
             .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
             .Select(item => new SimulationStateItemViewModel(item.Key, item.Value))
             .ToList();
         DeviceInternalsGrid.ItemsSource = snapshot.ExternalDeviceState.InternalSignals
+            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new SimulationStateItemViewModel(item.Key, item.Value))
+            .ToList();
+        DeviceInterfacesGrid.ItemsSource = snapshot.ExternalDeviceState.Interfaces
             .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
             .Select(item => new SimulationStateItemViewModel(item.Key, item.Value))
             .ToList();
@@ -60,23 +69,32 @@ public partial class LiveStateWindow : Window
         }
 
         var selected = SignalHistorySelector.SelectedItem as string;
+        _updatingSelector = true;
         SignalHistorySelector.ItemsSource = _history.Keys.ToList();
         if (!string.IsNullOrWhiteSpace(selected) && _history.ContainsKey(selected))
         {
             SignalHistorySelector.SelectedItem = selected;
         }
-        else if (SignalHistorySelector.Items.Count > 0 && SignalHistorySelector.SelectedIndex < 0)
+        else if (SignalHistorySelector.Items.Count > 0)
         {
             SignalHistorySelector.SelectedIndex = 0;
         }
         else
         {
-            RenderHistory(null);
+            SignalHistorySelector.SelectedIndex = -1;
         }
+        _updatingSelector = false;
+
+        RenderHistory(SignalHistorySelector.SelectedItem as string);
     }
 
     private void OnSignalHistoryChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_updatingSelector)
+        {
+            return;
+        }
+
         var selected = SignalHistorySelector.SelectedItem as string;
         RenderHistory(selected);
     }
@@ -104,8 +122,11 @@ public partial class LiveStateWindow : Window
 
         const double left = 48;
         const double top = 18;
-        const double width = 900;
-        const double height = 120;
+        const double width = 1030;
+        const double height = 145;
+
+        HistoryCanvas.Width = width + 100;
+        HistoryCanvas.Height = 210;
 
         var minTime = numericPoints.Min(point => point.TimeMs);
         var maxTime = Math.Max(minTime + 1, numericPoints.Max(point => point.TimeMs));
@@ -144,7 +165,8 @@ public partial class LiveStateWindow : Window
         AddHistoryLabel(left - 10, top - 4, $"{maxValue:0.###}");
         AddHistoryLabel(left - 10, top + height - 10, $"{minValue:0.###}");
         AddHistoryLabel(left, top + height + 6, $"{minTime} ms");
-        AddHistoryLabel(left + width - 40, top + height + 6, $"{maxTime} ms");
+        AddHistoryLabel(left + width - 55, top + height + 6, $"{maxTime} ms");
+        AddHistoryLabel(left + 6, top - 24, signalName);
     }
 
     private void AddHistoryLabel(double left, double top, string text)

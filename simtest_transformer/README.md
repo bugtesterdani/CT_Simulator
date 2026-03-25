@@ -32,3 +32,10 @@ Vollstaendiges End-to-End-Beispiel fuer einen Spannungstransformator und einen S
 - `wireplan/simulation.yaml`
 - `device/main.py`
 - `device/devices/TrafoStromwandler_good.yaml`
+
+Detailoptionen:
+
+- [OPTIONS.md](C:/Users/hello/Desktop/CT3xx/simtest_transformer/OPTIONS.md)
+- [ct3xx/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/simtest_transformer/ct3xx/OPTIONS.md)
+- [wireplan/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/simtest_transformer/wireplan/OPTIONS.md)
+- [device/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/simtest_transformer/device/OPTIONS.md)

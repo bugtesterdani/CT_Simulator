@@ -135,11 +135,17 @@ public sealed partial class WireVizHarnessResolver
                         var emitter = ReadMetadata(unknown, "emitter");
                         var drain = ReadMetadata(unknown, "drain");
                         var source = ReadMetadata(unknown, "source");
+                        var transistorType = ReadMetadata(unknown, "transistor_type");
+                        if (string.IsNullOrWhiteSpace(transistorType))
+                        {
+                            transistorType = ReadMetadata(unknown, "device_type");
+                        }
+
                         foreach (var edge in YieldTransistorConnection(
                                      current,
                                      string.IsNullOrWhiteSpace(collector) ? drain : collector,
                                      string.IsNullOrWhiteSpace(emitter) ? source : emitter,
-                                     ReadMetadata(unknown, "type"),
+                                     transistorType,
                                      currentTimeMs,
                                      faults))
                         {

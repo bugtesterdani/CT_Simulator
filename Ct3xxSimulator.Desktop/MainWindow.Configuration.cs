@@ -13,6 +13,7 @@ public partial class MainWindow
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
+        _scenarioPresetStore = new ScenarioPresetStore(ScenarioPresetFilePath);
         LoadScenarioPresets();
         ApplyDefaultScenario();
         UpdateConfigurationSummary();
@@ -183,7 +184,8 @@ public partial class MainWindow
             $"Programm: {Path.GetFileName(SelectedFilePath ?? string.Empty)} | " +
             $"Verdrahtung: {Path.GetFileName(WiringFolderPath ?? string.Empty)} | " +
             $"Simulation: {Path.GetFileName(SimulationModelFolderPath ?? string.Empty)} | " +
-            $"Geraetemodell: {Path.GetFileName(PythonScriptPath ?? string.Empty)}";
+            $"Geraetemodell: {Path.GetFileName(PythonScriptPath ?? string.Empty)} | " +
+            $"Szenario-Datei: {Path.GetFileName(ScenarioPresetFilePath ?? string.Empty)}";
     }
 
     private void LoadScenarioPresets()
@@ -193,6 +195,52 @@ public partial class MainWindow
         {
             ScenarioPresets.Add(preset);
         }
+
+        AddLog($"Szenario-Datei geladen: {_scenarioPresetStore.FilePath}");
+    }
+
+    private void OnBrowseScenarioPresetFile(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Szenario-Datei waehlen",
+            Filter = "JSON (*.json)|*.json|Alle Dateien (*.*)|*.*",
+            FileName = Path.GetFileName(ScenarioPresetFilePath ?? "scenarios.json"),
+            InitialDirectory = GetInitialDirectory(ScenarioPresetFilePath)
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            ScenarioPresetFilePath = dialog.FileName;
+        }
+    }
+
+    private void OnLoadScenarioPresetFile(object sender, RoutedEventArgs e)
+    {
+        _scenarioPresetStore = new ScenarioPresetStore(ScenarioPresetFilePath);
+        LoadScenarioPresets();
+        AddLog($"Szenario-Datei explizit geladen: {_scenarioPresetStore.FilePath}");
+    }
+
+    private void OnSaveScenarioPresetFileAs(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Szenario-Datei speichern unter",
+            Filter = "JSON (*.json)|*.json|Alle Dateien (*.*)|*.*",
+            FileName = Path.GetFileName(ScenarioPresetFilePath ?? "scenarios.json"),
+            InitialDirectory = GetInitialDirectory(ScenarioPresetFilePath)
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        ScenarioPresetFilePath = dialog.FileName;
+        _scenarioPresetStore = new ScenarioPresetStore(ScenarioPresetFilePath);
+        _scenarioPresetStore.Save(ScenarioPresets);
+        AddLog($"Szenario-Datei gespeichert: {_scenarioPresetStore.FilePath}");
     }
 
     private void OnApplyScenarioPreset(object sender, RoutedEventArgs e)
@@ -277,5 +325,16 @@ public partial class MainWindow
         }
 
         return issues;
+    }
+
+    private static string? GetInitialDirectory(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var directory = Path.GetDirectoryName(path);
+        return string.IsNullOrWhiteSpace(directory) ? null : directory;
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -56,6 +57,23 @@ public class ExpressionEvaluator
         if (double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
         {
             return number;
+        }
+
+        var concatenation = SplitTopLevel(trimmed, '&');
+        if (concatenation.Count > 1)
+        {
+            var builder = new StringBuilder();
+            foreach (var part in concatenation)
+            {
+                builder.Append(ToText(Evaluate(part)));
+            }
+
+            return builder.ToString();
+        }
+
+        if (TryEvaluateFunction(trimmed, out var functionResult))
+        {
+            return functionResult;
         }
 
         if (VariableAddress.TryParse(trimmed, out var address))
@@ -147,24 +165,7 @@ public class ExpressionEvaluator
             return string.Empty;
         }
 
-        if (!template.Contains('&'))
-        {
-            return ToText(Evaluate(template.Trim()));
-        }
-
-        var builder = new StringBuilder();
-        foreach (var part in template.Split('&'))
-        {
-            var token = part.Trim();
-            if (token.Length == 0)
-            {
-                continue;
-            }
-
-            builder.Append(ToText(Evaluate(token)));
-        }
-
-        return builder.ToString();
+        return ToText(Evaluate(template.Trim()));
     }
 
     public IReadOnlyList<string> ParseOptions(string? options)
@@ -236,5 +237,153 @@ public class ExpressionEvaluator
         }
 
         return value;
+    }
+
+    private bool TryEvaluateFunction(string expression, out object? result)
+    {
+        result = null;
+        var openParenIndex = expression.IndexOf('(');
+        if (openParenIndex <= 0 || !expression.EndsWith(")", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var functionName = expression[..openParenIndex].Trim();
+        var argumentContent = expression[(openParenIndex + 1)..^1];
+        var arguments = SplitArguments(argumentContent);
+
+        switch (functionName.ToUpperInvariant())
+        {
+            case "TESTPROGRAMPATH":
+                result = _context.ProgramDirectory;
+                return true;
+
+            case "PATHCOMBINE":
+                result = Path.Combine(arguments.Select(argument => ToText(Evaluate(argument))).ToArray());
+                return true;
+
+            case "CHAR":
+                if (arguments.Count == 1 && ToDouble(Evaluate(arguments[0])) is double charValue)
+                {
+                    result = ((char)charValue).ToString();
+                    return true;
+                }
+
+                return false;
+
+            case "WRITEFILE":
+                result = ExecuteWriteFile(arguments);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private object ExecuteWriteFile(IReadOnlyList<string> arguments)
+    {
+        if (arguments.Count < 2)
+        {
+            return 0d;
+        }
+
+        var path = ToText(Evaluate(arguments[0]));
+        var content = ToText(Evaluate(arguments[1]));
+        var mode = arguments.Count > 2 ? ToText(Evaluate(arguments[2])).Trim().Trim('\'', '"') : "c";
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return 0d;
+        }
+
+        var fullPath = Path.GetFullPath(path);
+        var directory = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        if (mode.Equals("a", StringComparison.OrdinalIgnoreCase))
+        {
+            File.AppendAllText(fullPath, content, Encoding.UTF8);
+        }
+        else
+        {
+            File.WriteAllText(fullPath, content, Encoding.UTF8);
+        }
+
+        return new FileInfo(fullPath).Length;
+    }
+
+    private static List<string> SplitArguments(string text)
+    {
+        return SplitTopLevel(text, ',');
+    }
+
+    private static List<string> SplitTopLevel(string text, char separator)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return result;
+        }
+
+        var start = 0;
+        var depth = 0;
+        var inSingleQuotes = false;
+        var inDoubleQuotes = false;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+            if (ch == '\'' && !inDoubleQuotes)
+            {
+                inSingleQuotes = !inSingleQuotes;
+                continue;
+            }
+
+            if (ch == '"' && !inSingleQuotes)
+            {
+                inDoubleQuotes = !inDoubleQuotes;
+                continue;
+            }
+
+            if (inSingleQuotes || inDoubleQuotes)
+            {
+                continue;
+            }
+
+            if (ch == '(')
+            {
+                depth++;
+                continue;
+            }
+
+            if (ch == ')')
+            {
+                depth--;
+                continue;
+            }
+
+            if (ch != separator || depth != 0)
+            {
+                continue;
+            }
+
+            var part = text[start..i].Trim();
+            if (part.Length > 0)
+            {
+                result.Add(part);
+            }
+
+            start = i + 1;
+        }
+
+        var last = text[start..].Trim();
+        if (last.Length > 0)
+        {
+            result.Add(last);
+        }
+
+        return result;
     }
 }

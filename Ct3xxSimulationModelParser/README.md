@@ -18,7 +18,10 @@ Parser library for simulation-side YAML models that complement WireViz.
 - `transformer`
 - `current_transformer`
 - `assembly`
+- `tester_supply`
+- `tester_output`
 - `switch`, `fuse`, `diode`, `load`, `voltage_divider` via generic element metadata
+- `sensor`, `opto`, `transistor` via generic element metadata
 
 This keeps the wiring model clean and lets the simulator apply electrical or logical behavior separately.
 
@@ -74,10 +77,50 @@ The current simulator runtime actively evaluates:
 - `assembly`
 - `transformer`
 - `current_transformer`
+- `tester_supply`
+- `tester_output`
 - `switch`
 - `fuse`
 - `diode`
 - `load`
+- `voltage_divider`
+- `sensor`
+- `opto`
+- `transistor`
+
+## Tester outputs and supplies
+
+For test-system driven digital outputs such as `IOXX`, the simulator can now resolve `HIGH` / `LOW`
+via declarative tester-side configuration instead of fixed hardcoded voltages.
+
+Example:
+
+```yaml
+elements:
+  - id: UIF_SUPPLY
+    type: tester_supply
+    signal: UIF_P_24V
+    voltage: 24.0
+
+  - id: UIF_OUT1_CFG
+    type: tester_output
+    signal: UIF_OUT1
+    high_mode: supply
+    high_supply: UIF_P_24V
+    low_mode: open
+```
+
+Supported `tester_output` modes:
+
+- `high_mode: supply`
+- `high_mode: value`
+- `high_mode: open`
+- `low_mode: supply`
+- `low_mode: value`
+- `low_mode: open`
+
+This is useful for outputs that are not simple `0 V / 24 V`, but switch against an external tester supply
+or become electrically open in the inactive state.
 
 ## Transformer semantics
 
@@ -115,4 +158,4 @@ See:
 - `simtest/wireplan/board_device_wireviz.yaml`
 - `simtest/wireplan/board_device_simulation.yaml`
 
-This example shows a top-level `DeviceBoard` assembly that contains a relay and a resistor inside a child wiring/simulation model.
+This example currently shows a top-level harness relay plus a `DeviceBoard` assembly with an internal resistor and DUT connector mapping.

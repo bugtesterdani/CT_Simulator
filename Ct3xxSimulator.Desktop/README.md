@@ -5,6 +5,7 @@ WPF-Oberflaeche fuer den CT3xx-Simulator.
 ## Funktionen
 
 - Auswahl von:
+  - Szenario-Datei (`.json`) fuer Laden und Speichern von Presets
   - Testprogramm-Ordner
   - Verdrahtungs-Ordner
   - Simulationsmodell-Ordner
@@ -18,28 +19,45 @@ WPF-Oberflaeche fuer den CT3xx-Simulator.
 - optionales Live-Zustandsfenster
 - Export als `PDF`, `JSON`, `CSV`
 
+## Bedienung
+
+- Presets werden standardmaessig unter `%LocalAppData%\\Ct3xxSimulatorDesktop\\scenarios.json` gespeichert.
+- Ueber das Feld `Szenario-Datei` kann eine andere JSON-Datei explizit ausgewaehlt, geladen oder per `Speichern unter` neu angelegt werden.
+- In der Verbindungsansicht oeffnen nur echte Unterbaugruppen mit internem Pfad ein weiteres Fenster.
+- Einzelne Inline-Bauteile wie Relais im Hauptpfad bleiben sichtbar, sind aber nicht als eigenes Untermodul klickbar.
+- Unteransichten uebernehmen die Richtung des ausgewaehlten Signals aus dem uebergeordneten Fenster und drehen sie nicht mehr selbststaendig um.
+
 ## Relevante Dateien
 
 - `MainWindow.xaml`
   Hauptoberflaeche
 - `MainWindow.xaml.cs`
   Steuerung, Simulationstart und Observer-Anbindung
+- `MainWindow.Configuration.cs`
+  Pfade, Presets und Programmauswahl
+- `MainWindow.Simulation.cs`
+  Simulationslauf, Start des DUT-Prozesses und Observer-Anbindung
+- `MainWindow.Timeline.cs`
+  Schrittmodus und Replay-Navigation
 - `Views/ConnectionGraphWindow.*`
   Verbindungsansicht pro Testschritt
 - `Views/LiveStateWindow.*`
   optionale Live-Zustandsanzeige
-- `Export/`
-  Ergebnisexport
 - `Configuration/`
   Presets
-- `Validation/`
-  Konfigurations- und Modellpruefung
+
+Export und tiefe Modellvalidierung liegen inzwischen in den separaten Projekten:
+
+- `Ct3xxSimulator.Export`
+- `Ct3xxSimulator.Validation`
 
 ## Start
 
 ```powershell
 dotnet run --project Ct3xxSimulator.Desktop
 ```
+
+Konfigurationshinweise stehen in [OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Desktop/OPTIONS.md).
 
 ## Hinweis
 
