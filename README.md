@@ -7,6 +7,8 @@ Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fue
 
 - `Ct3xxSimulator.Desktop`
   WPF-App zum Auswaehlen, Starten und Auswerten von Simulationen.
+- `Ct3xxSimulator.Cli`
+  Konsolenprojekt fuer Batch-Simulationen und CI-nahe Laeufe.
 - `Ct3xxSimulator`
   Simulationskern fuer Testablauf, WireViz-Aufloesung, DUT-Anbindung und Auswertung.
 - `Ct3xxSimulation.Abstractions`
@@ -35,6 +37,7 @@ CT3xx/
 |- Ct3xxProgramParser.Tests/
 |- Ct3xxSimulation.Abstractions/
 |- Ct3xxSimulationModelParser/
+|- Ct3xxSimulator.Cli/
 |- Ct3xxSimulator/
 |- Ct3xxSimulator.Export/
 |- Ct3xxSimulator.Tests/
@@ -199,3 +202,22 @@ Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
 - Bauteilverhalten gehoert in `simulation.yaml`.
 - Tester-seitige Ausgangsspannungen oder Open-Circuit-Verhalten koennen deklarativ ueber `tester_supply` und `tester_output` beschrieben werden.
 - Neue DUT- oder Bauteilmodelle sollten ueber die Parser- und Simulationsschicht erweitert werden, nicht durch Hardcoding in der UI.
+## CLI
+
+```powershell
+dotnet run --project Ct3xxSimulator.Cli -- --help
+```
+
+Die CLI unterstuetzt aktuell:
+
+- Batch-Laeufe ohne WPF
+- direkte Pfadangaben fuer Programm, Verdrahtung, Simulation und DUT
+- optionales Laden eines Presets aus einer bestehenden Szenario-JSON
+- Vorab-Validierung
+- optionalen Export als `PDF`, `JSON` oder `CSV`
+- Exit-Codes anhand von `PASS`, `FAIL` oder Laufzeit-/Validierungsfehlern
+
+Details:
+
+- [Ct3xxSimulator.Cli/README.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Cli/README.md)
+- [Ct3xxSimulator.Cli/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Cli/OPTIONS.md)

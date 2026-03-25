@@ -20,6 +20,10 @@ P1
 
 1. CLI fuer Batch-Simulationen
 
+Status:
+- umgesetzt in `Ct3xxSimulator.Cli`
+- dokumentiert in `Ct3xxSimulator.Cli/README.md`
+
 Nutzen:
 - reproduzierbare Regressionstests ohne WPF
 - einfacher Einsatz in CI

@@ -41,6 +41,7 @@ powershell -ExecutionPolicy Bypass -File scripts\security-scan.ps1
 ## Detaillierte Options-Dateien
 
 - [Ct3xxSimulator.Desktop/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Desktop/OPTIONS.md)
+- [Ct3xxSimulator.Cli/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Cli/OPTIONS.md)
 - [Ct3xxSimulator/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator/OPTIONS.md)
 - [Ct3xxSimulationModelParser/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulationModelParser/OPTIONS.md)
 - [Ct3xxSimulator.Export/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Export/OPTIONS.md)
