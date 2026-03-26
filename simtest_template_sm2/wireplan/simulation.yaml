@@ -1,0 +1,13 @@
+elements:
+  - id: SM2_SUPPLY
+    type: tester_supply
+    signal: SM2_P_24V
+    voltage: 24.0
+
+  - id: REL_HV_CONFIG
+    type: tester_output
+    signal: REL_HV
+    high_mode: supply
+    high_supply: SM2_P_24V
+    low_mode: value
+    low_value: 0.0

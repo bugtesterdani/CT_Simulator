@@ -7,6 +7,7 @@ public interface ISimulationExecutionController
 {
     void WaitBeforeTest(Test test, CancellationToken cancellationToken);
     void WaitAfterTest(Test test, CancellationToken cancellationToken);
+    void WaitAfterSnapshot(SimulationStateSnapshot snapshot, CancellationToken cancellationToken);
 }
 
 public sealed class NullSimulationExecutionController : ISimulationExecutionController
@@ -16,6 +17,10 @@ public sealed class NullSimulationExecutionController : ISimulationExecutionCont
     }
 
     public void WaitAfterTest(Test test, CancellationToken cancellationToken)
+    {
+    }
+
+    public void WaitAfterSnapshot(SimulationStateSnapshot snapshot, CancellationToken cancellationToken)
     {
     }
 }

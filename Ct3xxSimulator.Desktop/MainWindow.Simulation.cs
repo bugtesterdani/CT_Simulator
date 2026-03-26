@@ -36,12 +36,17 @@ public partial class MainWindow
         }
 
         StepResults.Clear();
+        StepTreeRootNodes.Clear();
+        _stepEvaluationHistory.Clear();
         Logs.Clear();
         CurrentStep = null;
         _latestStateSnapshot = null;
         _timeline.Clear();
+        TimelineEntries.Clear();
         _signalHistory.Clear();
         _timelineIndex = -1;
+        _isLoadedSnapshotSession = false;
+        SelectedTimelineEntry = null;
         _executedTestCount = 0;
         _replayPauseAfterStepCount = replayPauseAfterStepCount;
         UpdateLiveStateWindow();
@@ -55,6 +60,8 @@ public partial class MainWindow
             {
                 return;
             }
+
+            Dispatcher.Invoke(() => BuildStepTree(loadedProgram));
 
             ApplySimulationOverrides();
             EnsurePythonDevice();
@@ -167,7 +174,10 @@ public partial class MainWindow
     public void WaitAfterTest(Test test, CancellationToken cancellationToken)
     {
         _executedTestCount++;
+    }
 
+    public void WaitAfterSnapshot(SimulationStateSnapshot snapshot, CancellationToken cancellationToken)
+    {
         var shouldPause =
             IsStepModeEnabled ||
             _pauseAtNextStep ||
@@ -181,12 +191,12 @@ public partial class MainWindow
         _pauseAtNextStep = false;
         if (_replayPauseAfterStepCount.HasValue && _executedTestCount >= _replayPauseAfterStepCount.Value)
         {
-            AddLog($"Replay an Schritt {_executedTestCount} angehalten.");
+            AddLog($"Navigation an Snapshot {_timelineIndex + 1} angehalten.");
             _replayPauseAfterStepCount = null;
         }
         else
         {
-            AddLog($"Pause nach Testschritt: {test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test"}");
+            AddLog($"Pause an Snapshot {_timelineIndex + 1}: {snapshot.ConcurrentEvent ?? snapshot.CurrentStep ?? "-"}");
         }
 
         _stepGate.Reset();
@@ -194,5 +204,6 @@ public partial class MainWindow
         {
             cancellationToken.ThrowIfCancellationRequested();
         }
+
     }
 }

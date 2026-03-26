@@ -10,17 +10,18 @@ public partial class Ct3xxProgramSimulator
 {
     private string ResolveWaveformRuntimeSignal(string fallbackSignal, IReadOnlyDictionary<string, string> metadata, string mbusKey, string testPointKey)
     {
+        metadata.TryGetValue("CHANNEL_CARD_INDEX", out var cardIndex);
         if (metadata.TryGetValue(mbusKey, out var busValue) &&
             !string.IsNullOrWhiteSpace(busValue) &&
             _measurementBusSignals.TryGetValue($"MBus{busValue.Trim()}", out var mappedSignal) &&
             !string.IsNullOrWhiteSpace(mappedSignal))
         {
-            return mappedSignal;
+            return string.IsNullOrWhiteSpace(cardIndex) ? mappedSignal! : $"AM2/{cardIndex} {mappedSignal}";
         }
 
         if (metadata.TryGetValue(testPointKey, out var testPoint) && !string.IsNullOrWhiteSpace(testPoint))
         {
-            return testPoint.Trim();
+            return string.IsNullOrWhiteSpace(cardIndex) ? testPoint.Trim() : $"AM2/{cardIndex} {testPoint.Trim()}";
         }
 
         return fallbackSignal;

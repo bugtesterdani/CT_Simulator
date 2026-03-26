@@ -1,5 +1,12 @@
 # simtest/device
 
+Dies ist die gemeinsame zentrale Geraetebibliothek fuer die Simulator-Beispiele in diesem Repository.
+
+Neue Szenarien sollen hierauf aufbauen und keine eigene parallele Device-Runtime mehr mitbringen. Zulaessig sind pro neuem Szenario nur noch zusaetzliche:
+
+- Python-Geraetemodule unter `devices/*.py`
+- deklarative Profile unter `devices/*.json`, `devices/*.yaml`, `devices/*.yml`
+
 Diese Beispielstruktur unterstuetzt zwei Varianten fuer DUT-Simulationen:
 
 - Python-Geraetemodule unter `devices/*.py`
@@ -347,6 +354,9 @@ Fuer jeden Zustand wird automatisch ein internes Flag gesetzt:
 - `devices/IKI_bad.json`: einfacher, fehlerhafter DUT
 - `devices/IKI_complex.yaml`: mehrere Eingaenge, Kennlinien, Zeitverhalten und Schnittstellen
 - `devices/IKI_waveform.yaml`: waveform-basierter DUT mit Signalform-Erkennung und Response-Kurve
+- `devices/template_sm2_led_analyzer.py`: gemeinsames Python-Modul fuer das `template_SM2`-Beispiel
+- `devices/template_splitted_am2_led_analyzer.py`: gemeinsames Python-Modul fuer das `template_splitted_am2`-Beispiel
+- `devices/TrafoStromwandler_good.yaml`: gemeinsames deklaratives Profil fuer das Transformator-/Stromwandler-Beispiel
 
 ## Idee
 

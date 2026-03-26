@@ -48,6 +48,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     private int _executedTestCount;
     private int? _replayPauseAfterStepCount;
     private bool _suppressCancellationLogOnce;
+    private bool _isLoadedSnapshotSession;
+    private SimulationTimelineEntry? _selectedTimelineEntry;
+    private readonly Dictionary<Test, StepTreeNodeViewModel> _stepTreeNodes = new();
+    private readonly Dictionary<Group, StepTreeNodeViewModel> _groupTreeNodes = new();
+    private readonly List<StepEvaluationHistoryEntry> _stepEvaluationHistory = new();
+    private StepTreeNodeViewModel? _selectedStepTreeNode;
 
     public MainWindow()
     {
@@ -58,8 +64,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     }
 
     public ObservableCollection<StepResultViewModel> StepResults { get; } = new();
+    public ObservableCollection<StepTreeNodeViewModel> StepTreeRootNodes { get; } = new();
     public ObservableCollection<LogEntryViewModel> Logs { get; } = new();
     public ObservableCollection<ScenarioPreset> ScenarioPresets { get; } = new();
+    public ObservableCollection<SimulationTimelineEntry> TimelineEntries { get; } = new();
 
     public string? TestProgramFolderPath
     {
@@ -195,6 +203,32 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     public bool CanStepBackward => _timelineIndex > 0;
     public bool CanStepForward => _timelineIndex >= 0 && _timelineIndex < _timeline.Count - 1;
 
+    public SimulationTimelineEntry? SelectedTimelineEntry
+    {
+        get => _selectedTimelineEntry;
+        set
+        {
+            if (SetField(ref _selectedTimelineEntry, value) && value != null)
+            {
+                SelectTimelineIndex(value.Index, keepSelection: true);
+            }
+        }
+    }
+
+    public StepTreeNodeViewModel? SelectedStepTreeNode
+    {
+        get => _selectedStepTreeNode;
+        set
+        {
+            if (SetField(ref _selectedStepTreeNode, value))
+            {
+                OnPropertyChanged(nameof(CanJumpToStepSnapshot));
+            }
+        }
+    }
+
+    public bool CanJumpToStepSnapshot => GetLatestTimelineIndexForSelectedNode().HasValue;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -217,5 +251,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     private static string FormatNumber(double? value)
     {
         return value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";
+    }
+
+    private sealed class StepEvaluationHistoryEntry
+    {
+        public StepEvaluationHistoryEntry(Test? test, StepResultViewModel result)
+        {
+            Test = test;
+            Result = result;
+        }
+
+        public Test? Test { get; }
+        public StepResultViewModel Result { get; }
     }
 }

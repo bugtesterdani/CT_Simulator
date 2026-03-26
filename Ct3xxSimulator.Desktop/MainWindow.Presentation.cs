@@ -29,9 +29,16 @@ public partial class MainWindow
 
     public void OnProgramStarted(Ct3xxProgram program) => AddLog($"Programm gestartet: {program.ProgramVersion ?? program.Id ?? "unbekannt"}");
     public void OnLoopIteration(int iteration, int totalIterations) => AddLog($"DUT-Durchlauf {iteration}/{totalIterations}");
-    public void OnGroupStarted(Group group) => AddLog($"Gruppe: {group.Name}");
+    public void OnGroupStarted(Group group)
+    {
+        Dispatcher.Invoke(() => SetGroupExpanded(group, true));
+        AddLog($"Gruppe: {group.Name}");
+    }
     public void OnGroupSkipped(Group group, string reason) => AddLog($"Gruppe uebersprungen: {group.Name} ({reason})");
-    public void OnGroupCompleted(Group group) { }
+    public void OnGroupCompleted(Group group)
+    {
+        Dispatcher.Invoke(() => SetGroupExpanded(group, false));
+    }
 
     public void OnTestStarted(Test test)
     {
@@ -48,7 +55,7 @@ public partial class MainWindow
     {
         Dispatcher.Invoke(() =>
         {
-            StepResults.Add(new StepResultViewModel(
+            var result = new StepResultViewModel(
                 evaluation.StepName,
                 evaluation.Outcome.ToString().ToUpperInvariant(),
                 FormatNumber(evaluation.MeasuredValue),
@@ -57,7 +64,11 @@ public partial class MainWindow
                 evaluation.Unit ?? string.Empty,
                 evaluation.Details ?? string.Empty,
                 evaluation.Traces,
-                evaluation.CurvePoints));
+                evaluation.CurvePoints,
+                _timeline.Count == 0 ? null : _timeline.Count - 1);
+            StepResults.Add(result);
+            _stepEvaluationHistory.Add(new StepEvaluationHistoryEntry(test, result));
+            ApplyEvaluationToStepTree(test, result);
         });
     }
 
@@ -65,29 +76,34 @@ public partial class MainWindow
     {
         Dispatcher.Invoke(() =>
         {
+            _isLoadedSnapshotSession = false;
             _latestStateSnapshot = snapshot;
             AppendTimelineSnapshot(snapshot);
             UpdateLiveStateWindow();
         });
     }
 
-    private void OnStepResultSelected(object sender, SelectionChangedEventArgs e)
+    private void OnStepTreeSelected(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        if (sender is not DataGrid { SelectedItem: StepResultViewModel stepResult } dataGrid)
+        SelectedStepTreeNode = e.NewValue as StepTreeNodeViewModel;
+    }
+
+    private void OnStepTreeDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (SelectedStepTreeNode is not StepTreeNodeViewModel node || node.Result == null)
         {
             return;
         }
 
+        var stepResult = node.Result;
         if (stepResult.Traces.Count == 0)
         {
             AddLog($"Keine Verbindungsansicht fuer '{stepResult.StepName}' verfuegbar.");
-            dataGrid.SelectedItem = null;
             return;
         }
 
         var window = new ConnectionGraphWindow(stepResult.StepName, stepResult.Traces, stepResult.CurvePoints) { Owner = this };
         window.ShowDialog();
-        dataGrid.SelectedItem = null;
     }
 
     public void OnMessage(string message) => AddLog(message);
@@ -142,7 +158,7 @@ public partial class MainWindow
             return;
         }
 
-        _liveStateWindow.UpdateSnapshot(_timeline[_timelineIndex].Snapshot, _signalHistory);
+        _liveStateWindow.UpdateSnapshot(_timeline[_timelineIndex].Snapshot, BuildSignalHistoryUpToTimelineIndex(_timelineIndex));
     }
 
     private void OnExportResults(object sender, RoutedEventArgs e)
@@ -163,6 +179,80 @@ public partial class MainWindow
         AddLog($"Ergebnisse exportiert: {Path.GetFileName(dialog.FileName)}");
     }
 
+    private void OnSaveSnapshotSession(object sender, RoutedEventArgs e)
+    {
+        if (IsSimulationRunning)
+        {
+            MessageBox.Show(this, "Snapshot-Sessions koennen nur ausserhalb einer laufenden Simulation gespeichert werden.", "Snapshots speichern", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (_timeline.Count == 0)
+        {
+            MessageBox.Show(this, "Es sind keine Snapshot-Daten vorhanden.", "Snapshots speichern", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Snapshot-Session speichern",
+            Filter = "Snapshot Session (*.snapshot.json)|*.snapshot.json|JSON (*.json)|*.json",
+            FileName = $"ct3xx-snapshots-{DateTime.Now:yyyyMMdd-HHmmss}.snapshot.json"
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var exportDocument = CreateExportDocument();
+        var document = SimulationSnapshotSessionSerializer.Create(
+            DateTimeOffset.Now,
+            ConfigurationSummary,
+            exportDocument.Steps,
+            exportDocument.Logs,
+            _timeline.Select(item => item.Snapshot).ToList(),
+            _signalHistory.ToDictionary(
+                item => item.Key,
+                item => (IReadOnlyList<MeasurementCurvePoint>)item.Value.ToList(),
+                StringComparer.OrdinalIgnoreCase),
+            _timelineIndex);
+
+        SimulationSnapshotSessionSerializer.Save(dialog.FileName, document);
+        AddLog($"Snapshot-Session gespeichert: {Path.GetFileName(dialog.FileName)}");
+    }
+
+    private void OnLoadSnapshotSession(object sender, RoutedEventArgs e)
+    {
+        if (IsSimulationRunning)
+        {
+            MessageBox.Show(this, "Snapshot-Sessions koennen nicht waehrend einer laufenden Simulation geladen werden.", "Snapshots laden", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Snapshot-Session laden",
+            Filter = "Snapshot Session (*.snapshot.json)|*.snapshot.json|JSON (*.json)|*.json"
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var document = SimulationSnapshotSessionSerializer.Load(dialog.FileName);
+            ApplySnapshotSessionDocument(document);
+            AddLog($"Snapshot-Session geladen: {Path.GetFileName(dialog.FileName)}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Snapshot-Session konnte nicht geladen werden", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private SimulationExportDocument CreateExportDocument()
     {
         var steps = StepResults
@@ -175,7 +265,8 @@ public partial class MainWindow
                 step.Unit,
                 step.Details,
                 step.Traces,
-                step.CurvePoints))
+                step.CurvePoints,
+                step.TimelineIndex))
             .ToList();
 
         var logs = Logs
@@ -183,5 +274,68 @@ public partial class MainWindow
             .ToList();
 
         return new SimulationExportDocument(DateTimeOffset.Now, ConfigurationSummary, steps, logs);
+    }
+
+    private void ApplySnapshotSessionDocument(SimulationSnapshotSessionDocument document)
+    {
+        StepResults.Clear();
+        StepTreeRootNodes.Clear();
+        _stepEvaluationHistory.Clear();
+        foreach (var step in document.Steps)
+        {
+            var result = new StepResultViewModel(
+                step.StepName,
+                step.Outcome,
+                step.MeasuredValue,
+                step.LowerLimit,
+                step.UpperLimit,
+                step.Unit,
+                step.Details,
+                step.Traces,
+                step.CurvePoints,
+                step.TimelineIndex);
+            StepResults.Add(result);
+            _stepEvaluationHistory.Add(new StepEvaluationHistoryEntry(null, result));
+        }
+
+        Logs.Clear();
+        foreach (var log in document.Logs)
+        {
+            Logs.Add(new LogEntryViewModel(log.Message, log.Timestamp));
+        }
+
+        _timeline.Clear();
+        TimelineEntries.Clear();
+        foreach (var entry in document.Timeline.OrderBy(item => item.Index))
+        {
+            var snapshot = SimulationSnapshotSessionSerializer.ToSnapshot(entry);
+            var timelineEntry = new SimulationTimelineEntry(entry.Index, snapshot);
+            _timeline.Add(timelineEntry);
+            TimelineEntries.Add(timelineEntry);
+        }
+
+        _signalHistory.Clear();
+        foreach (var item in document.SignalHistory)
+        {
+            _signalHistory[item.Key] = item.Value
+                .Select(point => new MeasurementCurvePoint(point.TimeMs, point.Label, point.Value, point.Unit))
+                .ToList();
+        }
+
+        ConfigurationSummary = document.ConfigurationSummary;
+        ValidationSummary = "Snapshot-Session geladen.";
+        _isLoadedSnapshotSession = true;
+        _latestStateSnapshot = _timeline.Count == 0 ? null : _timeline[Math.Clamp(document.SelectedTimelineIndex, 0, _timeline.Count - 1)].Snapshot;
+        _timelineIndex = _timeline.Count == 0 ? -1 : Math.Clamp(document.SelectedTimelineIndex, 0, _timeline.Count - 1);
+        if (_timelineIndex >= 0)
+        {
+            SelectTimelineIndex(_timelineIndex);
+        }
+        else
+        {
+            CurrentStep = null;
+            RaiseTimelineNavigationChanged();
+            UpdateLiveStateWindow();
+        }
     }
 }

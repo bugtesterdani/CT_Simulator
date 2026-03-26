@@ -95,6 +95,11 @@ Die App unterstuetzt aktuell:
 - Ergebnisexport als `PDF`, `JSON` oder `CSV`
 - Detailfenster fuer Schrittergebnisse mit Verbindungsgraph und Messkurven
 - optionales Live-Zustandsfenster fuer Signale, DUT-Zustaende, Relais, Faults und Zeitverlauf
+- Live-Zustandsfenster zeigt bei `concurrent`-Gruppen jetzt auch Concurrent-Gruppe, Event und Branch-Zustaende
+- fuer `concurrent`-Gruppen werden jetzt explizite globale Snapshot-Punkte wie Warten, Interface-Request/-Response und Prozessende erzeugt
+- sichtbare Snapshot-Timeline im Hauptfenster mit globalen Events und Branch-Zusammenfassung
+- `Weiter` und `Zurueck` navigieren im Schrittmodus ueber die Snapshot-Folge statt ueber Replay
+- Snapshot-Sessions koennen als `*.snapshot.json` gespeichert und spaeter ohne erneuten Lauf wieder geladen werden
 - Ausfuehrung externer Testprogramm-Skripte/Dateien inklusive optionaler Exit-Code-Auswertung
 - explizites Laden und Speichern von Szenario-Preset-Dateien als `.json`
 
@@ -138,6 +143,13 @@ Unter `simtest/device` gibt es zwei Wege fuer DUT-Simulationen:
 - Python-Modelle
 - deklarative JSON-/YAML-Profile
 
+`simtest/device` ist dabei die gemeinsame zentrale Geraetebibliothek fuer alle Beispielszenarien. Neue Szenarien sollen keine eigene parallele Device-Runtime mehr aufbauen, sondern nur:
+
+- ein neues Python-Modul unter `simtest/device/devices/*.py`
+- oder ein neues JSON-/YAML-Profil unter `simtest/device/devices/*`
+
+ergänzen und weiter dieselbe `simtest/device/main.py`- und `simtest/device/core`-Basis verwenden.
+
 Deklarative Profile unterstuetzen unter anderem:
 
 - mehrere Inputs, Outputs, Sources und Internal-Signale
@@ -156,6 +168,8 @@ Der Simulator verarbeitet jetzt explizit `2ARB`-/Waveform-Tests:
 - das DUT kann sofort auf angelegte Signalformen reagieren
 - optional koennen waehrend des Stimulus andere Signale beobachtet und als Response-Kurve zurueckgegeben werden
 - deklarative YAML-Profile koennen auf Kenngroessen wie `RMS`, `Peak`, `Average` und erkannte Formtypen reagieren
+- Split-Unterablaeufe innerhalb eines `2ARB` laufen waehrend des aktiven Stimulus
+- fuer `2ARB` wird das Ruecksignal ueber die Stimulusdauer aufgenommen und ueber erste Waveform-Metriken ausgewertet
 
 ## Fault-Injection
 
@@ -174,12 +188,18 @@ Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
 
 - `simtest/`
   Hauptbeispiel fuer hierarchische Verdrahtung, UIF-gesteuertes Relais im Hauptplan, Simulation und DUT-Profile
+- `simtest_template_sm2/`
+  End-to-End-Beispiel fuer das vorhandene Testprogramm `template_SM2` mit `IOXX`, `ECLL`, `PWT$`, `E488` und `PET$`
+- `simtest_template_splitted_am2/`
+  End-to-End-Beispiel fuer das reale Testprogramm `template_splitted_am2` mit `2ARB` und Split-Unterablaeufen innerhalb des Tests
 - `simtest_transformer/`
   End-to-End-Beispiel fuer Transformator und Stromwandler
 - `examples/PythonDeviceSimulator/`
   einfaches Python-Pipe-Beispiel
 - `examples/altium-wireviz/`
   Beispiel fuer den Altium-WireViz-Export
+
+Bei neuen Beispielszenarien fuer DUT-Simulationen soll die Geraeteseite auf der gemeinsamen Struktur unter `simtest/device` aufbauen. Pro Szenario soll dabei nur das neue Geraetemodul bzw. Profil hinzukommen.
 
 ## Wichtige Umgebungsvariablen
 
@@ -202,6 +222,9 @@ Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
 - Bauteilverhalten gehoert in `simulation.yaml`.
 - Tester-seitige Ausgangsspannungen oder Open-Circuit-Verhalten koennen deklarativ ueber `tester_supply` und `tester_output` beschrieben werden.
 - Neue DUT- oder Bauteilmodelle sollten ueber die Parser- und Simulationsschicht erweitert werden, nicht durch Hardcoding in der UI.
+- `E488` ist im Simulator als Kommunikations-Test fuer `RS232` / `IEEE-488` / `VISA` modelliert, nicht als Mess-Test.
+- Die Concurrent-/Snapshot-Architektur ist aktuell vollstaendig umgesetzt und in [ROADMAP.md](C:/Users/hello/Desktop/CT3xx/ROADMAP.md) als abgeschlossener Architekturbaustein dokumentiert.
+
 ## CLI
 
 ```powershell

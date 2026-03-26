@@ -1,4 +1,5 @@
 using Ct3xxProgramParser.Programs;
+using Ct3xxProgramParser.Model;
 using Ct3xxSimulator.Simulation;
 using Ct3xxSimulator.Simulation.WireViz;
 using Ct3xxSimulator.Validation;
@@ -104,7 +105,7 @@ public sealed class SimulatorIntegrationTests
     [TestMethod]
     public void TransformerScenario_ShouldPass_EndToEnd()
     {
-        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest_transformer\device\devices\TrafoStromwandler_good.yaml");
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\TrafoStromwandler_good.yaml");
 
         var observer = RunProgram(
             @"simtest_transformer\ct3xx\Transformer_Current_Example.ctxprg",
@@ -115,6 +116,201 @@ public sealed class SimulatorIntegrationTests
         Assert.IsTrue(observer.Evaluations.Count >= 4, "Das Transformator-Beispiel sollte mehrere echte Messschritte liefern.");
         Assert.IsTrue(observer.Evaluations.All(item => item.Outcome == TestOutcome.Pass),
             string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.MeasuredValue}")));
+    }
+
+    [TestMethod]
+    public void Validation_ShouldAccept_TemplateSm2Scenario()
+    {
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"simtest_template_sm2\ct3xx\template_SM2.ctxprg"),
+            TestData.GetPath(@"simtest_template_sm2\wireplan"),
+            TestData.GetPath(@"simtest_template_sm2\wireplan"),
+            TestData.GetPath(@"simtest\device\main.py"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+    }
+
+    [TestMethod]
+    public void TemplateSm2Scenario_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartModule(
+            @"simtest\device\main.py",
+            "template_sm2_led_analyzer");
+
+        var observer = RunProgram(
+            @"simtest_template_sm2\ct3xx\template_SM2.ctxprg",
+            @"simtest_template_sm2\wireplan",
+            @"simtest_template_sm2\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Count >= 12, "template_SM2 sollte sichtbare IOXX/ECLL/PWT$/E488/PET$-Schritte liefern.");
+        var finalSnapshotText = observer.Snapshots.Count == 0
+            ? "Keine Snapshots"
+            : $"Inputs={string.Join(", ", observer.Snapshots[^1].ExternalDeviceState.Inputs.Select(item => $"{item.Key}={item.Value}"))}; Interfaces={string.Join(", ", observer.Snapshots[^1].ExternalDeviceState.Interfaces.Select(item => $"{item.Key}={item.Value}"))}";
+        Assert.IsTrue(observer.Evaluations.All(item => item.Outcome == TestOutcome.Pass),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")) +
+            Environment.NewLine +
+            finalSnapshotText +
+            Environment.NewLine +
+            string.Join(Environment.NewLine, observer.Messages.Where(message => message.Contains("Python device", StringComparison.OrdinalIgnoreCase) || message.Contains("E488", StringComparison.OrdinalIgnoreCase))));
+
+        Assert.IsTrue(observer.Messages.Any(message => message.Contains("E488 Schnittstelle SEND Interface LED Analyzer", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsTrue(observer.Messages.Any(message => message.Contains("E488 Schnittstelle RECV Interface LED Analyzer: 15,1,25,40", StringComparison.OrdinalIgnoreCase)));
+
+        var petEvaluations = observer.Evaluations
+            .Where(item => item.StepName is "Helligkeit LED" or "Rot Anteil LED" or "Grün Anteil LED" or "Blau Anteil LED")
+            .ToList();
+
+        Assert.AreEqual(8, petEvaluations.Count, "template_SM2 sollte zwei PET$-Bloecke mit je vier Auswertungen liefern.");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                string.Equals(snapshot.ActiveConcurrentGroup, "Parallel checking", StringComparison.OrdinalIgnoreCase) &&
+                snapshot.ConcurrentBranches.Count > 0),
+            "Concurrent-Snapshots fuer template_SM2 wurden nicht erzeugt.");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                snapshot.ConcurrentBranches.Any(branch =>
+                    branch.BranchName.Contains("Programming Device", StringComparison.OrdinalIgnoreCase))),
+            "Der Concurrent-Branch fuer ECLL fehlt in den Snapshot-Daten.");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                string.Equals(snapshot.ConcurrentEvent, "group_sync:start", StringComparison.OrdinalIgnoreCase)),
+            "Der globale Snapshot-Punkt group_sync:start fehlt.");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                snapshot.ConcurrentEvent?.StartsWith("branch_waiting:", StringComparison.OrdinalIgnoreCase) == true),
+            "Der globale Snapshot-Punkt fuer branch_waiting fehlt.");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                snapshot.ConcurrentEvent?.StartsWith("interface_request:", StringComparison.OrdinalIgnoreCase) == true),
+            "Der globale Snapshot-Punkt fuer interface_request fehlt.");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                snapshot.ConcurrentEvent?.StartsWith("interface_response:", StringComparison.OrdinalIgnoreCase) == true),
+            "Der globale Snapshot-Punkt fuer interface_response fehlt.");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                snapshot.ConcurrentEvent?.StartsWith("process_exit:", StringComparison.OrdinalIgnoreCase) == true),
+            "Der globale Snapshot-Punkt fuer process_exit fehlt.");
+    }
+
+    [TestMethod]
+    public void TemplateSplittedAm2Parser_ShouldRead_SplitChildSequence()
+    {
+        var parser = new Ct3xxProgramFileParser();
+        var fileSet = parser.Load(TestData.GetPath(@"testprogramme\template_splitted_am2\template_splitted_am2.ctxprg"));
+
+        var dutLoopItems = fileSet.Program.DutLoop?.Items;
+        Assert.IsNotNull(dutLoopItems);
+        Assert.AreEqual(1, dutLoopItems.Count);
+        Assert.IsInstanceOfType<Test>(dutLoopItems[0]);
+
+        var splitTest = (Test)dutLoopItems[0];
+        Assert.AreEqual("2ARB", splitTest.Id);
+        Assert.AreEqual(4, splitTest.Items.Count, "Der Split-Test sollte zwei Auswertungsgruppen und zwei IOXX-Schritte enthalten.");
+        Assert.IsInstanceOfType<Group>(splitTest.Items[0]);
+        Assert.IsInstanceOfType<Test>(splitTest.Items[1]);
+        Assert.IsInstanceOfType<Group>(splitTest.Items[2]);
+        Assert.IsInstanceOfType<Test>(splitTest.Items[3]);
+    }
+
+    [TestMethod]
+    public void TemplateSplittedAm2Scenario_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartModule(
+            @"simtest\device\main.py",
+            "template_splitted_am2_led_analyzer");
+
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"testprogramme\template_splitted_am2\template_splitted_am2.ctxprg"),
+            TestData.GetPath(@"simtest_template_splitted_am2\wireplan"),
+            TestData.GetPath(@"simtest_template_splitted_am2\wireplan"),
+            TestData.GetPath(@"simtest\device\main.py"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+
+        var observer = RunProgram(
+            @"testprogramme\template_splitted_am2\template_splitted_am2.ctxprg",
+            @"simtest_template_splitted_am2\wireplan",
+            @"simtest_template_splitted_am2\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Count >= 13,
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+
+        Assert.IsTrue(observer.Evaluations.Any(item => item.StepName == "Spannungsmessung"),
+            "Der 2ARB-Hauptschritt fehlt.");
+        Assert.IsTrue(observer.Evaluations.Count(item => item.StepName == "LED Abfrage") == 2,
+            "Es sollten zwei E488-Schritte aus den Split-Untergruppen sichtbar sein.");
+        Assert.IsTrue(observer.Evaluations.Count(item => item.StepName == "Relais schalten") == 2,
+            "Es sollten zwei IOXX-Schritte aus dem Split-Unterablauf sichtbar sein.");
+
+        var petEvaluations = observer.Evaluations
+            .Where(item => item.StepName is "Helligkeit LED" or "Rot Anteil LED" or "Gruen Anteil LED" or "Grün Anteil LED" or "Blau Anteil LED" or "GrÃ¼n Anteil LED")
+            .ToList();
+        Assert.AreEqual(8, petEvaluations.Count, "Es sollten zwei PET$-Bloecke mit je vier Auswertungen sichtbar sein.");
+        Assert.IsTrue(petEvaluations.All(item => item.Outcome == TestOutcome.Pass),
+            string.Join(Environment.NewLine, petEvaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.MeasuredValue}")));
+
+        Assert.IsTrue(observer.Messages.Any(message => message.Contains("E488 Schnittstelle RECV Interface LED Analyzer: 0,0,0,0", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsTrue(observer.Messages.Any(message => message.Contains("E488 Schnittstelle RECV Interface LED Analyzer: 15,1,25,40", StringComparison.OrdinalIgnoreCase)));
+
+        var waveformEvaluation = observer.Evaluations.First(item => item.StepName == "Spannungsmessung");
+        Assert.IsTrue(waveformEvaluation.Traces.Any(trace => trace.Title.Contains("Waveform Stimulus", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsTrue(waveformEvaluation.Traces.Any(trace => trace.Title.Contains("Waveform Response", StringComparison.OrdinalIgnoreCase)));
+
+        var finalSnapshot = observer.Snapshots.Last();
+        Assert.AreEqual(0d, ParseNumeric(finalSnapshot.ExternalDeviceState.Inputs["DUT_HV"]), 0.0001d);
+        Assert.IsTrue(finalSnapshot.ExternalDeviceState.Inputs.ContainsKey("WAVE_IN_1"));
+        Assert.IsTrue(finalSnapshot.ExternalDeviceState.Inputs.ContainsKey("WAVE_IN_2"));
+        Assert.IsTrue(finalSnapshot.ExternalDeviceState.Inputs.ContainsKey("WAVE_IN_3"));
+        Assert.IsTrue(finalSnapshot.ExternalDeviceState.Outputs.ContainsKey("WAVE_OUT_1"));
+        Assert.IsTrue(finalSnapshot.ExternalDeviceState.Outputs.ContainsKey("WAVE_OUT_2"));
+        Assert.IsTrue(finalSnapshot.ExternalDeviceState.Outputs.ContainsKey("WAVE_OUT_3"));
+    }
+
+    [TestMethod]
+    public void ConcurrentGroup_ShouldAdvance_OnSharedSimulationClock()
+    {
+        var program = new Ct3xxProgram
+        {
+            RootItems =
+            {
+                new Group
+                {
+                    Id = "PGR$",
+                    Name = "Concurrent Timing",
+                    ExecMode = "concurrent",
+                    ExecCondition = "TRUE",
+                    Items =
+                    {
+                        new Test
+                        {
+                            Id = "PWT$",
+                            Parameters = new TestParameters
+                            {
+                                Name = "Wait 2s",
+                                AdditionalAttributes = CreateAttributes(("WaitTime", "2s"))
+                            }
+                        },
+                        new Test
+                        {
+                            Id = "PWT$",
+                            Parameters = new TestParameters
+                            {
+                                Name = "Wait 3s",
+                                AdditionalAttributes = CreateAttributes(("WaitTime", "3s"))
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var observer = new SimulationObserverSpy();
+        var simulator = new Ct3xxProgramSimulator(observer: observer);
+        simulator.Run(program, 1);
+
+        Assert.IsTrue(observer.Snapshots.Count > 0, "Es wurden keine Snapshots erzeugt.");
+        Assert.AreEqual(3000L, observer.Snapshots[^1].CurrentTimeMs,
+            $"Concurrent-Waits sollten auf einer gemeinsamen Simulationsuhr laufen. Letzte Zeit: {observer.Snapshots[^1].CurrentTimeMs} ms");
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                snapshot.ConcurrentEvent?.StartsWith("branch_waiting:", StringComparison.OrdinalIgnoreCase) == true));
+        Assert.IsTrue(observer.Snapshots.Any(snapshot =>
+                snapshot.ConcurrentEvent?.StartsWith("branch_resumed:", StringComparison.OrdinalIgnoreCase) == true));
     }
 
     private static SimulationObserverSpy RunProgram(string programRelativePath, string wireRootRelativePath, string simulationRootRelativePath, string pipePath)
@@ -205,5 +401,18 @@ public sealed class SimulatorIntegrationTests
         }
 
         return 1;
+    }
+
+    private static System.Xml.XmlAttribute[] CreateAttributes(params (string Name, string Value)[] attributes)
+    {
+        var document = new System.Xml.XmlDocument();
+        return attributes
+            .Select(attribute =>
+            {
+                var xmlAttribute = document.CreateAttribute(attribute.Name);
+                xmlAttribute.Value = attribute.Value;
+                return xmlAttribute;
+            })
+            .ToArray();
     }
 }

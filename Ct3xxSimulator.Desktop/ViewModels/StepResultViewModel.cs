@@ -15,7 +15,8 @@ public sealed class StepResultViewModel
         string unit,
         string details,
         IReadOnlyList<StepConnectionTrace>? traces = null,
-        IReadOnlyList<MeasurementCurvePoint>? curvePoints = null)
+        IReadOnlyList<MeasurementCurvePoint>? curvePoints = null,
+        int? timelineIndex = null)
     {
         StepName = stepName;
         Outcome = outcome;
@@ -26,6 +27,7 @@ public sealed class StepResultViewModel
         Details = details;
         Traces = traces ?? Array.Empty<StepConnectionTrace>();
         CurvePoints = curvePoints ?? Array.Empty<MeasurementCurvePoint>();
+        TimelineIndex = timelineIndex;
     }
 
     public string StepName { get; }
@@ -37,4 +39,5 @@ public sealed class StepResultViewModel
     public string Details { get; }
     public IReadOnlyList<StepConnectionTrace> Traces { get; }
     public IReadOnlyList<MeasurementCurvePoint> CurvePoints { get; }
+    public int? TimelineIndex { get; }
 }

@@ -3,6 +3,41 @@ CT3xx Roadmap
 
 Diese Roadmap priorisiert moegliche Erweiterungen nach Nutzen, Risiko und technischem Aufwand fuer den aktuellen Stand des Repositories.
 
+Bereits abgeschlossene Architekturbausteine
+-------------------------------------------
+
+Die folgenden groesseren Themen sind bereits umgesetzt und werden deshalb nicht mehr als offene Roadmap-Punkte gefuehrt:
+
+1. Concurrent-Snapshot-Architektur
+
+Status:
+- abgeschlossen
+
+Umgesetzt:
+- Stufe 1: Concurrent-Metadaten in Snapshots und Live-Zustand
+- Stufe 2: explizite globale Snapshot-Punkte fuer `PWT$`, `E488`, `ECLL`
+- Stufe 3: gemeinsame Concurrent-Simulationsuhr und Event-Fortschritt
+- Stufe 4: Snapshot-Timeline und Snapshot-Navigation in der Desktop-App
+- Stufe 5: Snapshot-Persistenz und Restore ueber `*.snapshot.json`
+
+Ergebnis:
+- `concurrent`-Gruppen sind ueber Snapshots im Kern, in der Desktop-UI und in der Persistenzkette nachvollziehbar
+- `Weiter` / `Zurueck` arbeiten auf Snapshot-Basis
+- Snapshot-Sessions koennen gespeichert und wieder geladen werden
+
+2. CLI fuer Batch-Simulationen
+
+Status:
+- abgeschlossen
+
+Umgesetzt:
+- eigenes Projekt `Ct3xxSimulator.Cli`
+- Batch-Laeufe ohne WPF
+- Validierung und Export aus der CLI
+
+Ergebnis:
+- automatisierbare Regressionstests und CI-nahe Ausfuehrung
+
 Priorisierung
 -------------
 
@@ -103,14 +138,19 @@ P2
 
 6. Snapshot-Persistenz fuer echten Ruecksprung
 
+Status:
+- umgesetzt ueber Snapshot-Sessions (`*.snapshot.json`)
+- Restore in der Desktop-App ohne erneuten Simulationslauf
+- Roundtrip-Test vorhanden
+
 Nutzen:
 - `Zurueck` nicht nur per Replay, sondern per Restore
 - bessere Analyse bei langen Programmen
 
 Umsetzung:
-- serialisierbarer Simulationszustand pro Schritt
-- optionales Checkpointing in Datei oder Speicher
-- Desktop-App stellt daraus echten Schritt-Ruecksprung bereit
+- serialisierbarer Simulationszustand pro Snapshot
+- Snapshot-Session in Datei speicherbar und wieder ladbar
+- Desktop-App stellt Timeline-Restore und Snapshot-Analyse bereit
 
 Warum P2:
 - fachlich sinnvoll, aber tiefer Eingriff in den Simulationskern

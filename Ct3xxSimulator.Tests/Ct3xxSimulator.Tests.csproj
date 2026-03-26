@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Ct3xxProgramParser\Ct3xxProgramParser.csproj" />
     <ProjectReference Include="..\Ct3xxSimulator\Ct3xxSimulator.csproj" />
+    <ProjectReference Include="..\Ct3xxSimulator.Export\Ct3xxSimulator.Export.csproj" />
     <ProjectReference Include="..\Ct3xxSimulator.Validation\Ct3xxSimulator.Validation.csproj" />
   </ItemGroup>
 

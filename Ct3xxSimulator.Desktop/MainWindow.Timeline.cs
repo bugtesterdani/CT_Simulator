@@ -9,11 +9,9 @@ public partial class MainWindow
 {
     private void OnContinueStep(object sender, System.Windows.RoutedEventArgs e)
     {
-        if (!IsSimulationRunning && CanStepForward)
+        if (CanStepForward)
         {
-            _timelineIndex++;
-            RaiseTimelineNavigationChanged();
-            UpdateLiveStateWindow();
+            SelectTimelineIndex(_timelineIndex + 1);
             return;
         }
 
@@ -30,49 +28,17 @@ public partial class MainWindow
     private void OnPauseAtNextStep(object sender, System.Windows.RoutedEventArgs e)
     {
         _pauseAtNextStep = true;
-        AddLog("Simulation pausiert vor dem naechsten Testschritt.");
+        AddLog("Simulation pausiert am naechsten Snapshot.");
     }
 
-    private async void OnStepBack(object sender, System.Windows.RoutedEventArgs e)
+    private void OnStepBack(object sender, System.Windows.RoutedEventArgs e)
     {
-        if (IsSimulationRunning)
-        {
-            if (_executedTestCount <= 1)
-            {
-                return;
-            }
-
-            var targetStep = _executedTestCount - 1;
-            AddLog($"Springe per Replay zu Schritt {targetStep} zurueck.");
-            _suppressCancellationLogOnce = true;
-            _cts?.Cancel();
-            _stepGate.Set();
-
-            while (IsSimulationRunning)
-            {
-                await System.Threading.Tasks.Task.Delay(50);
-            }
-
-            await StartSimulationAsync(targetStep);
-            return;
-        }
-
-        if (IsStepModeEnabled && StepResults.Count > 1 && CanStartSimulation)
-        {
-            var targetStep = StepResults.Count - 1;
-            AddLog($"Starte Replay zu Schritt {targetStep} fuer echten Zurueck-Sprung.");
-            await StartSimulationAsync(targetStep);
-            return;
-        }
-
         if (!CanStepBackward)
         {
             return;
         }
 
-        _timelineIndex--;
-        RaiseTimelineNavigationChanged();
-        UpdateLiveStateWindow();
+        SelectTimelineIndex(_timelineIndex - 1);
     }
 
     private void AppendTimelineSnapshot(SimulationStateSnapshot snapshot)
@@ -88,8 +54,12 @@ public partial class MainWindow
             return;
         }
 
-        _timeline.Add(new SimulationTimelineEntry(_timeline.Count, snapshot));
+        var entry = new SimulationTimelineEntry(_timeline.Count, snapshot);
+        _timeline.Add(entry);
+        TimelineEntries.Add(entry);
         _timelineIndex = _timeline.Count - 1;
+        _selectedTimelineEntry = entry;
+        OnPropertyChanged(nameof(SelectedTimelineEntry));
         AppendSignalHistory(snapshot);
         RaiseTimelineNavigationChanged();
     }
@@ -184,5 +154,57 @@ public partial class MainWindow
     {
         OnPropertyChanged(nameof(CanStepBackward));
         OnPropertyChanged(nameof(CanStepForward));
+    }
+
+    private IReadOnlyDictionary<string, List<MeasurementCurvePoint>> BuildSignalHistoryUpToTimelineIndex(int index)
+    {
+        var history = new Dictionary<string, List<MeasurementCurvePoint>>(StringComparer.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return history;
+        }
+
+        var upper = Math.Min(index, _timeline.Count - 1);
+        for (var i = 0; i <= upper; i++)
+        {
+            foreach (var sample in EnumerateSignalHistoryPoints(_timeline[i].Snapshot))
+            {
+                if (!history.TryGetValue(sample.Label, out var points))
+                {
+                    points = new List<MeasurementCurvePoint>();
+                    history[sample.Label] = points;
+                }
+
+                if (points.Count > 0 && points[^1].TimeMs == sample.TimeMs && Nullable.Equals(points[^1].Value, sample.Value))
+                {
+                    continue;
+                }
+
+                points.Add(sample);
+            }
+        }
+
+        return history;
+    }
+
+    private void SelectTimelineIndex(int index, bool keepSelection = false)
+    {
+        if (index < 0 || index >= _timeline.Count)
+        {
+            return;
+        }
+
+        _timelineIndex = index;
+        var selected = _timeline[index];
+        if (!keepSelection || !ReferenceEquals(_selectedTimelineEntry, selected))
+        {
+            _selectedTimelineEntry = selected;
+            OnPropertyChanged(nameof(SelectedTimelineEntry));
+        }
+
+        CurrentStep = selected.Snapshot.CurrentStep;
+        RebuildStepTreeForTimelineIndex(index);
+        RaiseTimelineNavigationChanged();
+        UpdateLiveStateWindow();
     }
 }

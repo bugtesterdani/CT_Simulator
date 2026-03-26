@@ -2,6 +2,8 @@
 
 Diese Datei beschreibt die moeglichen DUT-Modelle in diesem Ordner, die Pipe-Schnittstelle und die wichtigsten Pflichtfelder.
 
+Dieser Ordner ist die gemeinsame zentrale Device-Bibliothek fuer die Beispielszenarien. Neue Szenarien sollen hier keine zweite Runtime-Struktur neben `main.py` und `core/` aufbauen.
+
 ## Unterstuetzte Modellarten
 
 - Python-Modul unter `devices/*.py`

@@ -45,25 +45,98 @@ Sinnvoll fuer:
 - `Validieren`
 - komplette Simulation starten
 - Schrittmodus mit `Weiter`, `Zurueck`, `Auto`, `Pause`
+- gruppierte Testschritt-Baumansicht verwenden
 - Live-Zustand separat oeffnen
-- Verbindungsansicht pro Testschritt oeffnen
+- Live-Zustand zwischen `Kompakt` und `Expert` umschalten
+- Verbindungsansicht per Doppelklick auf einen Testschritt oeffnen
 - Ergebnisse exportieren
+- Snapshot-Session speichern
+- Snapshot-Session laden
+- zum letzten Snapshot des aktuell gewaehlten Testschritt-Knotens springen
+- Concurrent-Kontext im Live-Zustandsfenster beobachten
 
 ## Verbindungsansicht
 
 Aktuelles Bedienverhalten:
 
 - Hauptansicht gruppiert in `Pruefsystem`, `Verdrahtung / Baugruppe`, `Geraet / Signal`
+- ein einfacher Klick waehlt nur den Testschritt aus
+- ein Doppelklick oeffnet die Verbindungsansicht des ausgewaehlten Testschritts
 - Module in der Mitte zeigen `Eingang` und `Ausgang`
 - nur echte Unterbaugruppen mit internem Teilpfad sind klickbar
 - Relais oder andere einzelne Inline-Bauteile im Hauptpfad oeffnen kein Unterfenster
 - Unterfenster uebernehmen die Signalrichtung des uebergeordneten Traces
+
+## Testschritt-Ansicht
+
+- orientiert sich an der `Group`-/DUTLoop-Struktur des geladenen CT3xx-Programms
+- verwendet eine Baum-/Kartenansicht statt einer starren Tabellenzeile
+- Gruppen sind einklappbar
+- Gruppen starten aufgeklappt
+- nach erfolgreichem Gruppenabschluss werden normale Gruppen automatisch wieder eingeklappt
+- der `Test Loop`-Knoten bleibt dauerhaft sichtbar und aufgeklappt
+- `Concurrent`, `Loop`, `Concurrent Loop` und `Test Loop` werden im Knoten selbst sichtbar gekennzeichnet
+- `Concurrent`-Gruppen tragen einen Hinweis, dass die enthaltenen Schritte parallel ausgefuehrt werden koennen
+- Testschritte sind unterhalb ihrer Gruppen eingerueckt
+- die Ueberschriften sind auf die Baumansicht abgestimmt:
+  - `Struktur`
+  - `Status`
+  - `Messwert / Grenzen`
+  - `Hinweis`
+- bei mehrfachen Auswertungen innerhalb eines Tests, z. B. `PET$`, entstehen unter dem Test weitere Ergebnisknoten
 
 ## Exportformate
 
 - `PDF`
 - `JSON`
 - `CSV`
+
+## Concurrent-Snapshots
+
+Im aktuellen Stand zeigt das Live-Zustandsfenster bei `concurrent`-Gruppen zusaetzlich:
+
+- `Concurrent-Gruppe`
+- `Concurrent-Event`
+- Liste der Concurrent-Branches mit:
+  - Branchname
+  - Status
+  - aktuellem Item
+  - Details
+
+Das ist die Datenbasis fuer die spaetere tick-/eventbasierte Concurrent-Navigation.
+
+Zusatzlich erscheinen jetzt globale Concurrent-Events fuer:
+
+- `branch_waiting`
+- `branch_resumed`
+- `interface_request`
+- `interface_response`
+- `process_exit`
+
+Zusatzlich steht im Hauptfenster eine Snapshot-Timeline zur Verfuegung:
+
+- zeigt Reihenfolge der globalen Snapshot-Zustaende
+- zeigt Zeit, Event und Branch-Zusammenfassung
+- Auswahl eines Timeline-Eintrags setzt die Anzeige auf genau diesen Snapshot
+- der Verlauf im Live-Zustandsfenster wird dabei nur bis zu diesem Snapshot aufgebaut
+- die Testschritt-Anzeige wird fuer diesen Snapshot-Zeitpunkt neu rekonstruiert statt den Endstand beizubehalten
+- `Weiter` und `Zurueck` navigieren ueber diese Snapshot-Folge
+- im Schrittmodus wird an Snapshot-Punkten pausiert, nicht nur an Testenden
+
+Ansichtsmodi im Live-Zustandsfenster:
+
+- `Kompakt`
+  - fokussiert auf schnelle Uebersicht
+  - gruppiert in `System`, `DUT`, `Zustaende und Concurrent`
+- `Expert`
+  - zeigt alle Details
+  - strukturiert ueber Tabs fuer `System`, `DUT`, `Zustaende`, `Concurrent`
+
+Snapshot-Sessions:
+
+- werden als `*.snapshot.json` gespeichert
+- enthalten Timeline, Logs, Schrittergebnisse inklusive Snapshot-Zuordnung und Signalhistorie
+- koennen nur ausserhalb einer laufenden Simulation geladen oder gespeichert werden
 
 ## Relevante Umgebungsvariablen
 

@@ -1,15 +1,19 @@
 name: TrafoStromwandler_good
 
 signals:
-  inputs:
-    - VT_INPUT
-  outputs:
-    - VT_OUTPUT
-    - LOAD_CURRENT
-  sources:
-    - SUPPLY
-    - GND
-    - HELPER_SUPPLY
+  inputs: [GND, VCC_GND, VT_INPUT, HELPER_SUPPLY]
+  outputs: [VT_OUTPUT, LOAD_CURRENT]
+  sources: [SUPPLY]
+  internal: []
+
+initial_inputs:
+  GND: 0.0
+  VCC_GND: 0.0
+  VT_INPUT: 0.0
+  HELPER_SUPPLY: 0.0
+
+initial_sources:
+  SUPPLY: 0.0
 
 source_control:
   minimums:
@@ -26,13 +30,11 @@ outputs:
           y: 0.0
         - x: 2.0
           y: 2.0
-        - x: 5.0
-          y: 5.0
 
   LOAD_CURRENT:
     default: 0.0
     rules:
       - when:
           input: VT_INPUT
-          gte: 1.5
+          gte: 1.95
         value: 2.0

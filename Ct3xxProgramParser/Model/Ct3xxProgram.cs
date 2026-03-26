@@ -116,6 +116,10 @@ public class Test : SequenceNode
 
     [XmlElement("Parameters")] public TestParameters? Parameters { get; set; }
     [XmlElement("Debug")] public List<DebugNode> Debug { get; set; } = new();
+    [XmlElement("Group", typeof(Group))]
+    [XmlElement("Test", typeof(Test))]
+    [XmlElement("Table", typeof(Table))]
+    public List<SequenceNode> Items { get; set; } = new();
 }
 
 public class TestParameters
@@ -252,6 +256,10 @@ public class Record
     [XmlAttribute("R")] public string? Resistance { get; set; }
     [XmlAttribute("K")] public string? SwitchState { get; set; }
     [XmlAttribute("DestinationVariable")] public string? DestinationVariable { get; set; }
+    [XmlAttribute("Device")] public string? Device { get; set; }
+    [XmlAttribute("Control")] public string? Control { get; set; }
+    [XmlAttribute("Direction")] public string? Direction { get; set; }
+    [XmlAttribute("Command")] public string? Command { get; set; }
     [XmlAnyAttribute] public XmlAttribute[]? AdditionalAttributes { get; set; }
 }
 

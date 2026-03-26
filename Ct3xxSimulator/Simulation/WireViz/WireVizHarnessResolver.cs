@@ -82,36 +82,69 @@ public sealed partial class WireVizHarnessResolver
             {
                 foreach (var source in graph.ResolveSignalSources(assignment))
                 {
-                    if (!resolutionSeeds.TryGetValue(assignment.Name, out var seeds))
-                    {
-                        seeds = new List<ResolutionSeed>();
-                        resolutionSeeds[assignment.Name] = seeds;
-                    }
-
-                    seeds.Add(new ResolutionSeed(assignment, source, graph));
-
-                    var targets = graph.GetConnectedEndpoints(source)
-                        .Where(target => !string.Equals(target.Key, source.Key, StringComparison.OrdinalIgnoreCase))
-                        .DistinctBy(target => target.Key, StringComparer.OrdinalIgnoreCase)
-                        .ToList();
-
-                    if (targets.Count == 0)
-                    {
-                        continue;
-                    }
-
-                    if (!resolutions.TryGetValue(assignment.Name, out var items))
-                    {
-                        items = new List<WireVizConnectionResolution>();
-                        resolutions[assignment.Name] = items;
-                    }
-
-                    items.Add(new WireVizConnectionResolution(assignment, source, targets, graph.SourcePath));
+                    RegisterResolutionSource(resolutions, resolutionSeeds, assignment.Name, assignment, source, graph);
                 }
             }
         }
 
+        foreach (var graph in graphs)
+        {
+            foreach (var endpoint in graph.Connectors.Values.SelectMany(items => items))
+            {
+                if (endpoint.Role != WireVizConnectorRole.TestSystem || string.IsNullOrWhiteSpace(endpoint.PinLabel))
+                {
+                    continue;
+                }
+
+                var pseudoAssignment = new SignalAssignment(0, endpoint.PinLabel!, string.Empty, null);
+                RegisterResolutionSource(resolutions, resolutionSeeds, endpoint.PinLabel!, pseudoAssignment, endpoint, graph);
+            }
+        }
+
         return new WireVizHarnessResolver(resolutions, resolutionSeeds, flattenedSimulationElements);
+    }
+
+    private static void RegisterResolutionSource(
+        Dictionary<string, List<WireVizConnectionResolution>> resolutions,
+        Dictionary<string, List<ResolutionSeed>> resolutionSeeds,
+        string lookupKey,
+        SignalAssignment assignment,
+        WireVizEndpoint source,
+        WireVizGraph graph)
+    {
+        if (!resolutionSeeds.TryGetValue(lookupKey, out var seeds))
+        {
+            seeds = new List<ResolutionSeed>();
+            resolutionSeeds[lookupKey] = seeds;
+        }
+
+        if (!seeds.Any(seed => string.Equals(seed.Source.Key, source.Key, StringComparison.OrdinalIgnoreCase) &&
+                               string.Equals(seed.Graph.SourcePath, graph.SourcePath, StringComparison.OrdinalIgnoreCase)))
+        {
+            seeds.Add(new ResolutionSeed(assignment, source, graph));
+        }
+
+        var targets = graph.GetConnectedEndpoints(source)
+            .Where(target => !string.Equals(target.Key, source.Key, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(target => target.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        if (!resolutions.TryGetValue(lookupKey, out var items))
+        {
+            items = new List<WireVizConnectionResolution>();
+            resolutions[lookupKey] = items;
+        }
+
+        if (!items.Any(item => string.Equals(item.Source.Key, source.Key, StringComparison.OrdinalIgnoreCase) &&
+                               string.Equals(item.SourceDocumentPath, graph.SourcePath, StringComparison.OrdinalIgnoreCase)))
+        {
+            items.Add(new WireVizConnectionResolution(assignment, source, targets, graph.SourcePath));
+        }
     }
 
     public bool TryResolve(string signalOrTestpoint, out IReadOnlyList<WireVizConnectionResolution> resolutions)

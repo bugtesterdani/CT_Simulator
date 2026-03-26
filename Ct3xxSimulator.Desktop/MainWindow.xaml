@@ -3,10 +3,114 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="clr-namespace:Ct3xxSimulator.Desktop.ViewModels"
         mc:Ignorable="d"
         Title="CT3xx Visual Simulator"
         Height="820"
         Width="1280">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style TargetType="{x:Type TreeViewItem}">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <HierarchicalDataTemplate DataType="{x:Type viewModels:StepTreeNodeViewModel}" ItemsSource="{Binding Children}">
+            <Border x:Name="NodeBorder" Margin="0,0,0,6" Padding="8" Background="#FFFDFEFE" BorderBrush="#FFE2E8EF" BorderThickness="1" CornerRadius="6">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.2*"/>
+                        <ColumnDefinition Width="0.8*"/>
+                        <ColumnDefinition Width="1.7*"/>
+                        <ColumnDefinition Width="1.8*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding Title}" TextWrapping="Wrap"/>
+                        <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#FF6B7480" Text="{Binding NodeTypeLabel}"/>
+                    </StackPanel>
+
+                    <Border Grid.Row="0" Grid.Column="1"
+                            Margin="10,0,0,0"
+                            Padding="8,3"
+                            HorizontalAlignment="Left"
+                            Background="#FFEAF1F7"
+                            BorderBrush="#FFD7E3EF"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <TextBlock FontWeight="Bold" Foreground="#FF2E5E86" Text="{Binding Outcome}"/>
+                    </Border>
+
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="2"
+                               Margin="12,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="#FF3B4652"
+                               Text="{Binding SummaryLine}"
+                               TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="3"
+                               Margin="12,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="#FF5E6772"
+                               Text="{Binding DetailLine}"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding HasDetailLine, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <Border x:Name="DetailsBorder"
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Grid.ColumnSpan="4"
+                            Margin="0,8,0,0"
+                            Padding="8,6"
+                            Background="#FFF7FAFD"
+                            BorderBrush="#FFE5ECF3"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Visibility="{Binding HasDetailLine, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock x:Name="DetailsText"
+                                   Foreground="#FF53606D"
+                                   Text="{Binding DetailLine}"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+                </Grid>
+            </Border>
+            <HierarchicalDataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter TargetName="NodeBorder" Property="Background" Value="#FFF6F8FB"/>
+                    <Setter TargetName="NodeBorder" Property="BorderBrush" Value="#FFD9E2EC"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter TargetName="NodeBorder" Property="Padding" Value="10"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter TargetName="DetailsBorder" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="DetailsText" Property="Text" Value="{Binding SummaryLine}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding GroupMode}" Value="Concurrent">
+                    <Setter TargetName="NodeBorder" Property="Background" Value="#FFF6FBF7"/>
+                    <Setter TargetName="NodeBorder" Property="BorderBrush" Value="#FFCBE5D2"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding GroupMode}" Value="Concurrent Loop">
+                    <Setter TargetName="NodeBorder" Property="Background" Value="#FFF5FBF5"/>
+                    <Setter TargetName="NodeBorder" Property="BorderBrush" Value="#FFC3DDC7"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding GroupMode}" Value="Loop">
+                    <Setter TargetName="NodeBorder" Property="Background" Value="#FFFBF9F3"/>
+                    <Setter TargetName="NodeBorder" Property="BorderBrush" Value="#FFE5D7B2"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding GroupMode}" Value="Test Loop">
+                    <Setter TargetName="NodeBorder" Property="Background" Value="#FFF4F7FB"/>
+                    <Setter TargetName="NodeBorder" Property="BorderBrush" Value="#FFCBD8E7"/>
+                </DataTrigger>
+            </HierarchicalDataTemplate.Triggers>
+        </HierarchicalDataTemplate>
+    </Window.Resources>
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -102,31 +206,72 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Padding="12" Background="White" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10" Orientation="Horizontal">
-                    <TextBlock FontSize="18" FontWeight="Bold" Text="Testschritte"/>
-                    <Button Margin="12,0,0,0" Padding="12,6" Content="Exportieren" Click="OnExportResults"/>
-                </StackPanel>
-                <DataGrid ItemsSource="{Binding StepResults}"
-                          AutoGenerateColumns="False"
-                          CanUserAddRows="False"
-                          IsReadOnly="True"
-                          HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal"
-                          SelectionChanged="OnStepResultSelected">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Schritt" Binding="{Binding StepName}" Width="2*"/>
-                        <DataGridTextColumn Header="Ergebnis" Binding="{Binding Outcome}" Width="*"/>
-                        <DataGridTextColumn Header="Wert" Binding="{Binding MeasuredValue}" Width="*"/>
-                        <DataGridTextColumn Header="Untergrenze" Binding="{Binding LowerLimit}" Width="*"/>
-                        <DataGridTextColumn Header="Obergrenze" Binding="{Binding UpperLimit}" Width="*"/>
-                        <DataGridTextColumn Header="Einheit" Binding="{Binding Unit}" Width="0.7*"/>
-                        <DataGridTextColumn Header="Hinweis" Binding="{Binding Details}" Width="2*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </DockPanel>
-        </Border>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2.2*"/>
+                <ColumnDefinition Width="1.1*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Padding="12" Background="White" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8" Margin="0,0,12,0">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10" Orientation="Horizontal">
+                        <TextBlock FontSize="18" FontWeight="Bold" Text="Testschritte"/>
+                        <Button Margin="12,0,0,0" Padding="12,6" Content="Exportieren" Click="OnExportResults"/>
+                        <Button Margin="12,0,0,0" Padding="12,6" Content="Snapshots speichern" Click="OnSaveSnapshotSession"/>
+                        <Button Margin="12,0,0,0" Padding="12,6" Content="Snapshots laden" Click="OnLoadSnapshotSession"/>
+                        <Button Margin="12,0,0,0" Padding="12,6" Content="Zu letztem Snapshot dieses Schritts" Click="OnJumpToSelectedStepSnapshot" IsEnabled="{Binding CanJumpToStepSnapshot}"/>
+                    </StackPanel>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.2*"/>
+                                <ColumnDefinition Width="0.8*"/>
+                                <ColumnDefinition Width="1.7*"/>
+                                <ColumnDefinition Width="1.8*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" FontWeight="Bold" Text="Struktur"/>
+                            <TextBlock Grid.Column="1" Margin="10,0,0,0" FontWeight="Bold" Text="Status"/>
+                            <TextBlock Grid.Column="2" Margin="10,0,0,0" FontWeight="Bold" Text="Messwert / Grenzen"/>
+                            <TextBlock Grid.Column="3" Margin="10,0,0,0" FontWeight="Bold" Text="Hinweis"/>
+                        </Grid>
+                        <TreeView Grid.Row="1"
+                                  ItemsSource="{Binding StepTreeRootNodes}"
+                                  SelectedItemChanged="OnStepTreeSelected"
+                                  MouseDoubleClick="OnStepTreeDoubleClick"
+                                  VirtualizingStackPanel.IsVirtualizing="True"
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling"/>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="1" Padding="12" Background="#FFF8FBFD" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <TextBlock FontSize="18" FontWeight="Bold" Text="Snapshot-Timeline"/>
+                        <TextBlock Margin="0,4,0,0" Foreground="#FF5A6470" Text="Globale Snapshot-Events fuer Schrittmodus, Concurrent-Analyse und Live-Zustand." TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ListBox ItemsSource="{Binding TimelineEntries}"
+                             SelectedItem="{Binding SelectedTimelineEntry, Mode=TwoWay}"
+                             AutomationProperties.AutomationId="SnapshotTimelineList">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,8" Padding="8" Background="#FFFFFFFF" BorderBrush="#FFE0E6EE" BorderThickness="1" CornerRadius="6">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="Bold" Text="{Binding Label}"/>
+                                        <TextBlock Margin="0,3,0,0" Foreground="#FF375A7F" Text="{Binding EventLabel}" TextWrapping="Wrap"/>
+                                        <TextBlock Margin="0,3,0,0" Foreground="#FF6C7886" FontSize="11" Text="{Binding BranchSummary}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
 
         <Border Grid.Row="3" Margin="0,12,0,0" Padding="12" Background="#FFF9FAFB" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
             <DockPanel>

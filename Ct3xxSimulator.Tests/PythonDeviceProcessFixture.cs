@@ -45,6 +45,35 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         return new PythonDeviceProcessFixture(process, pipePath);
     }
 
+    public static PythonDeviceProcessFixture StartModule(string mainRelativePath, string deviceModuleName)
+    {
+        var mainPath = TestData.GetPath(mainRelativePath);
+        var pipePath = $@"\\.\pipe\ct3xx-tests-{Guid.NewGuid():N}";
+        var launcher = ResolvePythonLauncher()
+            ?? throw new AssertInconclusiveException("Kein Python-Interpreter mit pywin32 gefunden. Tests wurden uebersprungen.");
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = launcher.FileName,
+            Arguments = $"{launcher.Arguments} \"{mainPath}\" \"{deviceModuleName}\" --pipe \"{pipePath}\"".Trim(),
+            WorkingDirectory = Path.GetDirectoryName(mainPath) ?? TestData.RootDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        var process = new Process
+        {
+            StartInfo = startInfo,
+            EnableRaisingEvents = true
+        };
+
+        process.Start();
+        WaitForPipe(pipePath, process);
+        return new PythonDeviceProcessFixture(process, pipePath);
+    }
+
     public void Dispose()
     {
         try

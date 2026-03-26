@@ -13,101 +13,218 @@
         </Grid.RowDefinitions>
 
         <Border Padding="12" Background="#FFF6F8FA" BorderBrush="#FFD7DEE7" BorderThickness="1" CornerRadius="8">
-            <StackPanel>
-                <TextBlock x:Name="CurrentStepTextBlock" FontSize="20" FontWeight="Bold" Text="Aktueller Schritt: -"/>
-                <TextBlock x:Name="CurrentTimeTextBlock" Margin="0,6,0,0" Foreground="#FF5A6470" Text="Simulationszeit: 0 ms"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock x:Name="CurrentStepTextBlock" FontSize="20" FontWeight="Bold" Text="Aktueller Schritt: -"/>
+                    <TextBlock x:Name="CurrentTimeTextBlock" Margin="0,6,0,0" Foreground="#FF5A6470" Text="Simulationszeit: 0 ms"/>
+                    <TextBlock x:Name="ConcurrentGroupTextBlock" Margin="0,6,0,0" Foreground="#FF5A6470" Text="Concurrent-Gruppe: -"/>
+                    <TextBlock x:Name="ConcurrentEventTextBlock" Margin="0,2,0,0" Foreground="#FF5A6470" Text="Concurrent-Event: -"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" Text="Ansicht"/>
+                    <ComboBox x:Name="ViewModeSelector" Width="180" SelectionChanged="OnViewModeChanged">
+                        <ComboBoxItem IsSelected="True" Tag="compact" Content="Kompakt"/>
+                        <ComboBoxItem Tag="expert" Content="Expert"/>
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <Grid Grid.Row="1" Margin="0,12,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.4*"/>
-                <ColumnDefinition Width="1*"/>
-                <ColumnDefinition Width="1*"/>
-                <ColumnDefinition Width="1*"/>
-                <ColumnDefinition Width="1.1*"/>
-                <ColumnDefinition Width="1.1*"/>
-                <ColumnDefinition Width="1.1*"/>
-            </Grid.ColumnDefinitions>
+            <Grid x:Name="CompactPanel">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*"/>
+                    <ColumnDefinition Width="1.1*"/>
+                    <ColumnDefinition Width="1.3*"/>
+                </Grid.ColumnDefinitions>
 
-            <GroupBox Header="Signale" Margin="0,0,12,0">
-                <DataGrid x:Name="SignalsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Signal" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
+                <GroupBox Header="System" Margin="0,0,12,0">
+                    <Grid Margin="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="160"/>
+                        </Grid.RowDefinitions>
+                        <DataGrid x:Name="CompactSignalsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Signal" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DataGrid x:Name="CompactMeasurementBusGrid" Grid.Row="1" Margin="0,8,0,0" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Messbus" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Signal" Binding="{Binding Value}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </GroupBox>
 
-            <GroupBox Grid.Column="1" Header="Messbusse" Margin="0,0,12,0">
-                <DataGrid x:Name="MeasurementBusGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Bus" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="Signal" Binding="{Binding Value}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
+                <GroupBox Grid.Column="1" Header="DUT" Margin="0,0,12,0">
+                    <Grid Margin="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DataGrid x:Name="CompactDeviceIoGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Bereich" Binding="{Binding Section}" Width="0.8*"/>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DataGrid x:Name="CompactDeviceExtraGrid" Grid.Row="1" Margin="0,8,0,0" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Bereich" Binding="{Binding Section}" Width="0.9*"/>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </GroupBox>
 
-            <GroupBox Grid.Column="2" Header="DUT Inputs" Margin="0,0,12,0">
-                <DataGrid x:Name="DeviceInputsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
+                <GroupBox Grid.Column="2" Header="Zustaende und Concurrent">
+                    <Grid Margin="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="150"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="150"/>
+                        </Grid.RowDefinitions>
+                        <ListBox x:Name="CompactStateList"/>
+                        <DataGrid x:Name="CompactConcurrentBranchesGrid" Grid.Row="1" Margin="0,8,0,8" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Branch" Binding="{Binding BranchName}" Width="*"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
+                                <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="1.4*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <ListBox x:Name="CompactFaultList" Grid.Row="2"/>
+                    </Grid>
+                </GroupBox>
+            </Grid>
 
-            <GroupBox Grid.Column="3" Header="DUT Sources" Margin="0,0,12,0">
-                <DataGrid x:Name="DeviceSourcesGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
+            <TabControl x:Name="ExpertPanel" Visibility="Collapsed">
+                <TabItem Header="System">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.4*"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+                        <GroupBox Header="Signale" Margin="0,0,12,0">
+                            <DataGrid x:Name="SignalsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Signal" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                        <GroupBox Grid.Column="1" Header="Messbusse">
+                            <DataGrid x:Name="MeasurementBusGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Bus" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Signal" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </Grid>
+                </TabItem>
 
-            <GroupBox Grid.Column="4" Header="DUT Outputs" Margin="0,0,12,0">
-                <DataGrid x:Name="DeviceOutputsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
+                <TabItem Header="DUT">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-            <GroupBox Grid.Column="5" Header="Relais / Elemente" Margin="0,0,12,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <ListBox x:Name="RelayStateList"/>
-                    <ListBox x:Name="ElementStateList" Grid.Row="1"/>
-                </Grid>
-            </GroupBox>
+                        <GroupBox Header="Inputs" Margin="0,0,12,12">
+                            <DataGrid x:Name="DeviceInputsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
 
-            <GroupBox Grid.Column="6" Header="Faults / DUT Internals / Interfaces">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <ListBox x:Name="FaultList"/>
-                    <DataGrid x:Name="DeviceInternalsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <DataGrid x:Name="DeviceInterfacesGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </GroupBox>
+                        <GroupBox Grid.Column="1" Header="Sources" Margin="0,0,12,12">
+                            <DataGrid x:Name="DeviceSourcesGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Column="2" Header="Outputs" Margin="0,0,0,12">
+                            <DataGrid x:Name="DeviceOutputsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Row="1" Header="Internals" Margin="0,0,12,0">
+                            <DataGrid x:Name="DeviceInternalsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <GroupBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Header="Interfaces">
+                            <DataGrid x:Name="DeviceInterfacesGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Zustaende">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.1*"/>
+                            <ColumnDefinition Width="1.1*"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+                        <GroupBox Header="Relais" Margin="0,0,12,0">
+                            <ListBox x:Name="RelayStateList"/>
+                        </GroupBox>
+                        <GroupBox Grid.Column="1" Header="Elemente" Margin="0,0,12,0">
+                            <ListBox x:Name="ElementStateList"/>
+                        </GroupBox>
+                        <GroupBox Grid.Column="2" Header="Faults">
+                            <ListBox x:Name="FaultList"/>
+                        </GroupBox>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Concurrent">
+                    <Grid Margin="8">
+                        <DataGrid x:Name="ConcurrentBranchesGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Branch" Binding="{Binding BranchName}" Width="*"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
+                                <DataGridTextColumn Header="Aktuell" Binding="{Binding CurrentItem}" Width="1.3*"/>
+                                <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="1.2*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+            </TabControl>
         </Grid>
 
         <GroupBox Grid.Row="2" Header="Signalverlauf" Margin="0,12,0,0">

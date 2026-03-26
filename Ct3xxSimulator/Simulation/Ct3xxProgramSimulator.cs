@@ -6,6 +6,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Threading;
+using System.Threading.Tasks;
 using Ct3xxProgramParser.Model;
 using Ct3xxProgramParser.Programs;
 using Ct3xxSimulator.Simulation.Devices;
@@ -35,6 +36,12 @@ public partial class Ct3xxProgramSimulator
     private ExternalDeviceStateSnapshot _externalDeviceState = ExternalDeviceStateSnapshot.Empty;
     private string? _currentStepName;
     private long _simulatedTimeMs;
+    private string? _activeConcurrentGroupName;
+    private string? _currentConcurrentEvent;
+    private readonly List<ConcurrentTestHandle> _activeConcurrentTests = new();
+    private readonly List<ConcurrentBranchRuntimeState> _concurrentBranchStates = new();
+    private int? _activeConcurrentBranchIndex;
+    private ActiveWaveformSession? _activeWaveformSession;
 
     public Ct3xxProgramSimulator(
         IInteractionProvider? interactionProvider = null,
@@ -149,25 +156,20 @@ public partial class Ct3xxProgramSimulator
         _observer.OnGroupStarted(group);
         var repeatEnabled = !string.IsNullOrWhiteSpace(group.RepeatCondition);
         var iteration = 0;
+        var previousConcurrentGroupName = _activeConcurrentGroupName;
         do
         {
             CheckCancellation();
             iteration++;
-            foreach (var item in group.Items)
+            if (string.Equals(group.ExecMode, "concurrent", StringComparison.OrdinalIgnoreCase))
             {
-                CheckCancellation();
-                switch (item)
-                {
-                    case Table table:
-                        _context.ApplyTable(table, _evaluator);
-                        break;
-                    case Test test:
-                        ExecuteTest(test);
-                        break;
-                    case Group nested:
-                        ExecuteGroup(nested);
-                        break;
-                }
+                _activeConcurrentGroupName = group.Name ?? group.Id ?? "concurrent";
+                ExecuteConcurrentGroupItems(group.Items);
+                _activeConcurrentGroupName = previousConcurrentGroupName;
+            }
+            else
+            {
+                ExecuteSequenceItems(group.Items);
             }
         }
         while (repeatEnabled && iteration < 10 && _evaluator.EvaluateCondition(group.RepeatCondition));
@@ -178,6 +180,31 @@ public partial class Ct3xxProgramSimulator
         }
 
         _observer.OnGroupCompleted(group);
+    }
+
+    private void ExecuteSequenceItems(IEnumerable<SequenceNode> items)
+    {
+        foreach (var item in items)
+        {
+            CheckCancellation();
+            switch (item)
+            {
+                case Table table:
+                    _context.ApplyTable(table, _evaluator);
+                    break;
+                case Test test:
+                    ExecuteTest(test);
+                    break;
+                case Group nested:
+                    ExecuteGroup(nested);
+                    break;
+            }
+        }
+    }
+
+    private void ExecuteConcurrentGroupItems(IEnumerable<SequenceNode> items)
+    {
+        RunConcurrentGroupScheduler(items.ToList());
     }
 
     private void ExecuteDutLoop(DutLoop loop, int iterations)
@@ -220,12 +247,26 @@ public partial class Ct3xxProgramSimulator
 
     private void ExecuteTest(Test test)
     {
+        ExecuteTestCore(test, advanceStepDuration: true);
+    }
+
+    private void ExecuteTestWithoutStepDuration(Test test)
+    {
+        ExecuteTestCore(test, advanceStepDuration: false);
+    }
+
+    private void ExecuteTestCore(Test test, bool advanceStepDuration)
+    {
         if (IsDisabled(test.Disabled))
         {
             return;
         }
 
-        AdvanceTime(GetStepDurationMs(test));
+        if (advanceStepDuration)
+        {
+            AdvanceTime(GetStepDurationMs(test));
+        }
+
         _currentCurvePoints = new List<MeasurementCurvePoint>();
         _executionController.WaitBeforeTest(test, _cancellationToken);
         _observer.OnTestStarted(test);
@@ -236,6 +277,7 @@ public partial class Ct3xxProgramSimulator
         {
             "GSD^" => RunAssignmentTest(test),
             "IOXX" => RunDigitalIoControlTest(test),
+            "E488" => RunInterfaceTest(test),
             "PET$" => RunEvaluationTest(test),
             "PRT^" => RunOperatorTest(test),
             "ECLL" => RunExecutableCallTest(test),
@@ -250,6 +292,13 @@ public partial class Ct3xxProgramSimulator
 
         _context.MarkOutcome(outcome);
         _observer.OnTestCompleted(test, outcome);
+        SampleActiveWaveformSignals();
+
+        if (test.Items.Count > 0 && !HandlesOwnChildSequence(test))
+        {
+            ExecuteSequenceItems(test.Items);
+        }
+
         _executionController.WaitAfterTest(test, _cancellationToken);
     }
 
@@ -650,18 +699,294 @@ public partial class Ct3xxProgramSimulator
         return outcome;
     }
 
+    private bool TryStartConcurrentTest(Test test, int branchIndex, out ConcurrentTestHandle? handle)
+    {
+        handle = null;
+        if (!string.Equals(test.Id, "ECLL", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var parameters = test.Parameters;
+        if (parameters == null)
+        {
+            return false;
+        }
+
+        var waitForFinish = ParseYesNo(GetParameterAttribute(parameters, "WaitForFinish"), defaultValue: true);
+        if (!waitForFinish)
+        {
+            return false;
+        }
+
+        var fileExpression = GetParameterAttribute(parameters, "ExeFileName");
+        var executablePath = _evaluator.ResolveText(fileExpression);
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return false;
+        }
+
+        executablePath = Path.GetFullPath(executablePath);
+        if (!File.Exists(executablePath))
+        {
+            return false;
+        }
+
+        AdvanceTime(GetStepDurationMs(test));
+        _currentCurvePoints = new List<MeasurementCurvePoint>();
+        _executionController.WaitBeforeTest(test, _cancellationToken);
+        _observer.OnTestStarted(test);
+        _currentStepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
+        PublishStateSnapshot();
+
+        var evaluateExitCode = ParseYesNo(GetParameterAttribute(parameters, "EvaluateExitCode"), defaultValue: false);
+        var expectedExitCode = ParseExpectedExitCode(parameters);
+        var startInfo = BuildExecutableStartInfo(executablePath);
+        _observer.OnMessage($"ECLL: starte parallel {startInfo.FileName} {startInfo.Arguments}".Trim());
+        UpdateConcurrentBranchState(branchIndex, "running", DescribeSequenceNode(test), details: $"Prozess gestartet: {Path.GetFileName(executablePath)}");
+
+        var process = new Process { StartInfo = startInfo };
+        process.Start();
+
+        handle = new ConcurrentTestHandle(
+            branchIndex,
+            test,
+            process,
+            executablePath,
+            evaluateExitCode,
+            expectedExitCode);
+        return true;
+    }
+
+    private void CompleteConcurrentTest(ConcurrentTestHandle handle)
+    {
+        using var process = handle.Process;
+        process.WaitForExit();
+        var exitCode = process.ExitCode;
+        _currentConcurrentEvent = $"process_exit:{handle.Test.Parameters?.Name ?? handle.Test.Name ?? handle.Test.Id ?? "Test"}";
+        UpdateConcurrentBranchState(handle.BranchIndex, "running", DescribeSequenceNode(handle.Test), details: $"ExitCode={exitCode}");
+        PublishStateSnapshot();
+        _observer.OnMessage($"ECLL: ExitCode={exitCode}");
+
+        TestOutcome outcome;
+        if (!handle.EvaluateExitCode)
+        {
+            outcome = TestOutcome.Pass;
+            PublishStepEvaluation(handle.Test, TestOutcome.Pass, measured: exitCode, details: $"ExitCode={exitCode}");
+        }
+        else
+        {
+            outcome = exitCode == handle.ExpectedExitCode ? TestOutcome.Pass : TestOutcome.Fail;
+            PublishStepEvaluation(
+                handle.Test,
+                outcome,
+                measured: exitCode,
+                lower: handle.ExpectedExitCode,
+                upper: handle.ExpectedExitCode,
+                details: $"ExitCode={exitCode}, erwartet={handle.ExpectedExitCode}");
+        }
+
+        _context.MarkOutcome(outcome);
+        _observer.OnTestCompleted(handle.Test, outcome);
+        _executionController.WaitAfterTest(handle.Test, _cancellationToken);
+        _currentConcurrentEvent = null;
+    }
+
+    private void InitializeConcurrentBranchStates(IReadOnlyList<SequenceNode> items)
+    {
+        _concurrentBranchStates.Clear();
+        for (var index = 0; index < items.Count; index++)
+        {
+            _concurrentBranchStates.Add(new ConcurrentBranchRuntimeState(
+                index,
+                GetBranchName(items[index], index),
+                DescribeSequenceNode(items[index]),
+                "queued"));
+        }
+    }
+
+    private void UpdateConcurrentBranchState(int branchIndex, string status, string? currentItem = null, long? waitUntilTimeMs = null, string? details = null)
+    {
+        if (branchIndex < 0 || branchIndex >= _concurrentBranchStates.Count)
+        {
+            return;
+        }
+
+        var existing = _concurrentBranchStates[branchIndex];
+        _concurrentBranchStates[branchIndex] = existing with
+        {
+            Status = status,
+            CurrentItem = currentItem ?? existing.CurrentItem,
+            WaitUntilTimeMs = waitUntilTimeMs,
+            Details = details
+        };
+    }
+
+    private void CompleteConcurrentBranchState(int branchIndex)
+    {
+        UpdateConcurrentBranchState(branchIndex, "completed", details: null, waitUntilTimeMs: null);
+    }
+
+    private IDisposable BeginConcurrentBranchScope(int branchIndex)
+    {
+        var previous = _activeConcurrentBranchIndex;
+        _activeConcurrentBranchIndex = branchIndex;
+        return new ScopeGuard(() => _activeConcurrentBranchIndex = previous);
+    }
+
+    private static string GetBranchName(SequenceNode item, int index)
+    {
+        return item switch
+        {
+            Test test => test.Parameters?.Name ?? test.Name ?? test.Id ?? $"Branch {index + 1}",
+            Group group => group.Name ?? group.Id ?? $"Branch {index + 1}",
+            Table table => table.Id ?? $"Table {index + 1}",
+            _ => $"Branch {index + 1}"
+        };
+    }
+
+    private static string DescribeSequenceNode(SequenceNode item)
+    {
+        return item switch
+        {
+            Test test => $"{test.Id ?? "Test"}: {test.Parameters?.Name ?? test.Name ?? "Unnamed"}",
+            Group group => $"{group.Id ?? "Group"}: {group.Name ?? "Unnamed"}",
+            Table table => $"{table.Id ?? "Table"}",
+            _ => item.GetType().Name
+        };
+    }
+
     private TestOutcome RunWaitTest(Test test)
     {
         var waitExpression = GetParameterAttribute(test.Parameters, "WaitTime");
         var delayMs = ParseDurationMilliseconds(waitExpression);
         if (delayMs > 0)
         {
-            Thread.Sleep((int)Math.Min(delayMs, 5_000));
+            if (_activeConcurrentBranchIndex.HasValue)
+            {
+                var branchName = _concurrentBranchStates[_activeConcurrentBranchIndex.Value].BranchName;
+                UpdateConcurrentBranchState(_activeConcurrentBranchIndex.Value, "waiting", DescribeSequenceNode(test), _simulatedTimeMs + delayMs, $"WaitTime={delayMs} ms");
+                _currentConcurrentEvent = $"branch_waiting:{branchName}";
+                PublishStateSnapshot();
+            }
+            else
+            {
+                Thread.Sleep((int)Math.Min(delayMs, 5_000));
+            }
+
             AdvanceTime(delayMs);
+
+            if (_activeConcurrentBranchIndex.HasValue)
+            {
+                var branchName = _concurrentBranchStates[_activeConcurrentBranchIndex.Value].BranchName;
+                UpdateConcurrentBranchState(_activeConcurrentBranchIndex.Value, "running", DescribeSequenceNode(test), null, $"Wait abgeschlossen ({delayMs} ms)");
+                _currentConcurrentEvent = $"branch_resumed:{branchName}";
+                PublishStateSnapshot();
+                _currentConcurrentEvent = null;
+            }
         }
 
         PublishStepEvaluation(test, TestOutcome.Pass, details: $"WaitTime={delayMs} ms");
         return TestOutcome.Pass;
+    }
+
+    // E488 is a communication test for RS232 / IEEE-488 / VISA style interfaces.
+    // The simulator sends commands to the external DUT, reads the response and maps it
+    // back into CT3xx variables so that following evaluation steps can use it.
+    private TestOutcome RunInterfaceTest(Test test)
+    {
+        var parameters = test.Parameters;
+        if (parameters == null)
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "E488 ohne Parameter.");
+            return TestOutcome.Error;
+        }
+
+        if (_externalDeviceSession == null)
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: "E488 ohne aktive Gerätesimulation.");
+            return TestOutcome.Error;
+        }
+
+        var operations = new List<string>();
+        var overallOutcome = TestOutcome.Pass;
+
+        foreach (var table in parameters.Tables)
+        {
+            foreach (var record in table.Records)
+            {
+                if (string.Equals(record.Disabled, "yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var interfaceName = record.Device ?? GetRecordAttribute(record, "Device");
+                if (string.IsNullOrWhiteSpace(interfaceName))
+                {
+                    continue;
+                }
+
+                var direction = NormalizeInterfaceDirection(record.Direction ?? GetRecordAttribute(record, "Direction"));
+                var command = _evaluator.ResolveText(record.Command ?? GetRecordAttribute(record, "Command") ?? record.Expression ?? record.Text);
+                object? responsePayload = null;
+                string? error = null;
+                var operationOk = true;
+
+                if (direction.send)
+                {
+                    if (_activeConcurrentBranchIndex.HasValue)
+                    {
+                        var branchName = _concurrentBranchStates[_activeConcurrentBranchIndex.Value].BranchName;
+                        UpdateConcurrentBranchState(_activeConcurrentBranchIndex.Value, "running", DescribeSequenceNode(test), details: $"Schnittstellenkommando {interfaceName}");
+                        _currentConcurrentEvent = $"interface_request:{branchName}";
+                        PublishStateSnapshot();
+                    }
+
+                    operationOk = _externalDeviceSession.TrySendInterface(interfaceName!, command, _cancellationToken, out responsePayload, out error, _simulatedTimeMs);
+                    _observer.OnMessage($"E488 Schnittstelle SEND {interfaceName}: {command}");
+                }
+                else if (direction.receive)
+                {
+                    if (_activeConcurrentBranchIndex.HasValue)
+                    {
+                        var branchName = _concurrentBranchStates[_activeConcurrentBranchIndex.Value].BranchName;
+                        UpdateConcurrentBranchState(_activeConcurrentBranchIndex.Value, "running", DescribeSequenceNode(test), details: $"Schnittstellenlesezyklus {interfaceName}");
+                        _currentConcurrentEvent = $"interface_read:{branchName}";
+                        PublishStateSnapshot();
+                    }
+
+                    operationOk = _externalDeviceSession.TryReadInterface(interfaceName!, _cancellationToken, out responsePayload, out error, _simulatedTimeMs);
+                    _observer.OnMessage($"E488 Schnittstelle READ {interfaceName}");
+                }
+
+                if (!operationOk)
+                {
+                    overallOutcome = TestOutcome.Error;
+                    operations.Add($"{interfaceName}: {error}");
+                    continue;
+                }
+
+                RefreshExternalDeviceState();
+                AssignInterfaceResponse(record, responsePayload);
+                var responseText = DescribeInterfaceResponse(responsePayload);
+                operations.Add(direction.receive || direction.send ? $"{interfaceName}: {responseText}" : interfaceName!);
+                _observer.OnMessage($"E488 Schnittstelle RECV {interfaceName}: {responseText}");
+                if (_activeConcurrentBranchIndex.HasValue)
+                {
+                    var branchName = _concurrentBranchStates[_activeConcurrentBranchIndex.Value].BranchName;
+                    UpdateConcurrentBranchState(_activeConcurrentBranchIndex.Value, "running", DescribeSequenceNode(test), details: $"Antwort {responseText}");
+                    _currentConcurrentEvent = $"interface_response:{branchName}";
+                    PublishStateSnapshot();
+                    _currentConcurrentEvent = null;
+                }
+            }
+        }
+
+        PublishStepEvaluation(
+            test,
+            overallOutcome,
+            details: operations.Count == 0 ? "E488 ohne wirksame Datensätze." : string.Join(", ", operations));
+        return overallOutcome;
     }
 
     private TestOutcome RunWaveformTest(Test test)
@@ -672,88 +997,95 @@ public partial class Ct3xxProgramSimulator
             return TestOutcome.Error;
         }
 
-        if (!ArbitraryWaveformLoader.TryLoad(_fileSet, test, out var waveform, out var error))
+        if (!ArbitraryWaveformLoader.TryLoadAll(_fileSet, test, out var waveforms, out var error))
         {
             PublishStepEvaluation(test, TestOutcome.Error, details: error);
             return TestOutcome.Error;
         }
 
-        var stimulusSignal = ResolveWaveformRuntimeSignal(waveform.SignalName, waveform.Metadata, "MBUS_ARB", "TP_ARB");
-        var observeSignal = ResolveWaveformRuntimeSignal(waveform.SignalName, waveform.Metadata, "MBUS_SCO", "TP_SCO");
-        var externalStimulusSignal = ResolveExternalWaveformTarget(stimulusSignal, true);
-        var externalObserveSignal = string.IsNullOrWhiteSpace(observeSignal) ? null : ResolveExternalWaveformTarget(observeSignal!, false);
-        var observeSignals = new List<string>();
-        if (!string.IsNullOrWhiteSpace(externalObserveSignal))
-        {
-            observeSignals.Add(externalObserveSignal!);
-        }
-
-        var options = new
-        {
-            observe_signals = observeSignals,
-            capture_signals = observeSignals,
-            capture_sample_count = Math.Min(Math.Max(waveform.Points.Count, 16), 128),
-            capture_duration_ms = waveform.DurationMs
-        };
-
-        var externalWaveform = new AppliedWaveform(externalStimulusSignal, waveform.WaveformName, waveform.Points, waveform.SampleTimeMs, waveform.DelayMs, waveform.Periodic, waveform.Cycles, waveform.Metadata);
-        if (!_externalDeviceSession.TrySetWaveform(externalStimulusSignal, externalWaveform, options, _cancellationToken, out var response, out error, _simulatedTimeMs))
-        {
-            PublishStepEvaluation(test, TestOutcome.Error, details: $"Waveform konnte nicht gesetzt werden: {error}");
-            return TestOutcome.Error;
-        }
-
-        LogWaveformResponse(test, response);
-
-        var stepCount = Math.Min(Math.Max(waveform.Points.Count, 8), 96);
-        var totalDurationMs = Math.Max(1d, waveform.DurationMs);
+        var channelRuns = new List<(AppliedWaveform Waveform, string StimulusSignal, string? ObserveSignal, string ExternalStimulusSignal, string? ExternalObserveSignal, JsonObject? Response)>();
         var traces = new List<StepConnectionTrace>();
-        traces.AddRange(CollectSignalTraces(stimulusSignal, "Waveform Stimulus"));
-        if (!string.IsNullOrWhiteSpace(observeSignal))
+
+        foreach (var waveform in waveforms)
         {
-            traces.AddRange(CollectSignalTraces(observeSignal!, "Waveform Response"));
-        }
-
-        double? lastObserved = null;
-        var waveformStartTime = _simulatedTimeMs;
-        for (var index = 0; index < stepCount; index++)
-        {
-            var relativeTimeMs = totalDurationMs * index / Math.Max(stepCount - 1, 1);
-            var targetTime = (long)Math.Round(relativeTimeMs, MidpointRounding.AwayFromZero);
-            var currentRelativeTime = Math.Max(0L, _simulatedTimeMs - waveformStartTime);
-            AdvanceTime(Math.Max(0L, targetTime - currentRelativeTime));
-
-            var currentStimulus = waveform.GetValueAt(relativeTimeMs);
-            RememberSignal(stimulusSignal, currentStimulus);
-            RecordCurvePoint($"WF {stimulusSignal}", currentStimulus, "V");
-
-            if (string.IsNullOrWhiteSpace(observeSignal))
+            var stimulusSignal = ResolveWaveformRuntimeSignal(waveform.SignalName, waveform.Metadata, "MBUS_ARB", "TP_ARB");
+            var observeSignal = ResolveWaveformRuntimeSignal(waveform.SignalName, waveform.Metadata, "MBUS_SCO", "TP_SCO");
+            var externalStimulusSignal = ResolveExternalWaveformTarget(stimulusSignal, true);
+            var externalObserveSignal = string.IsNullOrWhiteSpace(observeSignal) ? null : ResolveExternalWaveformTarget(observeSignal!, false);
+            var observeSignals = new List<string>();
+            if (!string.IsNullOrWhiteSpace(externalObserveSignal))
             {
-                continue;
+                observeSignals.Add(externalObserveSignal!);
             }
 
-            if (TryReadSignal(observeSignal!, out var observedValue, out var details))
+            var options = new
             {
-                var numeric = _evaluator.ToDouble(observedValue);
-                lastObserved = numeric;
-                RecordCurvePoint($"WF {observeSignal}", numeric, "V");
-                if (!string.IsNullOrWhiteSpace(details))
-                {
-                    _observer.OnMessage($"Waveform read {observeSignal}: {details}");
-                }
+                observe_signals = observeSignals,
+                capture_signals = observeSignals,
+                capture_sample_count = Math.Min(Math.Max(waveform.Points.Count, 16), 128),
+                capture_duration_ms = waveform.DurationMs
+            };
+
+            var externalWaveform = new AppliedWaveform(externalStimulusSignal, waveform.WaveformName, waveform.Points, waveform.SampleTimeMs, waveform.DelayMs, waveform.Periodic, waveform.Cycles, waveform.Metadata);
+            if (!_externalDeviceSession.TrySetWaveform(externalStimulusSignal, externalWaveform, options, _cancellationToken, out var response, out error, _simulatedTimeMs))
+            {
+                PublishStepEvaluation(test, TestOutcome.Error, details: $"Waveform konnte nicht gesetzt werden: {error}");
+                return TestOutcome.Error;
+            }
+
+            LogWaveformResponse(test, response);
+            channelRuns.Add((waveform, stimulusSignal, observeSignal, externalStimulusSignal, externalObserveSignal, response));
+            traces.AddRange(CollectSignalTraces(stimulusSignal, "Waveform Stimulus"));
+            if (!string.IsNullOrWhiteSpace(observeSignal))
+            {
+                traces.AddRange(CollectSignalTraces(observeSignal!, "Waveform Response"));
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(externalObserveSignal) &&
-            _externalDeviceSession.TryReadWaveform(externalObserveSignal!, new { }, _cancellationToken, out var responseWaveform, out error, _simulatedTimeMs) &&
-            responseWaveform?["result"] is JsonObject readResult)
+        StartActiveWaveformSession(channelRuns);
+        ActiveWaveformSession? completedWaveformSession = null;
+        try
         {
-            _observer.OnMessage($"Waveform readback fuer {externalObserveSignal}: {readResult.ToJsonString()}");
+            SampleActiveWaveformSignals();
+            if (test.Items.Count > 0)
+            {
+                ExecuteSequenceItems(test.Items);
+            }
+
+            SampleActiveWaveformSignals();
+        }
+        finally
+        {
+            completedWaveformSession = _activeWaveformSession;
+            EndActiveWaveformSession();
         }
 
-        TryPublishWaveformVariables(stimulusSignal, observeSignal, response);
-        PublishStepEvaluation(test, TestOutcome.Pass, measured: lastObserved, unit: "V", details: $"{waveform.WaveformName} -> {stimulusSignal}", traces: traces);
-        return TestOutcome.Pass;
+        foreach (var channel in channelRuns)
+        {
+            if (!string.IsNullOrWhiteSpace(channel.ExternalObserveSignal) &&
+                _externalDeviceSession.TryReadWaveform(channel.ExternalObserveSignal!, new { }, _cancellationToken, out var responseWaveform, out error, _simulatedTimeMs) &&
+                responseWaveform?["result"] is JsonObject readResult)
+            {
+                _observer.OnMessage($"Waveform readback fuer {channel.ExternalObserveSignal}: {readResult.ToJsonString()}");
+            }
+        }
+
+        var primaryChannel = channelRuns[0];
+        TryPublishWaveformVariables(primaryChannel.StimulusSignal, primaryChannel.ObserveSignal, primaryChannel.Response);
+        var waveformOutcome = EvaluateWaveformOutcome(completedWaveformSession, channelRuns, out var waveformDetails, out var lastObserved);
+        PublishStepEvaluation(
+            test,
+            waveformOutcome,
+            measured: lastObserved,
+            unit: "V",
+            details: string.Join(" | ", new[]
+            {
+                string.Join(", ", channelRuns.Select(item => $"{item.Waveform.WaveformName} -> {item.StimulusSignal}")),
+                waveformDetails
+            }.Where(item => !string.IsNullOrWhiteSpace(item))),
+            traces: traces);
+        EndActiveWaveformSession();
+        return waveformOutcome;
     }
 
     private TestOutcome RunScannerConnectTest(Test test)
@@ -874,11 +1206,6 @@ public partial class Ct3xxProgramSimulator
 
     private object? ResolveMeasurementInput(Test test, Record record)
     {
-        if (ShouldSkipMeasurementPrompt(test))
-        {
-            return null;
-        }
-
         var expression = record.Expression;
         if (string.IsNullOrWhiteSpace(expression))
         {
@@ -890,69 +1217,9 @@ public partial class Ct3xxProgramSimulator
             return null;
         }
 
-        var label = record.DrawingReference ?? record.Text ?? record.Id ?? test.Parameters?.Name ?? test.Name ?? "Measurement";
-        label = string.IsNullOrWhiteSpace(label) ? "Measurement" : label.Trim();
-        var unit = string.IsNullOrWhiteSpace(record.Unit) ? string.Empty : record.Unit!.Trim();
-        if (!string.IsNullOrEmpty(unit))
-        {
-            label = $"{label} [{unit}]";
-        }
-
-        var prompt = $"{label}: ";
-        string input;
-        if (_interaction is IMeasurementInteractionProvider measurementProvider)
-        {
-            input = measurementProvider.PromptMeasurement(test, record, prompt, unit);
-        }
-        else
-        {
-            input = _interaction.PromptInput(prompt);
-        }
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return _context.GetValue(address);
-        }
-
-        if (!double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric) &&
-            !double.TryParse(input, NumberStyles.Float, CultureInfo.CurrentCulture, out numeric))
-        {
-            _context.SetValue(address, input);
-            _observer.OnMessage($"{label} := {input}");
-            return input;
-        }
-
-        _context.SetValue(address, numeric);
-        _observer.OnMessage($"{label} := {numeric.ToString("0.###", CultureInfo.InvariantCulture)}");
-        return numeric;
-    }
-
-    private static bool ShouldSkipMeasurementPrompt(Test? test)
-    {
-        if (test == null)
-        {
-            return false;
-        }
-
-        var id = (test.Id ?? string.Empty).Trim();
-        if (id.StartsWith("ICT", StringComparison.OrdinalIgnoreCase) ||
-            id.StartsWith("SHRT", StringComparison.OrdinalIgnoreCase) ||
-            id.StartsWith("BCT", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (!string.IsNullOrWhiteSpace(test.File))
-        {
-            var clean = test.File!.Trim().Trim('\'', '"');
-            var ext = Path.GetExtension(clean);
-            if (!string.IsNullOrWhiteSpace(ext) &&
-                ext.Equals(".ctict", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        // Only explicit operator interaction tests should ask the user.
+        // Evaluation tests read already available variables and signals.
+        return _context.GetValue(address);
     }
 
     private void EnsureConditionContext(string? condition)
@@ -1102,6 +1369,9 @@ public partial class Ct3xxProgramSimulator
         _currentCurvePoints = new List<MeasurementCurvePoint>();
         _externalDeviceState = ExternalDeviceStateSnapshot.Empty;
         _simulatedTimeMs = 0;
+        _activeConcurrentGroupName = null;
+        _currentConcurrentEvent = null;
+        _activeConcurrentTests.Clear();
         PublishStateSnapshot();
     }
 
@@ -1392,6 +1662,119 @@ public partial class Ct3xxProgramSimulator
         return trimmed;
     }
 
+    private void AssignInterfaceResponse(Record record, object? responsePayload)
+    {
+        if (string.IsNullOrWhiteSpace(record.Variable))
+        {
+            return;
+        }
+
+        if (TrySplitInterfaceArray(responsePayload, out var values))
+        {
+            _context.SetValue(record.Variable!, new ArrayAllocation(values.Count));
+            for (var index = 0; index < values.Count; index++)
+            {
+                _context.SetValue($"{record.Variable}[{index + 1}]", values[index]);
+            }
+
+            return;
+        }
+
+        _context.SetValue(record.Variable!, responsePayload);
+    }
+
+    private static bool TrySplitInterfaceArray(object? responsePayload, out List<object?> values)
+    {
+        values = new List<object?>();
+        switch (responsePayload)
+        {
+            case System.Text.Json.Nodes.JsonArray jsonArray:
+                foreach (var item in jsonArray)
+                {
+                    values.Add(ParseInterfaceScalar(item?.ToString()));
+                }
+
+                return values.Count > 0;
+
+            case string text:
+                var parts = text
+                    .Trim()
+                    .Trim('[', ']', '{', '}')
+                    .Split(new[] { ',', ';', '\t', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(part => part.Trim())
+                    .Where(part => part.Length > 0)
+                    .ToList();
+
+                if (parts.Count <= 1)
+                {
+                    return false;
+                }
+
+                values.AddRange(parts.Select(ParseInterfaceScalar));
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static object? ParseInterfaceScalar(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        var trimmed = text.Trim().Trim('"', '\'');
+        if (double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out var invariant))
+        {
+            return invariant;
+        }
+
+        if (double.TryParse(trimmed, NumberStyles.Float, CultureInfo.CurrentCulture, out var current))
+        {
+            return current;
+        }
+
+        return trimmed;
+    }
+
+    private static string DescribeInterfaceResponse(object? responsePayload)
+    {
+        return responsePayload switch
+        {
+            null => string.Empty,
+            System.Text.Json.Nodes.JsonNode node => node.ToJsonString(),
+            _ => responsePayload.ToString() ?? string.Empty
+        };
+    }
+
+    private static string? GetRecordAttribute(Record record, string attributeName)
+    {
+        if (record.AdditionalAttributes == null || string.IsNullOrWhiteSpace(attributeName))
+        {
+            return null;
+        }
+
+        var attribute = record.AdditionalAttributes.FirstOrDefault(item =>
+            string.Equals(item.Name, attributeName, StringComparison.OrdinalIgnoreCase));
+        return attribute?.Value?.Trim().Trim('\'', '"');
+    }
+
+    private static (bool send, bool receive) NormalizeInterfaceDirection(string? rawDirection)
+    {
+        var direction = rawDirection?.Trim().Trim('\'', '"') ?? string.Empty;
+        if (direction.Length == 0)
+        {
+            return (true, false);
+        }
+
+        var normalized = direction.ToLowerInvariant();
+        return (
+            send: normalized.Contains("send", StringComparison.Ordinal),
+            receive: normalized.Contains("receive", StringComparison.Ordinal));
+    }
+
     private ExternalDeviceSession? CreateExternalDeviceSession()
     {
         var pipeName = Environment.GetEnvironmentVariable("CT3XX_PY_DEVICE_PIPE");
@@ -1475,7 +1858,43 @@ public partial class Ct3xxProgramSimulator
 
         var relayStates = _wireVizResolver?.DescribeRelayStates(_signalState, _signalChangedAtMs, _simulatedTimeMs, _faults) ?? Array.Empty<string>();
         var elementStates = _wireVizResolver?.DescribeElementStates(_signalState, _signalChangedAtMs, _simulatedTimeMs, _faults) ?? Array.Empty<string>();
-        _observer.OnStateChanged(new SimulationStateSnapshot(_currentStepName, _simulatedTimeMs, signalSnapshot, measurementBusSnapshot, relayStates, _faults.DescribeActiveFaults(), _externalDeviceState, elementStates));
+        var concurrentBranches = BuildConcurrentBranchSnapshots();
+        _observer.OnStateChanged(new SimulationStateSnapshot(
+            _currentStepName,
+            _simulatedTimeMs,
+            signalSnapshot,
+            measurementBusSnapshot,
+            relayStates,
+            _faults.DescribeActiveFaults(),
+            _externalDeviceState,
+            elementStates,
+            _activeConcurrentGroupName,
+            _currentConcurrentEvent,
+            concurrentBranches));
+        _executionController.WaitAfterSnapshot(new SimulationStateSnapshot(
+            _currentStepName,
+            _simulatedTimeMs,
+            signalSnapshot,
+            measurementBusSnapshot,
+            relayStates,
+            _faults.DescribeActiveFaults(),
+            _externalDeviceState,
+            elementStates,
+            _activeConcurrentGroupName,
+            _currentConcurrentEvent,
+            concurrentBranches), _cancellationToken);
+    }
+
+    private IReadOnlyList<ConcurrentBranchSnapshot> BuildConcurrentBranchSnapshots()
+    {
+        return _concurrentBranchStates
+            .Select(state => new ConcurrentBranchSnapshot(
+                state.BranchName,
+                state.CurrentItem,
+                state.Status,
+                state.WaitUntilTimeMs,
+                state.Details))
+            .ToList();
     }
 
     private IReadOnlyList<StepConnectionTrace> CollectSignalTraces(string signalName, string traceKind)
@@ -1485,13 +1904,28 @@ public partial class Ct3xxProgramSimulator
             return Array.Empty<StepConnectionTrace>();
         }
 
-        if (!_wireVizResolver.TryTrace(signalName, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, out var traces))
+        if (_wireVizResolver.TryTrace(signalName, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, out var traces))
+        {
+            return traces
+                .Select(trace => new StepConnectionTrace($"{traceKind}: {trace.SignalName}", trace.Nodes))
+                .ToList();
+        }
+
+        if (!_wireVizResolver.TryResolveRuntimeTargets(signalName, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, true, out var writeTargets) &&
+            !_wireVizResolver.TryResolveRuntimeTargets(signalName, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, false, out writeTargets))
         {
             return Array.Empty<StepConnectionTrace>();
         }
 
-        return traces
-            .Select(trace => new StepConnectionTrace($"{traceKind}: {trace.SignalName}", trace.Nodes))
+        return writeTargets
+            .Select(target => new StepConnectionTrace(
+                $"{traceKind}: {signalName}",
+                new[]
+                {
+                    signalName,
+                    target.SignalName
+                }))
+            .DistinctBy(trace => $"{trace.Title}|{string.Join(">", trace.Nodes)}", StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -1506,10 +1940,300 @@ public partial class Ct3xxProgramSimulator
         return result;
     }
 
+    private static bool HandlesOwnChildSequence(Test test)
+    {
+        var id = test.Id?.Trim();
+        return string.Equals(id, "2ARB", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(id, "SA1T", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(id, "TRGA", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void StartActiveWaveformSession(IReadOnlyList<(AppliedWaveform Waveform, string StimulusSignal, string? ObserveSignal, string ExternalStimulusSignal, string? ExternalObserveSignal, JsonObject? Response)> channelRuns)
+    {
+        var monitors = channelRuns
+            .Where(item => !string.IsNullOrWhiteSpace(item.ObserveSignal))
+            .Select(item => new ActiveWaveformMonitor(item.Waveform, item.StimulusSignal, item.ObserveSignal!))
+            .ToList();
+        var sampleStepMs = Math.Max(1L, (long)Math.Round(Math.Max(channelRuns.Select(item => item.Waveform.SampleTimeMs).Where(item => item > 0d).DefaultIfEmpty(10d).Min(), 10d), MidpointRounding.AwayFromZero));
+        _activeWaveformSession = new ActiveWaveformSession(_simulatedTimeMs, sampleStepMs, monitors);
+    }
+
+    private void EndActiveWaveformSession()
+    {
+        _activeWaveformSession = null;
+    }
+
+    private void SampleActiveWaveformSignals()
+    {
+        var session = _activeWaveformSession;
+        if (session == null)
+        {
+            return;
+        }
+
+        var relativeTimeMs = Math.Max(0d, _simulatedTimeMs - session.StartTimeMs);
+        foreach (var monitor in session.Monitors)
+        {
+            if (monitor.LastSampleTimeMs == _simulatedTimeMs)
+            {
+                continue;
+            }
+
+            var currentStimulus = monitor.Waveform.GetValueAt(relativeTimeMs);
+            RememberSignal(monitor.StimulusSignal, currentStimulus);
+            RecordCurvePoint($"WF {monitor.StimulusSignal}", currentStimulus, "V");
+
+            double? observedNumeric = null;
+            if (TryReadSignal(monitor.ObserveSignal, out var observedValue, out _))
+            {
+                observedNumeric = _evaluator.ToDouble(observedValue);
+                RecordCurvePoint($"WF {monitor.ObserveSignal}", observedNumeric, "V");
+            }
+
+            monitor.LastSampleTimeMs = _simulatedTimeMs;
+            monitor.LastObservedValue = observedNumeric;
+            monitor.Samples.Add(new WaveformPoint(relativeTimeMs, observedNumeric ?? 0d));
+        }
+    }
+
+    private TestOutcome EvaluateWaveformOutcome(
+        ActiveWaveformSession? session,
+        IReadOnlyList<(AppliedWaveform Waveform, string StimulusSignal, string? ObserveSignal, string ExternalStimulusSignal, string? ExternalObserveSignal, JsonObject? Response)> channelRuns,
+        out string details,
+        out double? lastObserved)
+    {
+        details = string.Empty;
+        lastObserved = null;
+        var messages = new List<string>();
+        var outcome = TestOutcome.Pass;
+        if (session == null)
+        {
+            return TestOutcome.Error;
+        }
+
+        foreach (var channel in channelRuns)
+        {
+            if (!session.TryGetMonitor(channel.ObserveSignal, out var monitor))
+            {
+                continue;
+            }
+
+            lastObserved = monitor.LastObservedValue ?? lastObserved;
+            var channelIndex = GetWaveformChannelIndex(channel.Waveform.Metadata);
+            var evaluation = EvaluateWaveformChannel(channel.Waveform.Metadata, channelIndex, monitor.Samples);
+            messages.Add($"CH{channelIndex + 1}: {evaluation.Message}");
+            outcome = CombineOutcomes(outcome, evaluation.Outcome);
+        }
+
+        details = string.Join("; ", messages);
+        return outcome;
+    }
+
+    private static TestOutcome CombineOutcomes(TestOutcome current, TestOutcome next)
+    {
+        if (current == TestOutcome.Error || next == TestOutcome.Error)
+        {
+            return TestOutcome.Error;
+        }
+
+        if (current == TestOutcome.Fail || next == TestOutcome.Fail)
+        {
+            return TestOutcome.Fail;
+        }
+
+        return TestOutcome.Pass;
+    }
+
+    private static int GetWaveformChannelIndex(IReadOnlyDictionary<string, string> metadata)
+    {
+        return metadata.TryGetValue("CHANNEL_INDEX", out var text) &&
+               int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) &&
+               parsed >= 0
+            ? parsed
+            : 0;
+    }
+
+    private static WaveformEvaluationResult EvaluateWaveformChannel(IReadOnlyDictionary<string, string> metadata, int channelIndex, IReadOnlyList<WaveformPoint> samples)
+    {
+        if (samples.Count == 0)
+        {
+            return new WaveformEvaluationResult(TestOutcome.Error, "keine Ruecksignal-Samples");
+        }
+
+        var values = samples.Select(item => item.Value).ToList();
+        var max = values.Max();
+        var min = values.Min();
+        var average = values.Average();
+        var rms = Math.Sqrt(values.Average(item => item * item));
+        var threshold = (max + min) / 2d;
+        var pulseCount = CountPulses(samples, threshold);
+        var avgPulseWidthSeconds = CalculateAveragePulseWidthMs(samples, threshold) / 1000d;
+
+        var messages = new List<string>();
+        var outcome = TestOutcome.Pass;
+        ApplyMetricCheck("UMAX", max, "V");
+        ApplyMetricCheck("UMIN", min, "V");
+        ApplyMetricCheck("UAVG", average, "V");
+        ApplyMetricCheck("UEFF", rms, "V");
+        ApplyMetricCheck("NPUL", pulseCount, string.Empty);
+        ApplyMetricCheck("AWID", avgPulseWidthSeconds, "s");
+        return new WaveformEvaluationResult(outcome, string.Join(", ", messages));
+
+        void ApplyMetricCheck(string metricName, double actualValue, string defaultUnit)
+        {
+            if (!IsWaveformMetricEnabled(metadata, metricName, channelIndex))
+            {
+                return;
+            }
+
+            var lower = GetWaveformMetricLimit(metadata, "Lower" + metricName, channelIndex, defaultUnit);
+            var upper = GetWaveformMetricLimit(metadata, "Upper" + metricName, channelIndex, defaultUnit);
+            if (!lower.HasValue && !upper.HasValue)
+            {
+                messages.Add($"{metricName}={actualValue.ToString("0.###", CultureInfo.InvariantCulture)}{defaultUnit}");
+                return;
+            }
+
+            var metricOutcome = EvaluateNumericOutcome(actualValue, lower, upper);
+            outcome = CombineOutcomes(outcome, metricOutcome);
+            messages.Add($"{metricName}={actualValue.ToString("0.###", CultureInfo.InvariantCulture)}{defaultUnit} [{FormatLimit(lower)}..{FormatLimit(upper)}]");
+        }
+    }
+
+    private static int CountPulses(IReadOnlyList<WaveformPoint> samples, double threshold)
+    {
+        var count = 0;
+        var previousHigh = false;
+        foreach (var sample in samples)
+        {
+            var currentHigh = sample.Value >= threshold;
+            if (currentHigh && !previousHigh)
+            {
+                count++;
+            }
+
+            previousHigh = currentHigh;
+        }
+
+        return count;
+    }
+
+    private static double CalculateAveragePulseWidthMs(IReadOnlyList<WaveformPoint> samples, double threshold)
+    {
+        var widths = new List<double>();
+        double? pulseStart = null;
+        foreach (var sample in samples)
+        {
+            var currentHigh = sample.Value >= threshold;
+            if (currentHigh && pulseStart == null)
+            {
+                pulseStart = sample.TimeMs;
+            }
+            else if (!currentHigh && pulseStart.HasValue)
+            {
+                widths.Add(Math.Max(0d, sample.TimeMs - pulseStart.Value));
+                pulseStart = null;
+            }
+        }
+
+        if (pulseStart.HasValue)
+        {
+            widths.Add(Math.Max(0d, samples[^1].TimeMs - pulseStart.Value));
+        }
+
+        return widths.Count == 0 ? 0d : widths.Average();
+    }
+
+    private static bool IsWaveformMetricEnabled(IReadOnlyDictionary<string, string> metadata, string metricName, int channelIndex)
+    {
+        var key = $"Disable{metricName}:{channelIndex}";
+        return !metadata.TryGetValue(key, out var value) || !value.Contains("yes", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static double? GetWaveformMetricLimit(IReadOnlyDictionary<string, string> metadata, string keyBase, int channelIndex, string defaultUnit)
+    {
+        var key = $"{keyBase}:{channelIndex}";
+        if (!metadata.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return ArbitraryWaveformLoader.ParseEngineeringValue(value, string.IsNullOrWhiteSpace(defaultUnit) ? string.Empty : defaultUnit);
+    }
+
+    private sealed class ActiveWaveformSession
+    {
+        private readonly Dictionary<string, ActiveWaveformMonitor> _monitorsBySignal;
+
+        public ActiveWaveformSession(long startTimeMs, long sampleStepMs, IReadOnlyList<ActiveWaveformMonitor> monitors)
+        {
+            StartTimeMs = startTimeMs;
+            SampleStepMs = sampleStepMs;
+            Monitors = monitors;
+            _monitorsBySignal = monitors.ToDictionary(item => item.ObserveSignal, StringComparer.OrdinalIgnoreCase);
+        }
+
+        public long StartTimeMs { get; }
+        public long SampleStepMs { get; }
+        public IReadOnlyList<ActiveWaveformMonitor> Monitors { get; }
+
+        public bool TryGetMonitor(string? signalName, out ActiveWaveformMonitor monitor)
+        {
+            if (!string.IsNullOrWhiteSpace(signalName) && _monitorsBySignal.TryGetValue(signalName, out monitor!))
+            {
+                return true;
+            }
+
+            monitor = null!;
+            return false;
+        }
+    }
+
+    private sealed class ActiveWaveformMonitor
+    {
+        public ActiveWaveformMonitor(AppliedWaveform waveform, string stimulusSignal, string observeSignal)
+        {
+            Waveform = waveform;
+            StimulusSignal = stimulusSignal;
+            ObserveSignal = observeSignal;
+        }
+
+        public AppliedWaveform Waveform { get; }
+        public string StimulusSignal { get; }
+        public string ObserveSignal { get; }
+        public List<WaveformPoint> Samples { get; } = new();
+        public long LastSampleTimeMs { get; set; } = long.MinValue;
+        public double? LastObservedValue { get; set; }
+    }
+
+    private readonly record struct WaveformEvaluationResult(TestOutcome Outcome, string Message);
+
     private void AdvanceTime(long milliseconds)
     {
-        _simulatedTimeMs += Math.Max(0L, milliseconds);
-        PublishStateSnapshot();
+        var remaining = Math.Max(0L, milliseconds);
+        if (_activeWaveformSession == null)
+        {
+            _simulatedTimeMs += remaining;
+            PublishStateSnapshot();
+            return;
+        }
+
+        if (remaining == 0)
+        {
+            PublishStateSnapshot();
+            SampleActiveWaveformSignals();
+            return;
+        }
+
+        var stepMs = Math.Max(1L, _activeWaveformSession.SampleStepMs);
+        while (remaining > 0)
+        {
+            var slice = Math.Min(stepMs, remaining);
+            _simulatedTimeMs += slice;
+            remaining -= slice;
+            PublishStateSnapshot();
+            SampleActiveWaveformSignals();
+        }
     }
 
     private static long GetStepDurationMs(Test test)
@@ -1559,4 +2283,32 @@ public partial class Ct3xxProgramSimulator
     {
         return _currentCurvePoints.ToList();
     }
+
+    private sealed class ConcurrentTestHandle
+    {
+        public ConcurrentTestHandle(int branchIndex, Test test, Process process, string executablePath, bool evaluateExitCode, int expectedExitCode)
+        {
+            BranchIndex = branchIndex;
+            Test = test;
+            Process = process;
+            ExecutablePath = executablePath;
+            EvaluateExitCode = evaluateExitCode;
+            ExpectedExitCode = expectedExitCode;
+        }
+
+        public int BranchIndex { get; }
+        public Test Test { get; }
+        public Process Process { get; }
+        public string ExecutablePath { get; }
+        public bool EvaluateExitCode { get; }
+        public int ExpectedExitCode { get; }
+    }
+
+    private sealed record ConcurrentBranchRuntimeState(
+        int BranchIndex,
+        string BranchName,
+        string? CurrentItem,
+        string Status,
+        long? WaitUntilTimeMs = null,
+        string? Details = null);
 }

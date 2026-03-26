@@ -12,7 +12,10 @@ public sealed class SimulationStateSnapshot
         IReadOnlyList<string> relayStates,
         IReadOnlyList<string>? activeFaults = null,
         ExternalDeviceStateSnapshot? externalDeviceState = null,
-        IReadOnlyList<string>? elementStates = null)
+        IReadOnlyList<string>? elementStates = null,
+        string? activeConcurrentGroup = null,
+        string? concurrentEvent = null,
+        IReadOnlyList<ConcurrentBranchSnapshot>? concurrentBranches = null)
     {
         CurrentStep = currentStep;
         CurrentTimeMs = currentTimeMs;
@@ -22,6 +25,9 @@ public sealed class SimulationStateSnapshot
         ActiveFaults = activeFaults ?? Array.Empty<string>();
         ExternalDeviceState = externalDeviceState ?? ExternalDeviceStateSnapshot.Empty;
         ElementStates = elementStates ?? Array.Empty<string>();
+        ActiveConcurrentGroup = activeConcurrentGroup;
+        ConcurrentEvent = concurrentEvent;
+        ConcurrentBranches = concurrentBranches ?? Array.Empty<ConcurrentBranchSnapshot>();
     }
 
     public string? CurrentStep { get; }
@@ -32,4 +38,7 @@ public sealed class SimulationStateSnapshot
     public IReadOnlyList<string> ActiveFaults { get; }
     public ExternalDeviceStateSnapshot ExternalDeviceState { get; }
     public IReadOnlyList<string> ElementStates { get; }
+    public string? ActiveConcurrentGroup { get; }
+    public string? ConcurrentEvent { get; }
+    public IReadOnlyList<ConcurrentBranchSnapshot> ConcurrentBranches { get; }
 }

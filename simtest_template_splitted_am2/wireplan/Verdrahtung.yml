@@ -1,0 +1,72 @@
+connectors:
+  AM2_1:
+    bgcolor: WH
+    pins: [AM2_1_ARB_3, AM2_1_SCO_8]
+    pinlabels: ["AM2/1 BNC + A-IO 3", "AM2/1 BNC + A-IO 8"]
+
+  AM2_2:
+    bgcolor: WH
+    pins: [AM2_2_ARB_3, AM2_2_SCO_8]
+    pinlabels: ["AM2/2 BNC + A-IO 3", "AM2/2 BNC + A-IO 8"]
+
+  AM2_3:
+    bgcolor: WH
+    pins: [AM2_3_ARB_3, AM2_3_SCO_8]
+    pinlabels: ["AM2/3 BNC + A-IO 3", "AM2/3 BNC + A-IO 8"]
+
+  SM4:
+    bgcolor: WH
+    pins: [SM4_10_0, SM4_34_0]
+    pinlabels: [DUT_HV, GND]
+
+  Device:
+    bgcolor: YE
+    pins: [HV_IN, GND, ARB_IN_1, SCO_OUT_1, ARB_IN_2, SCO_OUT_2, ARB_IN_3, SCO_OUT_3]
+    pinlabels: [DUT_HV_IN, GND, WAVE_IN_1, WAVE_OUT_1, WAVE_IN_2, WAVE_OUT_2, WAVE_IN_3, WAVE_OUT_3]
+
+cables:
+  Supply:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [DUT_HV, GND]
+
+  Phase1:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [WAVE_IN_1, WAVE_OUT_1]
+
+  Phase2:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [WAVE_IN_2, WAVE_OUT_2]
+
+  Phase3:
+    wirecount: 2
+    show_wirecount: false
+    show_wirenumbers: false
+    color_code: DIN
+    wirelabels: [WAVE_IN_3, WAVE_OUT_3]
+
+connections:
+  -
+    - SM4: [SM4_10_0, SM4_34_0]
+    - Supply: [DUT_HV, GND]
+    - Device: [HV_IN, GND]
+  -
+    - AM2_1: [AM2_1_ARB_3, AM2_1_SCO_8]
+    - Phase1: [WAVE_IN_1, WAVE_OUT_1]
+    - Device: [ARB_IN_1, SCO_OUT_1]
+  -
+    - AM2_2: [AM2_2_ARB_3, AM2_2_SCO_8]
+    - Phase2: [WAVE_IN_2, WAVE_OUT_2]
+    - Device: [ARB_IN_2, SCO_OUT_2]
+  -
+    - AM2_3: [AM2_3_ARB_3, AM2_3_SCO_8]
+    - Phase3: [WAVE_IN_3, WAVE_OUT_3]
+    - Device: [ARB_IN_3, SCO_OUT_3]

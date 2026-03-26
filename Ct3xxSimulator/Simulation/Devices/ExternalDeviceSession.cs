@@ -54,6 +54,36 @@ internal sealed class ExternalDeviceSession : IDisposable
         return true;
     }
 
+    public bool TrySendInterface(string name, object? payload, System.Threading.CancellationToken cancellationToken, out object? responsePayload, out string? error, long? simTimeMs = null)
+    {
+        var response = _client.SendInterface(name, payload, simTimeMs ?? CurrentSimTimeMs, cancellationToken);
+        if (!response.Ok)
+        {
+            responsePayload = null;
+            error = $"{response.ErrorCode}: {response.ErrorMessage}";
+            return false;
+        }
+
+        responsePayload = ExtractNamedResponsePayload(response.Result);
+        error = null;
+        return true;
+    }
+
+    public bool TryReadInterface(string name, System.Threading.CancellationToken cancellationToken, out object? responsePayload, out string? error, long? simTimeMs = null)
+    {
+        var response = _client.ReadInterface(name, simTimeMs ?? CurrentSimTimeMs, cancellationToken);
+        if (!response.Ok)
+        {
+            responsePayload = null;
+            error = $"{response.ErrorCode}: {response.ErrorMessage}";
+            return false;
+        }
+
+        responsePayload = ExtractNamedResponsePayload(response.Result);
+        error = null;
+        return true;
+    }
+
     public bool TryWriteSignal(string name, object? value, System.Threading.CancellationToken cancellationToken, out string? error, long? simTimeMs = null)
     {
         var response = _client.SetInput(name, value, simTimeMs ?? CurrentSimTimeMs, cancellationToken);
@@ -286,6 +316,16 @@ internal sealed class ExternalDeviceSession : IDisposable
         }
 
         return node.ToJsonString();
+    }
+
+    private static object? ExtractNamedResponsePayload(JsonNode? result)
+    {
+        if (result is JsonObject resultObject && resultObject["response"] != null)
+        {
+            return ExtractNodeValue(resultObject["response"]);
+        }
+
+        return ExtractNodeValue(result);
     }
 
     private static string? FormatState(ExternalDeviceResponse response)

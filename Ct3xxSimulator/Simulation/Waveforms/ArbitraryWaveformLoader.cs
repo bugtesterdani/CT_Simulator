@@ -15,9 +15,71 @@ internal static class ArbitraryWaveformLoader
     private static readonly Regex ParameterRegex = new(@"^\s*(?<key>[^\s{]+)\s+\{""(?<value>.*)""\}\s*$", RegexOptions.Compiled);
     private static readonly Regex SampleRegex = new(@"^ArbSample(?<channel>\d+):(?<index>\d+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    public static bool TryLoadAll(Ct3xxProgramFileSet? fileSet, Test test, out IReadOnlyList<AppliedWaveform> waveforms, out string? error)
+    {
+        waveforms = Array.Empty<AppliedWaveform>();
+        error = null;
+
+        if (!TryLoadParameters(fileSet, test, out var parameters, out error))
+        {
+            return false;
+        }
+
+        var sampleTimeMs = ParseEngineeringValue(parameters.TryGetValue("ArbSampleTime", out var sampleTimeText) ? sampleTimeText : null, "ms") ?? 0d;
+        var delayMs = ParseEngineeringValue(parameters.TryGetValue("ArbDelay", out var delayText) ? delayText : null, "ms") ?? 0d;
+        var burstText = parameters.TryGetValue("BurstCount", out var burstValue) ? burstValue : null;
+        var periodic = (parameters.TryGetValue("ArbMode", out var modeText) &&
+                       modeText.Contains("periodic", StringComparison.OrdinalIgnoreCase)) ||
+                       IsUntilTestEnd(burstText);
+        var cycles = ParseCycles(burstText);
+        var waveformName = parameters.TryGetValue("Name", out var name) ? name : test.Name ?? test.Id ?? "Waveform";
+        var channelCount = ParseChannelCount(parameters);
+
+        var items = new List<AppliedWaveform>();
+        for (var channelIndex = 0; channelIndex < channelCount; channelIndex++)
+        {
+            var points = ParsePoints(parameters, sampleTimeMs, channelIndex);
+            if (points.Count == 0)
+            {
+                continue;
+            }
+
+            var metadata = new Dictionary<string, string>(parameters, StringComparer.OrdinalIgnoreCase)
+            {
+                ["CHANNEL_INDEX"] = channelIndex.ToString(CultureInfo.InvariantCulture),
+                ["CHANNEL_CARD_INDEX"] = (channelIndex + 1).ToString(CultureInfo.InvariantCulture)
+            };
+            var signalName = ResolveSignalName(parameters, channelIndex);
+            items.Add(new AppliedWaveform(signalName, $"{waveformName} CH{channelIndex + 1}", points, sampleTimeMs, delayMs, periodic, cycles, metadata));
+        }
+
+        if (items.Count == 0)
+        {
+            error = "Waveform-Datei enthaelt keine verwertbaren ARB-Kanaele.";
+            return false;
+        }
+
+        waveforms = items;
+        return true;
+    }
+
     public static bool TryLoad(Ct3xxProgramFileSet? fileSet, Test test, out AppliedWaveform waveform, out string? error)
     {
         waveform = null!;
+        error = null;
+
+        if (!TryLoadAll(fileSet, test, out var waveforms, out error))
+        {
+            return false;
+        }
+
+        waveform = waveforms[0];
+        return true;
+    }
+
+    private static bool TryLoadParameters(Ct3xxProgramFileSet? fileSet, Test test, out Dictionary<string, string> parameters, out string? error)
+    {
+        parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         error = null;
 
         if (fileSet == null)
@@ -48,23 +110,13 @@ internal static class ArbitraryWaveformLoader
             return false;
         }
 
-        var parameters = ParseParameters(document.Lines);
+        parameters = ParseParameters(document.Lines);
         if (parameters.Count == 0)
         {
             error = $"Waveform-Datei '{relativeFile}' konnte nicht gelesen werden.";
             return false;
         }
 
-        var sampleTimeMs = ParseEngineeringValue(parameters.TryGetValue("ArbSampleTime", out var sampleTimeText) ? sampleTimeText : null, "ms") ?? 0d;
-        var delayMs = ParseEngineeringValue(parameters.TryGetValue("ArbDelay", out var delayText) ? delayText : null, "ms") ?? 0d;
-        var periodic = parameters.TryGetValue("ArbMode", out var modeText) &&
-                       modeText.Contains("periodic", StringComparison.OrdinalIgnoreCase);
-        var cycles = ParseCycles(parameters.TryGetValue("BurstCount", out var burstText) ? burstText : null);
-        var points = ParsePoints(parameters, sampleTimeMs);
-        var signalName = ResolveSignalName(parameters);
-        var waveformName = parameters.TryGetValue("Name", out var name) ? name : test.Name ?? test.Id ?? "Waveform";
-
-        waveform = new AppliedWaveform(signalName, waveformName, points, sampleTimeMs, delayMs, periodic, cycles, parameters);
         return true;
     }
 
@@ -116,13 +168,13 @@ internal static class ArbitraryWaveformLoader
         return result;
     }
 
-    private static IReadOnlyList<WaveformPoint> ParsePoints(IReadOnlyDictionary<string, string> parameters, double sampleTimeMs)
+    private static IReadOnlyList<WaveformPoint> ParsePoints(IReadOnlyDictionary<string, string> parameters, double sampleTimeMs, int channelIndex)
     {
         var samples = new SortedDictionary<int, double>();
         foreach (var item in parameters)
         {
             var match = SampleRegex.Match(item.Key);
-            if (!match.Success || match.Groups["channel"].Value != "0")
+            if (!match.Success || match.Groups["channel"].Value != channelIndex.ToString(CultureInfo.InvariantCulture))
             {
                 continue;
             }
@@ -152,19 +204,31 @@ internal static class ArbitraryWaveformLoader
             .ToList();
     }
 
-    private static string ResolveSignalName(IReadOnlyDictionary<string, string> parameters)
+    private static string ResolveSignalName(IReadOnlyDictionary<string, string> parameters, int channelIndex)
     {
         if (parameters.TryGetValue("TP_ARB", out var testPoint) && !string.IsNullOrWhiteSpace(testPoint))
         {
-            return testPoint.Trim();
+            return $"AM2/{channelIndex + 1} {testPoint.Trim()}";
         }
 
         if (parameters.TryGetValue("MBUS_ARB", out var mbus) && !string.IsNullOrWhiteSpace(mbus))
         {
-            return $"MBus{mbus.Trim()}";
+            return $"AM2/{channelIndex + 1} MBus{mbus.Trim()}";
         }
 
-        return "ARB";
+        return $"AM2/{channelIndex + 1} ARB";
+    }
+
+    private static int ParseChannelCount(IReadOnlyDictionary<string, string> parameters)
+    {
+        if (parameters.TryGetValue("Channels", out var channelText) &&
+            int.TryParse(Regex.Match(channelText, @"\d+").Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) &&
+            parsed > 0)
+        {
+            return parsed;
+        }
+
+        return 1;
     }
 
     private static int ParseCycles(string? burstText)
@@ -174,7 +238,7 @@ internal static class ArbitraryWaveformLoader
             return 1;
         }
 
-        if (burstText.Contains("until", StringComparison.OrdinalIgnoreCase))
+        if (IsUntilTestEnd(burstText))
         {
             return 1;
         }
@@ -183,6 +247,12 @@ internal static class ArbitraryWaveformLoader
         return match.Success && int.TryParse(match.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cycles)
             ? Math.Max(cycles, 1)
             : 1;
+    }
+
+    private static bool IsUntilTestEnd(string? burstText)
+    {
+        return !string.IsNullOrWhiteSpace(burstText) &&
+               burstText.Contains("until", StringComparison.OrdinalIgnoreCase);
     }
 
     internal static double? ParseEngineeringValue(string? text, string defaultUnit)
