@@ -1,0 +1,167 @@
+name: template_splitted_am2_led_analyzer
+
+signals:
+  inputs:
+    - DUT_HV
+    - GND
+    - WAVE_IN_1
+    - WAVE_IN_2
+    - WAVE_IN_3
+  outputs:
+    - WAVE_OUT_1
+    - WAVE_OUT_2
+    - WAVE_OUT_3
+  internal:
+    - LED_ON
+    - L1_OVERVOLTAGE
+    - L2_OVERVOLTAGE
+    - L3_OVERVOLTAGE
+
+aliases:
+  signals:
+    DUT_HV:
+      - DUT_HV_IN
+      - HV_IN
+      - SM4_10_0
+    GND:
+      - SM4_34_0
+    WAVE_IN_1:
+      - WAVE_IN
+      - WAVE_IN_A
+      - ARB_IN
+      - ARB_IN_1
+      - ARB_IN_A
+      - AM2/1 BNC + A-IO 3
+      - AM2/1 AM2_ARB_3
+      - BNC + A-IO 3
+      - AM2_ARB_3
+    WAVE_IN_2:
+      - WAVE_IN_B
+      - ARB_IN_2
+      - ARB_IN_B
+      - AM2/2 BNC + A-IO 3
+      - AM2/2 AM2_ARB_3
+    WAVE_IN_3:
+      - WAVE_IN_C
+      - ARB_IN_3
+      - ARB_IN_C
+      - AM2/3 BNC + A-IO 3
+      - AM2/3 AM2_ARB_3
+    WAVE_OUT_1:
+      - WAVE_OUT
+      - WAVE_OUT_A
+      - SCO_OUT
+      - SCO_OUT_1
+      - SCO_OUT_A
+      - AM2/1 BNC + A-IO 8
+      - AM2/1 AM2_SCO_8
+      - BNC + A-IO 8
+      - AM2_SCO_8
+    WAVE_OUT_2:
+      - WAVE_OUT_B
+      - SCO_OUT_2
+      - SCO_OUT_B
+      - AM2/2 BNC + A-IO 8
+      - AM2/2 AM2_SCO_8
+    WAVE_OUT_3:
+      - WAVE_OUT_C
+      - SCO_OUT_3
+      - SCO_OUT_C
+      - AM2/3 BNC + A-IO 8
+      - AM2/3 AM2_SCO_8
+
+derived_signals:
+  LED_ON:
+    compare:
+      signal: DUT_HV
+      gte: 12.0
+      true_value: 1.0
+      false_value: 0.0
+  L1_OVERVOLTAGE:
+    dominant_signal_window:
+      signal: WAVE_IN_1
+      peers: [WAVE_IN_2, WAVE_IN_3]
+      window_ms: 40
+      metric: peak_or_rms_abs
+      min_metric: 0.2
+      min_delta: 0.01
+      true_value: 1.0
+      false_value: 0.0
+  L2_OVERVOLTAGE:
+    dominant_signal_window:
+      signal: WAVE_IN_2
+      peers: [WAVE_IN_1, WAVE_IN_3]
+      window_ms: 40
+      metric: peak_or_rms_abs
+      min_metric: 0.2
+      min_delta: 0.01
+      true_value: 1.0
+      false_value: 0.0
+  L3_OVERVOLTAGE:
+    dominant_signal_window:
+      signal: WAVE_IN_3
+      peers: [WAVE_IN_1, WAVE_IN_2]
+      window_ms: 40
+      metric: peak_or_rms_abs
+      min_metric: 0.2
+      min_delta: 0.01
+      true_value: 1.0
+      false_value: 0.0
+
+outputs:
+  WAVE_OUT_1:
+    default: 0.0
+    rules:
+      - when:
+          all:
+            - signal: LED_ON
+              gte: 1.0
+            - signal: L1_OVERVOLTAGE
+              gte: 1.0
+        value: 1.3
+      - when:
+          signal: LED_ON
+          gte: 1.0
+        value: 0.2
+  WAVE_OUT_2:
+    default: 0.0
+    rules:
+      - when:
+          all:
+            - signal: LED_ON
+              gte: 1.0
+            - signal: L2_OVERVOLTAGE
+              gte: 1.0
+        value: 1.3
+      - when:
+          signal: LED_ON
+          gte: 1.0
+        value: 0.2
+  WAVE_OUT_3:
+    default: 0.0
+    rules:
+      - when:
+          all:
+            - signal: LED_ON
+              gte: 1.0
+            - signal: L3_OVERVOLTAGE
+              gte: 1.0
+        value: 1.3
+      - when:
+          signal: LED_ON
+          gte: 1.0
+        value: 0.2
+
+interfaces:
+  INTERFACE LED ANALYZER:
+    default_response: "0,0,0,0"
+    requests:
+      - when:
+          equals: "LSENS3,2,200?"
+        state_when:
+          signal: LED_ON
+          gte: 1.0
+        response: "15,1,25,40"
+      - when:
+          equals: "LSENS3,2,200?"
+        response: "0,0,0,0"

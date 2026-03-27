@@ -1,11 +1,18 @@
+﻿// Provides Ct3xx Program Loader for the program parser parsing support.
 using System.IO;
 using System.Xml.Serialization;
 using Ct3xxProgramParser.Model;
 
 namespace Ct3xxProgramParser.Parsing;
 
+/// <summary>
+/// Represents the ct3xx program loader.
+/// </summary>
 public class Ct3xxProgramLoader
 {
+    /// <summary>
+    /// Executes load.
+    /// </summary>
     public Ct3xxProgram Load(string filePath)
     {
         if (!File.Exists(filePath))

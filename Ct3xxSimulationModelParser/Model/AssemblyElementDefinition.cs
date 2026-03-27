@@ -1,10 +1,17 @@
+﻿// Provides Assembly Element Definition for the simulation model parser model support.
 using System;
 using System.Collections.Generic;
 
 namespace Ct3xxSimulationModelParser.Model;
 
+/// <summary>
+/// Represents the assembly element definition.
+/// </summary>
 public sealed class AssemblyElementDefinition : SimulationElementDefinition
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AssemblyElementDefinition"/> class.
+    /// </summary>
     public AssemblyElementDefinition(
         string id,
         string wiring,
@@ -23,7 +30,16 @@ public sealed class AssemblyElementDefinition : SimulationElementDefinition
         Ports = ports;
     }
 
+    /// <summary>
+    /// Gets the wiring.
+    /// </summary>
     public string Wiring { get; }
+    /// <summary>
+    /// Gets the simulation.
+    /// </summary>
     public string? Simulation { get; }
+    /// <summary>
+    /// Gets the ports.
+    /// </summary>
     public IReadOnlyDictionary<string, string> Ports { get; }
 }

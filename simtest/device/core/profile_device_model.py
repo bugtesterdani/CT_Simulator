@@ -1,3 +1,5 @@
+"""Declarative device runtime built on top of the shared base device model."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,6 +9,7 @@ from .base_device_model import BaseDeviceModel
 from .profile_curves import (
     apply_input_curves,
     apply_slew,
+    evaluate_derived_signal,
     apply_waveform_inputs,
     evaluate_curve_points,
     evaluate_transfer_curve,
@@ -32,16 +35,25 @@ from .profile_state import (
 
 
 class DeclarativeDeviceModel(BaseDeviceModel):
+    """Drive a device model from one JSON/YAML profile instead of handwritten logic."""
+
     def __init__(self, profile_path: str):
         self.profile_path = profile_path
         self.profile = load_profile_document(profile_path)
         self.device_name = str(self.profile.get("name") or Path(profile_path).stem)
 
+        aliases = self.profile.get("aliases") or {}
+        self.signal_aliases = self._normalize_aliases(aliases.get("signals") or {})
+        self.interface_aliases = self._normalize_aliases(aliases.get("interfaces") or {})
+
+        # Signal groups define the public contract between simulator and declarative profile.
         signals = self.profile.get("signals") or {}
         self.signal_inputs = {str(item).strip().upper() for item in signals.get("inputs", [])}
         self.signal_outputs = {str(item).strip().upper() for item in signals.get("outputs", [])}
         self.signal_sources = {str(item).strip().upper() for item in signals.get("sources", [])}
         self.signal_internal = {str(item).strip().upper() for item in signals.get("internal", [])}
+        self.derived_signal_definitions = self._normalize_mapping(self.profile.get("derived_signals") or {})
+        self.signal_internal |= set(self.derived_signal_definitions.keys())
         self.all_signals = sorted(self.signal_inputs | self.signal_outputs | self.signal_sources | self.signal_internal)
 
         self.source_control = self.profile.get("source_control") or {}
@@ -57,6 +69,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         super().__init__()
 
     def reset(self) -> None:
+        """Reset runtime state, interface history, timers and state machines to profile defaults."""
         self.now_ms = 0
         self.input_waveforms = {}
         self.waveform_captures = {}
@@ -81,6 +94,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         for name in self.interfaces:
             self.interface_state[name] = {"last_request": None, "last_response": None, "history": []}
 
+        # Timers and state machines publish internal helper signals during rule evaluation.
         for name in self.timer_definitions:
             timer_signal = self._timer_output_signal(name, self.timer_definitions[name])
             self.internal.setdefault(timer_signal, 0.0)
@@ -92,29 +106,37 @@ class DeclarativeDeviceModel(BaseDeviceModel):
             self._set_state_flags(name, initial_state, definition if isinstance(definition, dict) else {})
 
     def move_to_time(self, target_time_ms: int) -> None:
+        """Advance the model and recompute waveform inputs, curves, timers and state machines."""
         super().move_to_time(target_time_ms)
         self._apply_waveform_inputs()
         self._apply_input_curves()
         self._update_timers()
         self._update_state_machines()
+        self._refresh_derived_signals()
 
     def set_input(self, name: str, value: Any) -> None:
-        signal = name.strip().upper()
+        """Write one simulator-side input, source or internal signal into the profile runtime."""
+        signal = self._resolve_signal_name(name)
         numeric = float(value)
         if signal in self.signal_inputs:
             self.inputs[signal] = numeric
             self.manual_override.add(signal)
+            self._refresh_derived_signals()
             return
         if signal in self.signal_sources:
             self.sources[signal] = numeric
+            self._refresh_derived_signals()
             return
         if signal in self.signal_internal:
             self.internal[signal] = numeric
+            self._refresh_derived_signals()
             return
         raise KeyError(f"Unknown input '{name}'.")
 
     def get_signal(self, name: str) -> float:
-        signal = name.strip().upper()
+        """Resolve one output or internal signal from the declarative ruleset."""
+        signal = self._resolve_signal_name(name)
+        self._refresh_derived_signals()
         if signal in self.signal_internal:
             return float(self.internal.get(signal, 0.0))
         if signal not in self.signal_outputs:
@@ -124,6 +146,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
 
         definition = self.output_definitions.get(signal) or {}
         default_value = float(definition.get("default", 0.0))
+        # Output state keeps pending-delay and slew information stable across time jumps.
         state = self.output_state.setdefault(
             signal,
             {
@@ -153,6 +176,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         return float(state["current_value"])
 
     def read_state(self) -> dict[str, Any]:
+        """Return the full state snapshot exposed to the simulator UI and exports."""
         return {
             "time_ms": self.now_ms,
             "inputs": dict(sorted(self.inputs.items())),
@@ -166,6 +190,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         }
 
     def state_marker(self) -> dict[str, Any]:
+        """Return the lightweight state marker stored alongside protocol responses."""
         return {
             "time_ms": self.now_ms,
             "inputs": dict(sorted(self.inputs.items())),
@@ -174,6 +199,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         }
 
     def get_device_info(self) -> dict[str, Any]:
+        """Return static device metadata for the simulator handshake."""
         return {
             "name": self.device_name,
             "signals": self.all_signals,
@@ -184,12 +210,16 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         }
 
     def set_waveform(self, name: str, waveform: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any]:
-        result = super().set_waveform(name, waveform, options)
-        self._publish_waveform_metrics(name.strip().upper())
+        """Apply one waveform and publish its derived metrics as internal helper signals."""
+        signal = self._resolve_signal_name(name)
+        result = super().set_waveform(signal, waveform, options)
+        self._publish_waveform_metrics(signal)
+        self._refresh_derived_signals()
         return result
 
     def send_interface(self, name: str, payload: Any) -> Any:
-        interface_name = name.strip().upper()
+        """Handle one outgoing simulator interface request against declarative response rules."""
+        interface_name = self._resolve_interface_name(name)
         definition = self.interfaces.get(interface_name)
         if definition is None:
             raise KeyError(f"Unknown interface '{name}'.")
@@ -199,7 +229,11 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         state["last_request"] = payload
 
         for request in requests:
-            if isinstance(request, dict) and self._interface_request_matches(request.get("when") or {}, payload):
+            if (
+                isinstance(request, dict)
+                and self._interface_request_matches(request.get("when") or {}, payload)
+                and self._condition_matches(request.get("state_when"))
+            ):
                 response = request.get("response")
                 state["last_response"] = response
                 state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
@@ -211,13 +245,15 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         return default_response
 
     def read_interface(self, name: str) -> Any:
-        interface_name = name.strip().upper()
+        """Return the latest stored response for one declarative interface."""
+        interface_name = self._resolve_interface_name(name)
         if interface_name not in self.interfaces:
             raise KeyError(f"Unknown interface '{name}'.")
 
         return self.interface_state.get(interface_name, {}).get("last_response")
 
     def _evaluate_output_target(self, signal: str, definition: dict[str, Any], default_value: float) -> tuple[str, float]:
+        """Resolve the active target value for one output including rule selection."""
         rules = definition.get("rules") or []
         for index, rule in enumerate(rules):
             if not isinstance(rule, dict):
@@ -233,6 +269,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         return "default", default_value
 
     def _find_active_rule(self, definition: dict[str, Any], rule_key: str) -> dict[str, Any] | None:
+        """Resolve the rule metadata that produced the current output target."""
         if not rule_key.startswith("rule:"):
             return definition if rule_key == "transfer_curve" else None
 
@@ -292,9 +329,43 @@ class DeclarativeDeviceModel(BaseDeviceModel):
     def _are_sources_enabled(self) -> bool:
         return are_sources_enabled(self)
 
+    def _refresh_derived_signals(self) -> None:
+        for signal, definition in self.derived_signal_definitions.items():
+            self.internal[signal] = float(self._evaluate_derived_signal(definition))
+
+    def _evaluate_derived_signal(self, definition: Any) -> float:
+        return evaluate_derived_signal(self, definition)
+
+    def _resolve_signal_name(self, name: str) -> str:
+        signal = str(name).strip().upper()
+        return self.signal_aliases.get(signal, signal)
+
+    def _resolve_interface_name(self, name: str) -> str:
+        interface_name = str(name).strip().upper()
+        return self.interface_aliases.get(interface_name, interface_name)
+
     @staticmethod
     def _normalize_mapping(raw: Any) -> dict[str, Any]:
         return normalize_mapping(raw)
+
+    @staticmethod
+    def _normalize_aliases(raw: Any) -> dict[str, str]:
+        aliases: dict[str, str] = {}
+        if not isinstance(raw, dict):
+            return aliases
+
+        for canonical_name, items in raw.items():
+            canonical = str(canonical_name).strip().upper()
+            if not canonical:
+                continue
+
+            aliases[canonical] = canonical
+            for item in items if isinstance(items, list) else [items]:
+                alias = str(item).strip().upper()
+                if alias:
+                    aliases[alias] = canonical
+
+        return aliases
 
     @staticmethod
     def _lookup_numeric(values: dict[str, Any], key: str, default: float) -> float:

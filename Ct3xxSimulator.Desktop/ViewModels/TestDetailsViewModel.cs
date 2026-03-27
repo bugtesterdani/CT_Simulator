@@ -1,3 +1,4 @@
+﻿// Provides Test Details View Model for the desktop application view model support.
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,6 +11,9 @@ using System.Windows.Media;
 
 namespace Ct3xxSimulator.Desktop.ViewModels;
 
+/// <summary>
+/// Represents the test details view model.
+/// </summary>
 public class TestDetailsViewModel : INotifyPropertyChanged
 {
     private const double DefaultChartWidth = 240;
@@ -18,19 +22,58 @@ public class TestDetailsViewModel : INotifyPropertyChanged
     private PointCollection _waveformDisplayPoints = new();
     private string? _waveformSummary;
 
+    /// <summary>
+    /// Gets the mode.
+    /// </summary>
     public string? Mode { get; set; }
+    /// <summary>
+    /// Gets the message.
+    /// </summary>
     public string? Message { get; set; }
+    /// <summary>
+    /// Gets the description.
+    /// </summary>
     public string? Description { get; set; }
+    /// <summary>
+    /// Gets the display mode name.
+    /// </summary>
     public string? DisplayModeName { get; set; }
+    /// <summary>
+    /// Gets a value indicating whether the am2 test condition is met.
+    /// </summary>
     public bool IsAm2Test { get; set; }
+    /// <summary>
+    /// Gets a value indicating whether the ict test condition is met.
+    /// </summary>
     public bool IsIctTest { get; set; }
+    /// <summary>
+    /// Gets the library name.
+    /// </summary>
     public string? LibraryName { get; set; }
+    /// <summary>
+    /// Gets the function name.
+    /// </summary>
     public string? FunctionName { get; set; }
+    /// <summary>
+    /// Gets the external file.
+    /// </summary>
     public string? ExternalFile { get; set; }
+    /// <summary>
+    /// Gets the chart width.
+    /// </summary>
     public double ChartWidth => DefaultChartWidth;
 
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<string> Options { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<TestRecordMetricViewModel> Records { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<DisplayOptionViewModel> DisplayOptions { get; } = new();
     public PointCollection WaveformDisplayPoints
     {
@@ -59,24 +102,66 @@ public class TestDetailsViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the options condition is met.
+    /// </summary>
     public bool HasOptions => Options.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the records condition is met.
+    /// </summary>
     public bool HasRecords => Records.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the limit records condition is met.
+    /// </summary>
     public bool HasLimitRecords => Records.Any(r => r.HasLimits);
+    /// <summary>
+    /// Gets the limit records.
+    /// </summary>
     public IEnumerable<TestRecordMetricViewModel> LimitRecords => Records.Where(r => r.HasLimits);
+    /// <summary>
+    /// Gets a value indicating whether the waveform condition is met.
+    /// </summary>
     public bool HasWaveform => WaveformDisplayPoints.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the display mode condition is met.
+    /// </summary>
     public bool HasDisplayMode => !string.IsNullOrWhiteSpace(DisplayModeName);
+    /// <summary>
+    /// Gets a value indicating whether the display options condition is met.
+    /// </summary>
     public bool HasDisplayOptions => DisplayOptions.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the library condition is met.
+    /// </summary>
     public bool HasLibrary => !string.IsNullOrWhiteSpace(LibraryName);
+    /// <summary>
+    /// Gets a value indicating whether the function condition is met.
+    /// </summary>
     public bool HasFunction => !string.IsNullOrWhiteSpace(FunctionName);
+    /// <summary>
+    /// Gets a value indicating whether the external file condition is met.
+    /// </summary>
     public bool HasExternalFile => !string.IsNullOrWhiteSpace(ExternalFile);
 
+    /// <summary>
+    /// Gets the limit range summary.
+    /// </summary>
     public string LimitRangeSummary => double.IsNaN(MinLimit) || double.IsNaN(MaxLimit)
         ? string.Empty
         : $"{MinLimit:0.###} .. {MaxLimit:0.###}";
 
+    /// <summary>
+    /// Gets the min limit.
+    /// </summary>
     public double MinLimit { get; private set; } = double.NaN;
+    /// <summary>
+    /// Gets the max limit.
+    /// </summary>
     public double MaxLimit { get; private set; } = double.NaN;
 
+    /// <summary>
+    /// Executes finalize records.
+    /// </summary>
     public void FinalizeRecords()
     {
         var limits = Records
@@ -118,6 +203,9 @@ public class TestDetailsViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
+    /// <summary>
+    /// Sets the waveform.
+    /// </summary>
     public void SetWaveform(IEnumerable<Point> samples, string? unit)
     {
         var list = samples.ToList();
@@ -158,8 +246,14 @@ public class TestDetailsViewModel : INotifyPropertyChanged
     }
 }
 
+/// <summary>
+/// Represents the test record metric view model.
+/// </summary>
 public class TestRecordMetricViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TestRecordMetricViewModel"/> class.
+    /// </summary>
     public TestRecordMetricViewModel(string title,
                                      string? destination,
                                      string? expression,
@@ -179,28 +273,79 @@ public class TestRecordMetricViewModel
         Upper = upper;
     }
 
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; }
+    /// <summary>
+    /// Gets the destination.
+    /// </summary>
     public string? Destination { get; }
+    /// <summary>
+    /// Gets the expression.
+    /// </summary>
     public string? Expression { get; }
+    /// <summary>
+    /// Gets the unit.
+    /// </summary>
     public string? Unit { get; }
+    /// <summary>
+    /// Gets the record type.
+    /// </summary>
     public string? RecordType { get; }
+    /// <summary>
+    /// Gets the additional info.
+    /// </summary>
     public string? AdditionalInfo { get; }
+    /// <summary>
+    /// Gets the lower.
+    /// </summary>
     public double? Lower { get; }
+    /// <summary>
+    /// Gets the upper.
+    /// </summary>
     public double? Upper { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether the limits condition is met.
+    /// </summary>
     public bool HasLimits => Lower.HasValue || Upper.HasValue;
 
+    /// <summary>
+    /// Gets the destination display.
+    /// </summary>
     public string DestinationDisplay => string.IsNullOrWhiteSpace(Destination) ? "-" : Destination;
+    /// <summary>
+    /// Gets the expression display.
+    /// </summary>
     public string ExpressionDisplay => string.IsNullOrWhiteSpace(Expression) ? "-" : Expression;
+    /// <summary>
+    /// Gets the record type display.
+    /// </summary>
     public string RecordTypeDisplay => string.IsNullOrWhiteSpace(RecordType) ? "-" : RecordType;
+    /// <summary>
+    /// Gets the limits display.
+    /// </summary>
     public string LimitsDisplay => HasLimits
         ? $"{FormatDouble(Lower)} .. {FormatDouble(Upper)}"
         : "-";
 
+    /// <summary>
+    /// Gets the range offset.
+    /// </summary>
     public double RangeOffset { get; private set; }
+    /// <summary>
+    /// Gets the range width.
+    /// </summary>
     public double RangeWidth { get; private set; }
+    /// <summary>
+    /// Gets the chart width.
+    /// </summary>
     public double ChartWidth { get; private set; }
 
+    /// <summary>
+    /// Gets the limit values.
+    /// </summary>
     public IEnumerable<double> GetLimitValues()
     {
         if (Lower.HasValue)
@@ -256,14 +401,26 @@ public class TestRecordMetricViewModel
     }
 }
 
+/// <summary>
+/// Represents the display option view model.
+/// </summary>
 public class DisplayOptionViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DisplayOptionViewModel"/> class.
+    /// </summary>
     public DisplayOptionViewModel(string name, string value)
     {
         Name = name;
         Value = value;
     }
 
+    /// <summary>
+    /// Gets the name.
+    /// </summary>
     public string Name { get; }
+    /// <summary>
+    /// Gets the value.
+    /// </summary>
     public string Value { get; }
 }

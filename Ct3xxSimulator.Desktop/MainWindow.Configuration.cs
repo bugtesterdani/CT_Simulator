@@ -1,9 +1,13 @@
+// Provides Main Window Configuration for the desktop application support code.
 using System;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Windows;
 using Microsoft.Win32;
 using Ct3xxSimulator.Desktop.Configuration;
+using Ct3xxSimulator.Desktop.ViewModels;
+using Ct3xxSimulator.Desktop.Views;
 using Ct3xxSimulator.Validation;
 
 namespace Ct3xxSimulator.Desktop;
@@ -159,8 +163,12 @@ public partial class MainWindow
             _program = _fileSet.Program;
             SelectedFilePath = fullPath;
             StepResults.Clear();
+            StepTreeRootNodes.Clear();
+            _stepEvaluationHistory.Clear();
             Logs.Clear();
             CurrentStep = null;
+            _isLoadedSnapshotSession = false;
+            BuildStepTree(_program);
             AddLog($"Programm geladen: {Path.GetFileName(fullPath)}");
             AddLog($"Externe Dateien: {_fileSet.ExternalFiles.Count}");
             UpdateConfigurationSummary();
@@ -254,7 +262,24 @@ public partial class MainWindow
         WiringFolderPath = SelectedScenarioPreset.WiringFolderPath;
         SimulationModelFolderPath = SelectedScenarioPreset.SimulationModelFolderPath;
         PythonScriptPath = SelectedScenarioPreset.PythonScriptPath;
-        ResolveProgramFromCurrentFolder(false);
+        _breakpointNodeKeys.Clear();
+        foreach (var key in SelectedScenarioPreset.BreakpointKeys)
+        {
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                _breakpointNodeKeys.Add(key);
+            }
+        }
+        SelectedFilePath = ResolveProgramFileForPreset(SelectedScenarioPreset);
+        if (string.IsNullOrWhiteSpace(SelectedFilePath))
+        {
+            ResolveProgramFromCurrentFolder(false);
+        }
+        else
+        {
+            UpdateConfigurationSummary();
+        }
+
         if (!string.IsNullOrWhiteSpace(SelectedFilePath))
         {
             LoadProgramFile(SelectedFilePath, false);
@@ -281,9 +306,12 @@ public partial class MainWindow
         {
             Name = name.Trim(),
             TestProgramFolderPath = TestProgramFolderPath,
+            SelectedProgramFileName = string.IsNullOrWhiteSpace(SelectedFilePath) ? null : Path.GetFileName(SelectedFilePath),
+            SelectedProgramFileChecksumSha256 = ComputeFileSha256OrNull(SelectedFilePath),
             WiringFolderPath = WiringFolderPath,
             SimulationModelFolderPath = SimulationModelFolderPath,
-            PythonScriptPath = PythonScriptPath
+            PythonScriptPath = PythonScriptPath,
+            BreakpointKeys = _breakpointNodeKeys.OrderBy(item => item, StringComparer.OrdinalIgnoreCase).ToList()
         };
 
         ScenarioPresets.Add(preset);
@@ -304,6 +332,73 @@ public partial class MainWindow
         SelectedScenarioPreset = null;
         _scenarioPresetStore.Save(ScenarioPresets);
         AddLog($"Szenario geloescht: {removedName}");
+    }
+
+    private void OnUpgradeScenarioPreset(object sender, RoutedEventArgs e)
+    {
+        if (SelectedScenarioPreset == null)
+        {
+            AddLog("Kein Szenario zum Upgrade ausgewaehlt.");
+            return;
+        }
+
+        ResolveProgramFromCurrentFolder(false);
+        if (string.IsNullOrWhiteSpace(SelectedFilePath) && !string.IsNullOrWhiteSpace(SelectedScenarioPreset.TestProgramFolderPath))
+        {
+            SelectedFilePath = ResolveProgramFileForPreset(SelectedScenarioPreset);
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedFilePath) || !LoadProgramFile(SelectedFilePath, true))
+        {
+            AddLog("Szenario-Upgrade abgebrochen: Programm konnte nicht geladen werden.");
+            return;
+        }
+
+        var availableTargets = BuildBreakpointUpgradeTargets();
+        var availableKeys = availableTargets.Select(item => item.NodeKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var resolvedKeys = SelectedScenarioPreset.BreakpointKeys
+            .Where(key => availableKeys.Contains(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var unresolvedKeys = SelectedScenarioPreset.BreakpointKeys
+            .Where(key => !availableKeys.Contains(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var upgradedKeys = new HashSet<string>(resolvedKeys, StringComparer.OrdinalIgnoreCase);
+        if (unresolvedKeys.Count > 0)
+        {
+            var items = unresolvedKeys
+                .Select(key => new BreakpointUpgradeItem(key, availableTargets))
+                .ToList();
+            var dialog = new ScenarioPresetUpgradeWindow(this, SelectedScenarioPreset.Name, items);
+            if (dialog.ShowDialog() != true)
+            {
+                AddLog("Szenario-Upgrade abgebrochen.");
+                return;
+            }
+
+            foreach (var mapping in dialog.SelectedMappings)
+            {
+                upgradedKeys.Add(mapping.Value);
+            }
+        }
+
+        SelectedScenarioPreset.SelectedProgramFileName = string.IsNullOrWhiteSpace(SelectedFilePath) ? null : Path.GetFileName(SelectedFilePath);
+        SelectedScenarioPreset.SelectedProgramFileChecksumSha256 = ComputeFileSha256OrNull(SelectedFilePath);
+        SelectedScenarioPreset.BreakpointKeys = upgradedKeys.OrderBy(item => item, StringComparer.OrdinalIgnoreCase).ToList();
+
+        _breakpointNodeKeys.Clear();
+        foreach (var key in SelectedScenarioPreset.BreakpointKeys)
+        {
+            _breakpointNodeKeys.Add(key);
+        }
+
+        BuildStepTree(_program!);
+        _scenarioPresetStore.Save(ScenarioPresets);
+        AddLog(unresolvedKeys.Count == 0
+            ? $"Szenario-Upgrade abgeschlossen: {SelectedScenarioPreset.Name}"
+            : $"Szenario-Upgrade abgeschlossen: {SelectedScenarioPreset.Name} ({upgradedKeys.Count}/{SelectedScenarioPreset.BreakpointKeys.Count} Breakpoints uebernommen)");
     }
 
     private void OnValidateConfiguration(object sender, RoutedEventArgs e)
@@ -336,5 +431,105 @@ public partial class MainWindow
 
         var directory = Path.GetDirectoryName(path);
         return string.IsNullOrWhiteSpace(directory) ? null : directory;
+    }
+
+    private string? ResolveProgramFileForPreset(ScenarioPreset preset)
+    {
+        if (string.IsNullOrWhiteSpace(preset.TestProgramFolderPath) || !Directory.Exists(preset.TestProgramFolderPath))
+        {
+            return null;
+        }
+
+        var programs = Directory.GetFiles(preset.TestProgramFolderPath, "*.ctxprg", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (programs.Count == 0)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(preset.SelectedProgramFileChecksumSha256))
+        {
+            foreach (var candidate in programs)
+            {
+                var checksum = ComputeFileSha256OrNull(candidate);
+                if (string.Equals(checksum, preset.SelectedProgramFileChecksumSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    AddLog($"Programm per Checksumme aufgeloest: {Path.GetFileName(candidate)}");
+                    return candidate;
+                }
+            }
+
+            AddLog("Gespeicherte Programm-Checksumme wurde im aktuellen Ordner nicht gefunden. Fallback auf Dateiname/Standardauswahl.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(preset.SelectedProgramFileName))
+        {
+            var nameMatch = programs.FirstOrDefault(path => string.Equals(Path.GetFileName(path), preset.SelectedProgramFileName, StringComparison.OrdinalIgnoreCase));
+            if (nameMatch != null)
+            {
+                AddLog($"Programm per Dateiname aufgeloest: {Path.GetFileName(nameMatch)}");
+                return nameMatch;
+            }
+
+            AddLog("Gespeicherter Programm-Dateiname wurde im aktuellen Ordner nicht gefunden. Fallback auf Standardauswahl.");
+        }
+
+        return programs[0];
+    }
+
+    private static string? ComputeFileSha256OrNull(string? filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            return null;
+        }
+
+        using var stream = File.OpenRead(filePath);
+        using var sha256 = SHA256.Create();
+        var hash = sha256.ComputeHash(stream);
+        return Convert.ToHexString(hash);
+    }
+
+    private IReadOnlyList<BreakpointUpgradeTarget> BuildBreakpointUpgradeTargets()
+    {
+        var targets = new List<BreakpointUpgradeTarget>();
+        foreach (var node in EnumerateBreakpointNodes(StepTreeRootNodes))
+        {
+            var displayName = $"{(node.IsGroup ? "Gruppe" : "Test")} | {BuildNodePath(node)}";
+            targets.Add(new BreakpointUpgradeTarget(node.NodeKey, displayName));
+        }
+
+        return targets;
+    }
+
+    private static IEnumerable<StepTreeNodeViewModel> EnumerateBreakpointNodes(System.Collections.Generic.IEnumerable<StepTreeNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.IsGroup || !string.IsNullOrWhiteSpace(node.NodeKey))
+            {
+                yield return node;
+            }
+
+            foreach (var child in EnumerateBreakpointNodes(node.Children))
+            {
+                yield return child;
+            }
+        }
+    }
+
+    private static string BuildNodePath(StepTreeNodeViewModel node)
+    {
+        var parts = new System.Collections.Generic.Stack<string>();
+        var current = node;
+        while (current != null)
+        {
+            parts.Push(current.Title);
+            current = current.Parent;
+        }
+
+        return string.Join(" > ", parts);
     }
 }

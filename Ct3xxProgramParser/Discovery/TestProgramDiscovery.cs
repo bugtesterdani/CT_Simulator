@@ -1,3 +1,4 @@
+﻿// Provides Test Program Discovery for the program parser discovery support.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -5,8 +6,14 @@ using System.Linq;
 
 namespace Ct3xxProgramParser.Discovery;
 
+/// <summary>
+/// Represents the test program info.
+/// </summary>
 public sealed class TestProgramInfo
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TestProgramInfo"/> class.
+    /// </summary>
     public TestProgramInfo(string rootDirectory, string filePath)
     {
         RootDirectory = Path.GetFullPath(rootDirectory);
@@ -26,10 +33,25 @@ public sealed class TestProgramInfo
             : $"{RelativeDirectory} - {FileName}";
     }
 
+    /// <summary>
+    /// Gets the root directory.
+    /// </summary>
     public string RootDirectory { get; }
+    /// <summary>
+    /// Gets the file path.
+    /// </summary>
     public string FilePath { get; }
+    /// <summary>
+    /// Gets the file name.
+    /// </summary>
     public string FileName { get; }
+    /// <summary>
+    /// Gets the relative directory.
+    /// </summary>
     public string RelativeDirectory { get; }
+    /// <summary>
+    /// Gets the display name.
+    /// </summary>
     public string DisplayName { get; }
 
     private static string NormalizeSeparators(string path) =>
@@ -65,6 +87,9 @@ public static class TestProgramDiscovery
 {
     private const string DefaultFolderName = "testprogramme";
 
+    /// <summary>
+    /// Finds the root.
+    /// </summary>
     public static string? FindRoot(string? startDirectory = null, int maxDepth = 8)
     {
         var fromEnv = Environment.GetEnvironmentVariable("CT3XX_TESTPROGRAM_ROOT");
@@ -97,6 +122,9 @@ public static class TestProgramDiscovery
         return null;
     }
 
+    /// <summary>
+    /// Enumerates the programs.
+    /// </summary>
     public static IReadOnlyList<TestProgramInfo> EnumeratePrograms(string rootDirectory)
     {
         if (string.IsNullOrWhiteSpace(rootDirectory) || !Directory.Exists(rootDirectory))

@@ -1,9 +1,16 @@
+﻿// Provides Wire Viz Connector Definition for the WireViz parser model support.
 using System;
 
 namespace Ct3xxWireVizParser.Model;
 
+/// <summary>
+/// Represents the wire viz connector definition.
+/// </summary>
 public sealed class WireVizConnectorDefinition
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WireVizConnectorDefinition"/> class.
+    /// </summary>
     public WireVizConnectorDefinition(string designator, WireVizValue value)
     {
         if (string.IsNullOrWhiteSpace(designator))
@@ -18,12 +25,30 @@ public sealed class WireVizConnectorDefinition
         Role = ResolveRole(BackgroundColor, IsUppercaseDesignator);
     }
 
+    /// <summary>
+    /// Gets the designator.
+    /// </summary>
     public string Designator { get; }
+    /// <summary>
+    /// Gets the value.
+    /// </summary>
     public WireVizValue Value { get; }
+    /// <summary>
+    /// Gets the background color.
+    /// </summary>
     public string? BackgroundColor { get; }
+    /// <summary>
+    /// Gets a value indicating whether the uppercase designator condition is met.
+    /// </summary>
     public bool IsUppercaseDesignator { get; }
+    /// <summary>
+    /// Gets the role.
+    /// </summary>
     public WireVizConnectorRole Role { get; }
 
+    /// <summary>
+    /// Determines whether the yellow condition is met.
+    /// </summary>
     public bool IsEmphasized => IsYellow(BackgroundColor);
 
     private static string? ResolveBackgroundColor(WireVizValue value)

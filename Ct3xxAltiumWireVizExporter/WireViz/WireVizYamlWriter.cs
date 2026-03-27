@@ -1,9 +1,13 @@
+﻿// Provides Wire Viz Yaml Writer for the Altium exporter WireViz runtime support.
 using System.Text;
 
 namespace Ct3xxAltiumWireVizExporter.WireViz;
 
 public static class WireVizYamlWriter
 {
+    /// <summary>
+    /// Executes write.
+    /// </summary>
     public static string Write(WireVizExportDocument document)
     {
         var builder = new StringBuilder();

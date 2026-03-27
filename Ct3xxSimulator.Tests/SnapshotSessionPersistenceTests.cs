@@ -1,12 +1,19 @@
+﻿// Provides Snapshot Session Persistence Tests for the simulator test project support code.
 using Ct3xxSimulator.Export;
 using Ct3xxSimulator.Simulation;
 
 namespace Ct3xxSimulator.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the snapshot session persistence tests.
+/// </summary>
 public sealed class SnapshotSessionPersistenceTests
 {
     [TestMethod]
+    /// <summary>
+    /// Executes snapshot session should roundtrip timeline and history.
+    /// </summary>
     public void SnapshotSession_ShouldRoundtrip_TimelineAndHistory()
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"ct3xx-snapshot-{Guid.NewGuid():N}.snapshot.json");

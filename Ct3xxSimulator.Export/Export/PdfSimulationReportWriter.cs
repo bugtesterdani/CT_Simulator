@@ -1,3 +1,4 @@
+﻿// Provides Pdf Simulation Report Writer for the export layer export support.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -13,6 +14,9 @@ internal static class PdfSimulationReportWriter
     private const double PageHeight = 842;
     private const double Margin = 36;
 
+    /// <summary>
+    /// Executes write.
+    /// </summary>
     public static void Write(string path, string? configurationSummary, IEnumerable<SimulationExportStep> stepResults, IEnumerable<SimulationExportLogEntry> logs)
     {
         var pages = BuildPages(configurationSummary, stepResults.ToList(), logs.ToList());
@@ -144,6 +148,9 @@ internal static class PdfSimulationReportWriter
     {
         private readonly StringBuilder _builder = new();
 
+        /// <summary>
+        /// Adds the text.
+        /// </summary>
         public void AddText(double x, double y, double fontSize, string text)
         {
             _builder.AppendLine("BT");
@@ -153,6 +160,9 @@ internal static class PdfSimulationReportWriter
             _builder.AppendLine("ET");
         }
 
+        /// <summary>
+        /// Adds the wrapped text.
+        /// </summary>
         public void AddWrappedText(double x, double y, double fontSize, string text, double width)
         {
             var lineLength = Math.Max(20, (int)(width / (fontSize * 0.55)));
@@ -164,16 +174,25 @@ internal static class PdfSimulationReportWriter
             }
         }
 
+        /// <summary>
+        /// Adds the rect.
+        /// </summary>
         public void AddRect(double x, double y, double width, double height)
         {
             _builder.AppendLine($"{x.ToString("0.##", CultureInfo.InvariantCulture)} {y.ToString("0.##", CultureInfo.InvariantCulture)} {width.ToString("0.##", CultureInfo.InvariantCulture)} {height.ToString("0.##", CultureInfo.InvariantCulture)} re S");
         }
 
+        /// <summary>
+        /// Adds the line.
+        /// </summary>
         public void AddLine(double x1, double y1, double x2, double y2)
         {
             _builder.AppendLine($"{x1.ToString("0.##", CultureInfo.InvariantCulture)} {y1.ToString("0.##", CultureInfo.InvariantCulture)} m {x2.ToString("0.##", CultureInfo.InvariantCulture)} {y2.ToString("0.##", CultureInfo.InvariantCulture)} l S");
         }
 
+        /// <summary>
+        /// Executes build.
+        /// </summary>
         public string Build() => _builder.ToString();
 
         private static IEnumerable<string> Wrap(string text, int maxLength)
@@ -215,6 +234,9 @@ internal static class PdfSimulationReportWriter
     {
         private readonly List<string> _objects = new();
 
+        /// <summary>
+        /// Executes write.
+        /// </summary>
         public void Write(string path, IReadOnlyList<string> pageContents)
         {
             _objects.Clear();

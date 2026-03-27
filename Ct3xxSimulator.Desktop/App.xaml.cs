@@ -1,3 +1,4 @@
+// Provides App for the desktop application support code.
 using System.Windows;
 
 namespace Ct3xxSimulator.Desktop;

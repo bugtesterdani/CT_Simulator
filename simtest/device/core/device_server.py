@@ -1,3 +1,5 @@
+"""Named-pipe host for Python device models used by the C# simulator."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,12 +15,15 @@ from .profile_device_model import DeclarativeDeviceModel
 
 
 class DeviceServer:
+    """Serve one device model instance over the shared pipe protocol."""
+
     def __init__(self, model: BaseDeviceModel, device_name: str):
         self.model = model
         self.device_name = device_name
         self.pipe_handler = PipeHandler()
 
     def run(self, pipe_name: str = DEFAULT_PIPE_NAME) -> int:
+        """Run the pipe server until the simulator disconnects or requests shutdown."""
         print(f"[{self.device_name}] listening on {pipe_name}")
 
         while True:
@@ -44,10 +49,12 @@ class DeviceServer:
                 self.pipe_handler.close_pipe(pipe)
 
     def handle_request(self, request: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+        """Dispatch one protocol request to the active device model."""
         request_id = request.get("id")
         action = str(request.get("action", "")).strip()
         sim_time_ms = request.get("sim_time_ms")
 
+        # The simulator drives time explicitly so captures and timers stay deterministic.
         if sim_time_ms is not None:
             self.model.move_to_time(int(sim_time_ms))
 
@@ -136,6 +143,7 @@ class DeviceServer:
 
 
 def load_device_model(device_name: str | None = None, profile_path: str | None = None) -> BaseDeviceModel:
+    """Load either a declarative profile or a Python device module."""
     if profile_path:
         return DeclarativeDeviceModel(profile_path)
 
@@ -156,6 +164,7 @@ def load_device_model(device_name: str | None = None, profile_path: str | None =
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
+    """Create the command-line parser used by the standalone device host."""
     parser = argparse.ArgumentParser(description="Device Simulator")
     parser.add_argument("device", nargs="?", help="Device module name")
     parser.add_argument("--profile", help="Declarative JSON/YAML device profile")

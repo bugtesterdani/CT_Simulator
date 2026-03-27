@@ -1,3 +1,4 @@
+﻿// Provides Program for the command-line interface support code.
 using System.Text.Json;
 using Ct3xxProgramParser.Programs;
 using Ct3xxSimulator.Export;
@@ -8,6 +9,9 @@ namespace Ct3xxSimulator.Cli;
 
 internal static class Program
 {
+    /// <summary>
+    /// Executes main.
+    /// </summary>
     public static int Main(string[] args)
     {
         try

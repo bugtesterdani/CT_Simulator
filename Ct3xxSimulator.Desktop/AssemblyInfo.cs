@@ -1,3 +1,4 @@
+// Provides Assembly Info for the desktop application support code.
 using System.Windows;
 
 [assembly:ThemeInfo(

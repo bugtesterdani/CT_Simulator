@@ -1,3 +1,4 @@
+﻿// Provides Win App Driver Test Base for the WinAppDriver test project test infrastructure.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,6 +20,9 @@ public abstract class WinAppDriverTestBase
     private string? _applicationPath;
     private string? _programPath;
 
+    /// <summary>
+    /// Gets the test context.
+    /// </summary>
     public TestContext? TestContext { get; set; }
     protected WindowsDriver Session => _session ?? throw new InvalidOperationException("Session not initialized.");
     protected string MainWindowHandle => _mainWindowHandle ?? Session.CurrentWindowHandle;
@@ -26,6 +30,9 @@ public abstract class WinAppDriverTestBase
     protected string ProgramPath => _programPath ?? throw new InvalidOperationException("Program path not resolved.");
 
     [TestInitialize]
+    /// <summary>
+    /// Initializes the test.
+    /// </summary>
     public void InitializeTest()
     {
         _applicationPath = ResolveApplicationPath();
@@ -44,6 +51,9 @@ public abstract class WinAppDriverTestBase
     }
 
     [TestCleanup]
+    /// <summary>
+    /// Cleans up the test.
+    /// </summary>
     public void CleanupTest()
     {
         try

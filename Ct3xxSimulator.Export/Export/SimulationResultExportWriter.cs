@@ -1,3 +1,4 @@
+﻿// Provides Simulation Result Export Writer for the export layer export support.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +10,9 @@ namespace Ct3xxSimulator.Export;
 
 public static class SimulationResultExportWriter
 {
+    /// <summary>
+    /// Executes write.
+    /// </summary>
     public static void Write(string path, SimulationExportDocument document)
     {
         var steps = document.Steps.ToList();

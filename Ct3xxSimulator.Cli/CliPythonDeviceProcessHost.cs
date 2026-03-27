@@ -1,3 +1,4 @@
+﻿// Provides Cli Python Device Process Host for the command-line interface support code.
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
@@ -17,8 +18,14 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         _pipePath = pipePath;
     }
 
+    /// <summary>
+    /// Gets the pipe path.
+    /// </summary>
     public string PipePath => _pipePath;
 
+    /// <summary>
+    /// Executes start.
+    /// </summary>
     public static CliPythonDeviceProcessHost? Start(string scriptPath)
     {
         if (string.IsNullOrWhiteSpace(scriptPath) || !File.Exists(scriptPath))
@@ -66,6 +73,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         return host;
     }
 
+    /// <summary>
+    /// Executes dispose.
+    /// </summary>
     public void Dispose()
     {
         try

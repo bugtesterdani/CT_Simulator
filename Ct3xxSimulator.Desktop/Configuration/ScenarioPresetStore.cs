@@ -1,3 +1,4 @@
+﻿// Provides Scenario Preset Store for the desktop application configuration support.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,10 +7,16 @@ using System.Text.Json;
 
 namespace Ct3xxSimulator.Desktop.Configuration;
 
+/// <summary>
+/// Represents the scenario preset store.
+/// </summary>
 public sealed class ScenarioPresetStore
 {
     private readonly string _path;
 
+    /// <summary>
+    /// Gets the default path.
+    /// </summary>
     public static string GetDefaultPath()
     {
         return System.IO.Path.Combine(
@@ -18,13 +25,22 @@ public sealed class ScenarioPresetStore
             "scenarios.json");
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ScenarioPresetStore"/> class.
+    /// </summary>
     public ScenarioPresetStore(string? path = null)
     {
         _path = path ?? GetDefaultPath();
     }
 
+    /// <summary>
+    /// Gets the file path.
+    /// </summary>
     public string FilePath => _path;
 
+    /// <summary>
+    /// Executes load.
+    /// </summary>
     public IReadOnlyList<ScenarioPreset> Load()
     {
         if (!File.Exists(_path))
@@ -39,6 +55,9 @@ public sealed class ScenarioPresetStore
         }) ?? new List<ScenarioPreset>();
     }
 
+    /// <summary>
+    /// Executes save.
+    /// </summary>
     public void Save(IEnumerable<ScenarioPreset> presets)
     {
         var directory = System.IO.Path.GetDirectoryName(_path);

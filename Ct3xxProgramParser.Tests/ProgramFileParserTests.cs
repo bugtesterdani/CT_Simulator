@@ -1,3 +1,4 @@
+﻿// Provides Program File Parser Tests for the program parser test project support code.
 using System.IO;
 using System.Linq;
 using Ct3xxProgramParser.Programs;
@@ -5,9 +6,15 @@ using Ct3xxProgramParser.Programs;
 namespace Ct3xxProgramParser.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the program file parser tests.
+/// </summary>
 public sealed class ProgramFileParserTests
 {
     [TestMethod]
+    /// <summary>
+    /// Determines whether the load program and resolve signal tables condition is met.
+    /// </summary>
     public void ShouldLoadProgramAndResolveSignalTables()
     {
         var parser = new Ct3xxProgramFileParser();

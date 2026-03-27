@@ -3,21 +3,46 @@ using Ct3xxProgramParser.Model;
 
 namespace Ct3xxSimulator.Simulation;
 
+/// <summary>
+/// Defines interactive prompts used by simulator test types that require operator input.
+/// </summary>
 public interface IInteractionProvider
 {
+    /// <summary>
+    /// Prompts the user to select one option from a predefined list.
+    /// </summary>
     string PromptSelection(string message, IReadOnlyList<string> options);
+    /// <summary>
+    /// Prompts the user for free-form text input.
+    /// </summary>
     string PromptInput(string prompt);
+    /// <summary>
+    /// Prompts the user for a pass/fail decision.
+    /// </summary>
     bool PromptPassFail(string message);
+    /// <summary>
+    /// Shows an informational message to the user.
+    /// </summary>
     void ShowMessage(string message, bool requiresConfirmation);
 }
 
+/// <summary>
+/// Extends <see cref="IInteractionProvider"/> with measurement-specific prompting.
+/// </summary>
 public interface IMeasurementInteractionProvider : IInteractionProvider
 {
+    /// <summary>
+    /// Prompts the user for a measurement value.
+    /// </summary>
     string PromptMeasurement(Test test, Record record, string prompt, string? unit);
 }
 
+/// <summary>
+/// Implements interaction prompts by using standard console input and output.
+/// </summary>
 public sealed class ConsoleInteractionProvider : IMeasurementInteractionProvider
 {
+    /// <inheritdoc />
     public string PromptSelection(string message, IReadOnlyList<string> options)
     {
         if (options.Count == 0)
@@ -44,12 +69,14 @@ public sealed class ConsoleInteractionProvider : IMeasurementInteractionProvider
         }
     }
 
+    /// <inheritdoc />
     public string PromptInput(string prompt)
     {
         Console.Write(prompt);
         return Console.ReadLine() ?? string.Empty;
     }
 
+    /// <inheritdoc />
     public bool PromptPassFail(string message)
     {
         while (true)
@@ -70,6 +97,7 @@ public sealed class ConsoleInteractionProvider : IMeasurementInteractionProvider
         }
     }
 
+    /// <inheritdoc />
     public void ShowMessage(string message, bool requiresConfirmation)
     {
         Console.WriteLine(message);
@@ -80,6 +108,7 @@ public sealed class ConsoleInteractionProvider : IMeasurementInteractionProvider
         }
     }
 
+    /// <inheritdoc />
     public string PromptMeasurement(Test test, Record record, string prompt, string? unit)
     {
         var display = string.IsNullOrWhiteSpace(unit) ? prompt : $"{prompt.TrimEnd()} [{unit}] ";

@@ -1,3 +1,4 @@
+﻿// Provides Signal Table Parser for the program parser parsing support.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,6 +11,9 @@ using Ct3xxProgramParser.SignalTables;
 
 namespace Ct3xxProgramParser.Parsing;
 
+/// <summary>
+/// Represents the signal table parser.
+/// </summary>
 public sealed class SignalTableParser : ICt3xxFileParser
 {
     private static readonly Regex ModuleRegex = new(
@@ -20,18 +24,30 @@ public sealed class SignalTableParser : ICt3xxFileParser
         "^\\s*(\\d+)\\s+\"([^\"]*)\"\\s+([^\\s\"]+)\\s+\"([^\"]*)\"\\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    /// <summary>
+    /// Gets the extension.
+    /// </summary>
     public string Extension => ".ctsit";
 
+    /// <summary>
+    /// Determines whether the parse condition is met.
+    /// </summary>
     public bool CanParse(string filePath) =>
         !string.IsNullOrWhiteSpace(filePath) &&
         filePath.EndsWith(Extension, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Executes parse.
+    /// </summary>
     public Ct3xxFileDocument Parse(string filePath, Table? tableDefinition = null)
     {
         var table = ParseTable(filePath);
         return new SignalTableDocument(filePath, tableDefinition, table);
     }
 
+    /// <summary>
+    /// Parses the table.
+    /// </summary>
     public SignalTable ParseTable(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -48,6 +64,9 @@ public sealed class SignalTableParser : ICt3xxFileParser
         return Parse(reader, filePath);
     }
 
+    /// <summary>
+    /// Executes parse.
+    /// </summary>
     public SignalTable Parse(TextReader reader, string? sourcePath = null)
     {
         if (reader == null)

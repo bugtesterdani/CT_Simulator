@@ -1,3 +1,4 @@
+// Provides Program for the Altium exporter support code.
 using System.Text.Json;
 using Ct3xxAltiumWireVizExporter.Altium;
 using Ct3xxAltiumWireVizExporter.Configuration;

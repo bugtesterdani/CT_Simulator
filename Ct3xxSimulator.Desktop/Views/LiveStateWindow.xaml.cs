@@ -1,3 +1,4 @@
+﻿// Provides Live State Window for the desktop application window logic.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,12 +16,18 @@ public partial class LiveStateWindow : Window
     private readonly Dictionary<string, IReadOnlyList<MeasurementCurvePoint>> _history = new(StringComparer.OrdinalIgnoreCase);
     private bool _updatingSelector;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LiveStateWindow"/> class.
+    /// </summary>
     public LiveStateWindow()
     {
         InitializeComponent();
         Loaded += (_, _) => ApplyViewMode();
     }
 
+    /// <summary>
+    /// Updates the snapshot.
+    /// </summary>
     public void UpdateSnapshot(SimulationStateSnapshot snapshot, IReadOnlyDictionary<string, List<MeasurementCurvePoint>> signalHistory)
     {
         CurrentStepTextBlock.Text = $"Aktueller Schritt: {snapshot.CurrentStep ?? "-"}";
@@ -230,6 +237,9 @@ public partial class LiveStateWindow : Window
 
     private sealed class SectionStateItemViewModel
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SectionStateItemViewModel"/> class.
+        /// </summary>
         public SectionStateItemViewModel(string section, string name, string value)
         {
             Section = section;
@@ -237,8 +247,17 @@ public partial class LiveStateWindow : Window
             Value = value;
         }
 
+        /// <summary>
+        /// Gets the section.
+        /// </summary>
         public string Section { get; }
+        /// <summary>
+        /// Gets the name.
+        /// </summary>
         public string Name { get; }
+        /// <summary>
+        /// Gets the value.
+        /// </summary>
         public string Value { get; }
     }
 }

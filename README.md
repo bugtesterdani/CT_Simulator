@@ -11,6 +11,14 @@ Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fue
   Konsolenprojekt fuer Batch-Simulationen und CI-nahe Laeufe.
 - `Ct3xxSimulator`
   Simulationskern fuer Testablauf, WireViz-Aufloesung, DUT-Anbindung und Auswertung.
+- `Ct3xxSimulator.Interfaces`
+  Schnittstellen- und DUT-Anbindung fuer Python-/Interface-Kommunikation.
+- `Ct3xxSimulator.Modules`
+  Verdrahtungs-, Fault- und modulnahe Runtime-Bausteine.
+- `Ct3xxSimulator.Waveforms`
+  Gemeinsame Waveform- und Recorder-Bausteine.
+- `Ct3xxSimulator.TestTypes`
+  vorbereitete Heimat fuer testtypspezifische Handler und kuenftige Dispatcher-Struktur.
 - `Ct3xxSimulation.Abstractions`
   Gemeinsame DTOs und Interfaces fuer Simulation, UI und weitere Frontends.
 - `Ct3xxSimulator.Export`
@@ -38,12 +46,16 @@ CT3xx/
 |- Ct3xxSimulation.Abstractions/
 |- Ct3xxSimulationModelParser/
 |- Ct3xxSimulator.Cli/
+|- Ct3xxSimulator.Interfaces/
+|- Ct3xxSimulator.Modules/
 |- Ct3xxSimulator/
 |- Ct3xxSimulator.Export/
+|- Ct3xxSimulator.TestTypes/
 |- Ct3xxSimulator.Tests/
 |- Ct3xxSimulator.Validation/
 |- Ct3xxSimulator.Desktop/
 |- Ct3xxSimulator.WinAppDriverTests/
+|- Ct3xxSimulator.Waveforms/
 |- Ct3xxWireVizParser/
 |- Ct3xxWireVizParser.Tests/
 |- examples/
@@ -65,6 +77,7 @@ dotnet test Ct3xxSimulator.Tests\Ct3xxSimulator.Tests.csproj
 Die Projektmappe liegt in [CT3xx.sln](C:/Users/hello/Desktop/CT3xx/CT3xx.sln).
 Die priorisierte Weiterentwicklungsplanung liegt in [ROADMAP.md](C:/Users/hello/Desktop/CT3xx/ROADMAP.md).
 Format- und Konfigurationshinweise liegen gesammelt in [OPTIONS.md](C:/Users/hello/Desktop/CT3xx/OPTIONS.md).
+Die testtypspezifische Referenz- und Priorisierungsmatrix liegt in [SUPPORT_MATRIX.md](C:/Users/hello/Desktop/CT3xx/testprogramme/documentation/SUPPORT_MATRIX.md).
 
 ## Paketverwaltung und Security
 
@@ -94,12 +107,15 @@ Die App unterstuetzt aktuell:
 - Simulation komplett oder im Einzelschrittmodus mit `Weiter`, `Zurueck`, `Auto` und `Pause`
 - Ergebnisexport als `PDF`, `JSON` oder `CSV`
 - Detailfenster fuer Schrittergebnisse mit Verbindungsgraph und Messkurven
+- Auswertungsanalyse mit Diagramm- und Detailreiter fuer Soll-/Ist-Vergleich, Grenzband und tabellarische Metriken
 - optionales Live-Zustandsfenster fuer Signale, DUT-Zustaende, Relais, Faults und Zeitverlauf
 - Live-Zustandsfenster zeigt bei `concurrent`-Gruppen jetzt auch Concurrent-Gruppe, Event und Branch-Zustaende
 - fuer `concurrent`-Gruppen werden jetzt explizite globale Snapshot-Punkte wie Warten, Interface-Request/-Response und Prozessende erzeugt
 - sichtbare Snapshot-Timeline im Hauptfenster mit globalen Events und Branch-Zusammenfassung
 - `Weiter` und `Zurueck` navigieren im Schrittmodus ueber die Snapshot-Folge statt ueber Replay
 - Snapshot-Sessions koennen als `*.snapshot.json` gespeichert und spaeter ohne erneuten Lauf wieder geladen werden
+- Breakpoints auf Testschritten und Gruppen halten direkt nach dem jeweiligen Ablauf an, ohne dafuer zusaetzliche Spezial-Snapshots zu erzeugen
+- das Hauptfenster zeigt zusaetzlich einen einfachen Laufstatus `Bereit`, `Laeuft`, `Pausiert`
 - Ausfuehrung externer Testprogramm-Skripte/Dateien inklusive optionaler Exit-Code-Auswertung
 - explizites Laden und Speichern von Szenario-Preset-Dateien als `.json`
 

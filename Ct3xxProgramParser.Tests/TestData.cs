@@ -1,3 +1,4 @@
+﻿// Provides Test Data for the program parser test project support code.
 using System;
 using System.IO;
 using Ct3xxProgramParser.Discovery;
@@ -8,8 +9,14 @@ internal static class TestData
 {
     private static readonly Lazy<string> _root = new(ResolveRoot);
 
+    /// <summary>
+    /// Gets the test program root.
+    /// </summary>
     public static string TestProgramRoot => _root.Value;
 
+    /// <summary>
+    /// Gets the program file path.
+    /// </summary>
     public static string GetProgramFilePath(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))

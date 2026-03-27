@@ -20,14 +20,26 @@ Simulationskern fuer CT3xx-Testprogramme.
 
 - `Simulation/Ct3xxProgramSimulator.cs`
   Hauptablauf der Testsimulation
-- `Simulation/WireViz/`
-  Verdrahtungs- und Laufzeitaufloesung
-- `Simulation/Devices/`
-  Pipe-Client und externe DUT-Sitzung
-- `Simulation/FaultInjection/`
-  Fault-Modell
-- `Simulation/Waveforms/`
+- `Ct3xxSimulator.Modules`
+  WireViz-Aufloesung, Fault-Injection und modulnahe Runtime
+- `Ct3xxSimulator.Interfaces`
+  Pipe-Client, externe DUT-Sitzung und kuenftige Interface-Laufzeiten
+- `Ct3xxSimulator.Waveforms`
   gemeinsames Kurvenmodell fuer AM2-/Waveform-Tests
+- `Ct3xxSimulator.TestTypes`
+  vorbereitete Zielstruktur fuer testtypspezifische Handler
+
+## Architekturhinweis
+
+Der Simulationskern wurde fuer die weitere Umsetzung der `SHORT_ROADMAP` und `SUPPORT_MATRIX` bereits modularisiert:
+
+- Kernablauf bleibt in `Ct3xxSimulator`
+- verdrahtungs- und faultnahe Logik liegt in `Ct3xxSimulator.Modules`
+- DUT-/Interface-Anbindung liegt in `Ct3xxSimulator.Interfaces`
+- Waveform-Bausteine liegen in `Ct3xxSimulator.Waveforms`
+- kuenftige Testtyp-Handler sollen in `Ct3xxSimulator.TestTypes` landen
+
+Dadurch kann die weitere Testtypen-Abdeckung schrittweise aus dem monolithischen Kern in kleinere Bausteine ueberfuehrt werden.
 
 ## Unterstuetzte Schwerpunkte
 

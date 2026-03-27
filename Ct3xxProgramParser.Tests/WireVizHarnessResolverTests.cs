@@ -1,3 +1,4 @@
+﻿// Provides Wire Viz Harness Resolver Tests for the program parser test project support code.
 using System.IO;
 using System.Linq;
 using Ct3xxProgramParser.Programs;
@@ -6,9 +7,15 @@ using Ct3xxSimulator.Simulation.WireViz;
 namespace Ct3xxProgramParser.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the wire viz harness resolver tests.
+/// </summary>
 public sealed class WireVizHarnessResolverTests
 {
     [TestMethod]
+    /// <summary>
+    /// Determines whether the resolve signal table entry through wire viz harness condition is met.
+    /// </summary>
     public void ShouldResolveSignalTableEntryThroughWireVizHarness()
     {
         var parser = new Ct3xxProgramFileParser();

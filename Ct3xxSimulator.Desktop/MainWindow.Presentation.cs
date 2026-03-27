@@ -1,3 +1,4 @@
+﻿// Provides Main Window Presentation for the desktop application support code.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -27,30 +28,54 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>
+    /// Adds the log.
+    /// </summary>
     public void OnProgramStarted(Ct3xxProgram program) => AddLog($"Programm gestartet: {program.ProgramVersion ?? program.Id ?? "unbekannt"}");
+    /// <summary>
+    /// Adds the log.
+    /// </summary>
     public void OnLoopIteration(int iteration, int totalIterations) => AddLog($"DUT-Durchlauf {iteration}/{totalIterations}");
+    /// <summary>
+    /// Executes on group started.
+    /// </summary>
     public void OnGroupStarted(Group group)
     {
         Dispatcher.Invoke(() => SetGroupExpanded(group, true));
         AddLog($"Gruppe: {group.Name}");
     }
+    /// <summary>
+    /// Adds the log.
+    /// </summary>
     public void OnGroupSkipped(Group group, string reason) => AddLog($"Gruppe uebersprungen: {group.Name} ({reason})");
+    /// <summary>
+    /// Executes on group completed.
+    /// </summary>
     public void OnGroupCompleted(Group group)
     {
         Dispatcher.Invoke(() => SetGroupExpanded(group, false));
     }
 
+    /// <summary>
+    /// Executes on test started.
+    /// </summary>
     public void OnTestStarted(Test test)
     {
         CurrentStep = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
         AddLog($"Starte: {CurrentStep}");
     }
 
+    /// <summary>
+    /// Executes on test completed.
+    /// </summary>
     public void OnTestCompleted(Test test, TestOutcome outcome)
     {
         AddLog($"Ergebnis {CurrentStep}: {outcome.ToString().ToUpperInvariant()}");
     }
 
+    /// <summary>
+    /// Executes on step evaluated.
+    /// </summary>
     public void OnStepEvaluated(Test test, StepEvaluation evaluation)
     {
         Dispatcher.Invoke(() =>
@@ -72,6 +97,9 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>
+    /// Executes on state changed.
+    /// </summary>
     public void OnStateChanged(SimulationStateSnapshot snapshot)
     {
         Dispatcher.Invoke(() =>
@@ -106,8 +134,49 @@ public partial class MainWindow
         window.ShowDialog();
     }
 
+    private void ShowEvaluationDetails(StepResultViewModel result)
+    {
+        if (_evaluationDetailsWindow == null)
+        {
+            _evaluationDetailsWindow = new EvaluationDetailsWindow { Owner = this };
+            _evaluationDetailsWindow.Closed += (_, _) => _evaluationDetailsWindow = null;
+        }
+
+        _evaluationDetailsWindow.UpdateResult(result);
+        _evaluationDetailsWindow.Show();
+        _evaluationDetailsWindow.Activate();
+    }
+
+    private void OnShowEvaluationDetails(object sender, RoutedEventArgs e)
+    {
+        if (SelectedStepTreeNode?.Result == null)
+        {
+            AddLog("Fuer den ausgewaehlten Testschritt ist keine Auswertungsanalyse verfuegbar.");
+            return;
+        }
+
+        ShowEvaluationDetails(SelectedStepTreeNode.Result);
+    }
+
+    private void OnToggleBreakpoint(object sender, RoutedEventArgs e)
+    {
+        if (!CanToggleBreakpoint)
+        {
+            AddLog("Breakpoints koennen nur auf echten Testschritten gesetzt werden.");
+            return;
+        }
+
+        ToggleBreakpointForSelectedNode();
+    }
+
+    /// <summary>
+    /// Adds the log.
+    /// </summary>
     public void OnMessage(string message) => AddLog(message);
 
+    /// <summary>
+    /// Executes prompt selection.
+    /// </summary>
     public string PromptSelection(string message, IReadOnlyList<string> options)
     {
         return Dispatcher.Invoke(() =>
@@ -117,6 +186,9 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>
+    /// Executes prompt input.
+    /// </summary>
     public string PromptInput(string prompt)
     {
         return Dispatcher.Invoke(() =>
@@ -126,13 +198,22 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>
+    /// Executes prompt input.
+    /// </summary>
     public string PromptMeasurement(Test test, Record record, string prompt, string? unit) => PromptInput(prompt);
 
+    /// <summary>
+    /// Executes prompt pass fail.
+    /// </summary>
     public bool PromptPassFail(string message)
     {
         return Dispatcher.Invoke(() => MessageBox.Show(this, message, "Operator", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes);
     }
 
+    /// <summary>
+    /// Executes show message.
+    /// </summary>
     public void ShowMessage(string message, bool requiresConfirmation)
     {
         Dispatcher.Invoke(() => MessageBox.Show(this, message, "CT3xx", MessageBoxButton.OK, MessageBoxImage.Information));

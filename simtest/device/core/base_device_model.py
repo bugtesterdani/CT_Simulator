@@ -1,3 +1,5 @@
+"""Abstract base runtime shared by all Python device models."""
+
 from __future__ import annotations
 
 import copy
@@ -16,11 +18,13 @@ class BaseDeviceModel(ABC):
         self.reset()
 
     def move_to_time(self, target_time_ms: int) -> None:
+        """Advance the device model time without allowing time travel backwards."""
         if target_time_ms < self.now_ms:
             raise ValueError("target_time_ms must be >= current model time")
         self.now_ms = target_time_ms
 
     def set_waveform(self, name: str, waveform: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Store one waveform stimulus and optionally capture related response waveforms."""
         signal = name.strip().upper()
         normalized = self._normalize_waveform(signal, waveform)
         self.input_waveforms[signal] = normalized
@@ -44,6 +48,7 @@ class BaseDeviceModel(ABC):
         }
 
     def read_waveform(self, name: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Read back one stored waveform or one captured response waveform."""
         signal = name.strip().upper()
 
         if signal in self.waveform_captures:
@@ -87,6 +92,7 @@ class BaseDeviceModel(ABC):
         pass
 
     def _normalize_waveform(self, signal: str, waveform: dict[str, Any]) -> dict[str, Any]:
+        """Normalize incoming waveform payloads to one internal representation."""
         points = []
         for raw_point in waveform.get("points") or []:
             if not isinstance(raw_point, dict):
@@ -124,6 +130,7 @@ class BaseDeviceModel(ABC):
         periodic: bool,
         cycles: int,
     ) -> dict[str, Any]:
+        """Calculate stable derived metrics once when a waveform is loaded."""
         values = [point["value"] for point in points]
         if not values:
             values = [0.0]
@@ -151,6 +158,7 @@ class BaseDeviceModel(ABC):
         }
 
     def _classify_waveform(self, values: list[float]) -> str:
+        """Assign a coarse waveform shape label for declarative rules and diagnostics."""
         if len(values) < 3:
             return "dc"
 
@@ -171,6 +179,7 @@ class BaseDeviceModel(ABC):
         return "sine_like" if sign_changes >= 4 else "custom"
 
     def _waveform_value_at(self, waveform: dict[str, Any], absolute_time_ms: int | float) -> float:
+        """Evaluate a waveform at one absolute simulation time."""
         points = waveform.get("points") or []
         if not points:
             return 0.0
@@ -213,6 +222,7 @@ class BaseDeviceModel(ABC):
         return float(points[-1]["value"])
 
     def _apply_waveform_signal(self, signal: str) -> None:
+        """Push the current waveform value into the model as if it were an external input."""
         waveform = self.input_waveforms.get(signal)
         if waveform is None:
             return
@@ -224,6 +234,7 @@ class BaseDeviceModel(ABC):
             pass
 
     def _observe_signals(self, options: dict[str, Any]) -> dict[str, float]:
+        """Collect immediate scalar observations requested with the waveform command."""
         result: dict[str, float] = {}
         for item in options.get("observe_signals") or []:
             signal = str(item).strip().upper()
@@ -233,6 +244,7 @@ class BaseDeviceModel(ABC):
         return result
 
     def _capture_requested_waveforms(self, source_signal: str, waveform: dict[str, Any], options: dict[str, Any]) -> dict[str, Any]:
+        """Capture response curves by replaying the current runtime at sampled time points."""
         capture_signals = [str(item).strip().upper() for item in options.get("capture_signals") or [] if str(item).strip()]
         if not capture_signals:
             return {}
@@ -245,6 +257,7 @@ class BaseDeviceModel(ABC):
 
         captures: dict[str, Any] = {}
         for signal in capture_signals:
+            # Each capture runs against a temporary snapshot so the live model state is restored afterwards.
             snapshot = self._snapshot_runtime_state()
             try:
                 points: list[dict[str, float]] = []
@@ -271,17 +284,20 @@ class BaseDeviceModel(ABC):
         return captures
 
     def _snapshot_runtime_state(self) -> dict[str, Any]:
+        """Create a deep snapshot of the runtime so temporary captures can be rolled back."""
         return {
             "now_ms": self.now_ms,
             "state": copy.deepcopy(self.__dict__),
         }
 
     def _restore_runtime_state(self, snapshot: dict[str, Any]) -> None:
+        """Restore a previously captured runtime snapshot."""
         self.__dict__.clear()
         self.__dict__.update(snapshot["state"])
         self.now_ms = int(snapshot["now_ms"])
 
     def _read_signal_for_capture(self, signal: str) -> float:
+        """Read one signal during capture without requiring the full external protocol path."""
         for field_name in ("inputs", "sources", "internal"):
             values = getattr(self, field_name, None)
             if isinstance(values, dict) and signal in values:
@@ -292,6 +308,7 @@ class BaseDeviceModel(ABC):
             return 0.0
 
     def _describe_waveform(self, waveform: dict[str, Any]) -> dict[str, Any]:
+        """Return the compact waveform description exposed over the pipe protocol."""
         return {
             "signal": waveform.get("signal"),
             "name": waveform.get("name"),

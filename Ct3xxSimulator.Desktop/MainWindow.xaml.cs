@@ -1,3 +1,4 @@
+﻿// Provides Main Window for the desktop application support code.
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -6,6 +7,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows;
+using System.Windows.Media;
 using Ct3xxProgramParser.Model;
 using Ct3xxProgramParser.Programs;
 using Ct3xxSimulator.Desktop.Configuration;
@@ -25,6 +27,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     private CancellationTokenSource? _cts;
     private PythonDeviceProcessHost? _pythonDeviceHost;
     private LiveStateWindow? _liveStateWindow;
+    private Views.EvaluationDetailsWindow? _evaluationDetailsWindow;
     private SimulationStateSnapshot? _latestStateSnapshot;
     private readonly List<SimulationTimelineEntry> _timeline = new();
     private readonly Dictionary<string, List<MeasurementCurvePoint>> _signalHistory = new(StringComparer.OrdinalIgnoreCase);
@@ -52,9 +55,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     private SimulationTimelineEntry? _selectedTimelineEntry;
     private readonly Dictionary<Test, StepTreeNodeViewModel> _stepTreeNodes = new();
     private readonly Dictionary<Group, StepTreeNodeViewModel> _groupTreeNodes = new();
+    private readonly Dictionary<StepTreeNodeViewModel, Test> _treeNodeTests = new();
+    private readonly Dictionary<StepTreeNodeViewModel, Group> _treeNodeGroups = new();
     private readonly List<StepEvaluationHistoryEntry> _stepEvaluationHistory = new();
+    private readonly HashSet<Test> _breakpointTests = new();
+    private readonly HashSet<Group> _breakpointGroups = new();
+    private readonly HashSet<string> _breakpointNodeKeys = new(StringComparer.OrdinalIgnoreCase);
     private StepTreeNodeViewModel? _selectedStepTreeNode;
+    private string _simulationRunStateText = "Bereit";
+    private Brush _simulationRunStateBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF5A6470"));
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MainWindow"/> class.
+    /// </summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -63,10 +76,25 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         Closed += OnClosed;
     }
 
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<StepResultViewModel> StepResults { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<StepTreeNodeViewModel> StepTreeRootNodes { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<LogEntryViewModel> Logs { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<ScenarioPreset> ScenarioPresets { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<SimulationTimelineEntry> TimelineEntries { get; } = new();
 
     public string? TestProgramFolderPath
@@ -158,11 +186,32 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         {
             if (SetField(ref _isSimulationRunning, value))
             {
+                if (!value)
+                {
+                    SimulationRunStateText = "Bereit";
+                    SimulationRunStateBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF5A6470"));
+                }
+
                 OnPropertyChanged(nameof(CanStartSimulation));
             }
         }
     }
 
+    public string SimulationRunStateText
+    {
+        get => _simulationRunStateText;
+        private set => SetField(ref _simulationRunStateText, value);
+    }
+
+    public Brush SimulationRunStateBrush
+    {
+        get => _simulationRunStateBrush;
+        private set => SetField(ref _simulationRunStateBrush, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the start simulation condition is met.
+    /// </summary>
     public bool CanStartSimulation =>
         !IsSimulationRunning &&
         !string.IsNullOrWhiteSpace(SelectedFilePath) &&
@@ -200,7 +249,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         set => SetField(ref _isStepModeEnabled, value);
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the step backward condition is met.
+    /// </summary>
     public bool CanStepBackward => _timelineIndex > 0;
+    /// <summary>
+    /// Gets a value indicating whether the step forward condition is met.
+    /// </summary>
     public bool CanStepForward => _timelineIndex >= 0 && _timelineIndex < _timeline.Count - 1;
 
     public SimulationTimelineEntry? SelectedTimelineEntry
@@ -223,11 +278,47 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
             if (SetField(ref _selectedStepTreeNode, value))
             {
                 OnPropertyChanged(nameof(CanJumpToStepSnapshot));
+                OnPropertyChanged(nameof(CanOpenEvaluationDetails));
+                OnPropertyChanged(nameof(CanToggleBreakpoint));
+                OnPropertyChanged(nameof(BreakpointButtonText));
             }
         }
     }
 
+    /// <summary>
+    /// Gets the latest timeline index for selected node.
+    /// </summary>
     public bool CanJumpToStepSnapshot => GetLatestTimelineIndexForSelectedNode().HasValue;
+    /// <summary>
+    /// Gets a value indicating whether the open evaluation details condition is met.
+    /// </summary>
+    public bool CanOpenEvaluationDetails => SelectedStepTreeNode?.Result != null;
+    /// <summary>
+    /// Attempts to get selected node group.
+    /// </summary>
+    public bool CanToggleBreakpoint => SelectedStepTreeNode != null && (TryGetSelectedNodeTest(out _) || TryGetSelectedNodeGroup(out _));
+    public string BreakpointButtonText
+    {
+        get
+        {
+            if (SelectedStepTreeNode == null)
+            {
+                return "Breakpoint setzen";
+            }
+
+            if (TryGetSelectedNodeTest(out var test))
+            {
+                return _breakpointTests.Contains(test) ? "Breakpoint entfernen" : "Breakpoint setzen";
+            }
+
+            if (TryGetSelectedNodeGroup(out var group))
+            {
+                return _breakpointGroups.Contains(group) ? "Breakpoint entfernen" : "Breakpoint setzen";
+            }
+
+            return "Breakpoint setzen";
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -255,13 +346,22 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
 
     private sealed class StepEvaluationHistoryEntry
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="StepEvaluationHistoryEntry"/> class.
+        /// </summary>
         public StepEvaluationHistoryEntry(Test? test, StepResultViewModel result)
         {
             Test = test;
             Result = result;
         }
 
+        /// <summary>
+        /// Gets the test.
+        /// </summary>
         public Test? Test { get; }
+        /// <summary>
+        /// Gets the result.
+        /// </summary>
         public StepResultViewModel Result { get; }
     }
 }

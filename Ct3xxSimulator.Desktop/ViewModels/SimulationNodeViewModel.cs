@@ -1,9 +1,13 @@
+﻿// Provides Simulation Node View Model for the desktop application view model support.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace Ct3xxSimulator.Desktop.ViewModels;
 
+/// <summary>
+/// Defines the node status values.
+/// </summary>
 public enum NodeStatus
 {
     Pending,
@@ -13,6 +17,9 @@ public enum NodeStatus
     Failed
 }
 
+/// <summary>
+/// Defines the node type values.
+/// </summary>
 public enum NodeType
 {
     Program,
@@ -25,12 +32,18 @@ public enum NodeType
     Function
 }
 
+/// <summary>
+/// Represents the simulation node view model.
+/// </summary>
 public class SimulationNodeViewModel : INotifyPropertyChanged
 {
     private NodeStatus _status = NodeStatus.Pending;
     private string? _lastResult;
     private object? _details;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SimulationNodeViewModel"/> class.
+    /// </summary>
     public SimulationNodeViewModel(string title, NodeType type, object source)
     {
         Title = title;
@@ -38,9 +51,21 @@ public class SimulationNodeViewModel : INotifyPropertyChanged
         Source = source;
     }
 
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; }
+    /// <summary>
+    /// Gets the node type.
+    /// </summary>
     public NodeType NodeType { get; }
+    /// <summary>
+    /// Gets the source.
+    /// </summary>
     public object Source { get; }
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<SimulationNodeViewModel> Children { get; } = new();
     public object? Details
     {
@@ -81,6 +106,9 @@ public class SimulationNodeViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Executes reset.
+    /// </summary>
     public void Reset()
     {
         Status = NodeStatus.Pending;

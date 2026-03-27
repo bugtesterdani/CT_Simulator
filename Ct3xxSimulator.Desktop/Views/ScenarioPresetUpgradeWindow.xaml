@@ -1,0 +1,43 @@
+<Window x:Class="Ct3xxSimulator.Desktop.Views.ScenarioPresetUpgradeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Szenario-Upgrade"
+        Height="520"
+        Width="980"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock x:Name="PromptTextBlock" FontSize="18" FontWeight="Bold" TextWrapping="Wrap"/>
+            <TextBlock Margin="0,6,0,0"
+                       Foreground="#FF5A6470"
+                       Text="Nicht mehr eindeutig zuordenbare Breakpoints koennen hier manuell auf aktuelle Testschritte oder Gruppen gemappt werden. Leere Auswahl bedeutet: Breakpoint nicht uebernehmen."
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <DataGrid x:Name="MappingsGrid"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  IsReadOnly="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Alter Breakpoint-Schluessel" Binding="{Binding OriginalKey}" Width="2*"/>
+                <DataGridTemplateColumn Header="Neue Zuordnung" Width="3*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding AvailableTargets}"
+                                      SelectedItem="{Binding SelectedTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      DisplayMemberPath="DisplayName"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Width="110" Margin="0,0,8,0" Content="Abbrechen" IsCancel="True"/>
+            <Button Width="110" Content="Uebernehmen" IsDefault="True" Click="OnApply"/>
+        </StackPanel>
+    </DockPanel>
+</Window>

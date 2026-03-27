@@ -7,15 +7,27 @@ using System.Text;
 
 namespace Ct3xxSimulator.Simulation;
 
+/// <summary>
+/// Evaluates CT3xx-style expressions, conditions and text templates against the current simulation context.
+/// </summary>
 public class ExpressionEvaluator
 {
     private readonly SimulationContext _context;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ExpressionEvaluator"/> class.
+    /// </summary>
+    /// <param name="context">The simulation context that stores variables and arrays.</param>
     public ExpressionEvaluator(SimulationContext context)
     {
         _context = context;
     }
 
+    /// <summary>
+    /// Evaluates one CT3xx expression and returns the computed result.
+    /// </summary>
+    /// <param name="expression">The expression text to evaluate.</param>
+    /// <returns>The computed value, or <see langword="null"/> when the expression is empty.</returns>
     public object? Evaluate(string? expression)
     {
         if (string.IsNullOrWhiteSpace(expression))
@@ -95,6 +107,11 @@ public class ExpressionEvaluator
         return trimmed;
     }
 
+    /// <summary>
+    /// Evaluates one CT3xx condition and converts it to a Boolean result.
+    /// </summary>
+    /// <param name="condition">The condition text to evaluate.</param>
+    /// <returns><see langword="true"/> when the condition is satisfied.</returns>
     public bool EvaluateCondition(string? condition)
     {
         if (string.IsNullOrWhiteSpace(condition))
@@ -158,6 +175,11 @@ public class ExpressionEvaluator
         return ToBool(value);
     }
 
+    /// <summary>
+    /// Evaluates one CT3xx text template and returns the resolved text.
+    /// </summary>
+    /// <param name="template">The template text to resolve.</param>
+    /// <returns>The resolved text.</returns>
     public string ResolveText(string? template)
     {
         if (string.IsNullOrWhiteSpace(template))
@@ -168,6 +190,11 @@ public class ExpressionEvaluator
         return ToText(Evaluate(template.Trim()));
     }
 
+    /// <summary>
+    /// Parses one CT3xx options string into individual option entries.
+    /// </summary>
+    /// <param name="options">The raw option text.</param>
+    /// <returns>The parsed option entries.</returns>
     public IReadOnlyList<string> ParseOptions(string? options)
     {
         if (string.IsNullOrWhiteSpace(options))
@@ -190,6 +217,11 @@ public class ExpressionEvaluator
         return entries;
     }
 
+    /// <summary>
+    /// Converts a value into a nullable numeric representation when possible.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The converted numeric value, or <see langword="null"/> when conversion failed.</returns>
     public double? ToDouble(object? value)
     {
         return value switch
@@ -205,6 +237,11 @@ public class ExpressionEvaluator
         };
     }
 
+    /// <summary>
+    /// Converts a value into a Boolean representation using CT3xx-style truthiness rules.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The converted Boolean value.</returns>
     public bool ToBool(object? value)
     {
         return value switch
@@ -219,6 +256,11 @@ public class ExpressionEvaluator
         };
     }
 
+    /// <summary>
+    /// Converts a value into the text representation expected by CT3xx expression handling.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The converted text.</returns>
     public string ToText(object? value) => value switch
     {
         null => string.Empty,

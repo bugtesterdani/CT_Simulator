@@ -1,3 +1,4 @@
+// Provides Ct3xx Program Simulator Waveforms for the simulator core simulation support.
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;

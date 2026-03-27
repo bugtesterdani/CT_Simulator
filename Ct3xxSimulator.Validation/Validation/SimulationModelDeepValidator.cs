@@ -1,3 +1,4 @@
+﻿// Provides Simulation Model Deep Validator for the validation layer validation support.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -12,6 +13,9 @@ namespace Ct3xxSimulator.Validation;
 
 internal static class SimulationModelDeepValidator
 {
+    /// <summary>
+    /// Executes validate.
+    /// </summary>
     public static IReadOnlyList<string> Validate(string? wiringFolderPath, string? simulationModelFolderPath)
     {
         var issues = new List<string>();
@@ -560,15 +564,27 @@ internal static class SimulationModelDeepValidator
 
     private sealed class ConnectionSegment
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConnectionSegment"/> class.
+        /// </summary>
         public ConnectionSegment(string designator, List<string> terminals)
         {
             Designator = designator;
             Terminals = terminals;
         }
 
+        /// <summary>
+        /// Gets the designator.
+        /// </summary>
         public string Designator { get; }
+        /// <summary>
+        /// Gets the terminals.
+        /// </summary>
         public List<string> Terminals { get; }
 
+        /// <summary>
+        /// Gets the terminal.
+        /// </summary>
         public string? GetTerminal(int index)
         {
             if (Terminals.Count == 0)

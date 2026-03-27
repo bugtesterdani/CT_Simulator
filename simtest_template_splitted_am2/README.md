@@ -8,6 +8,7 @@ Enthalten sind:
 - `wireplan/simulation.yaml`
 - gemeinsames Device-Framework unter `simtest/device`
 - Python-Modul `simtest/device/devices/template_splitted_am2_led_analyzer.py`
+- YAML-Profil `simtest/device/devices/template_splitted_am2_led_analyzer.yaml`
 
 Die Device-Struktur ist dabei bewusst auf die gemeinsame Basis aus `simtest/device` zusammengezogen.
 
@@ -46,8 +47,9 @@ Die Device-Struktur ist dabei bewusst auf die gemeinsame Basis aus `simtest/devi
 - Verdrahtungs-Ordner: `simtest_template_splitted_am2/wireplan`
 - Simulations-Ordner: `simtest_template_splitted_am2/wireplan`
 - Python-Geraeteskript: `simtest/device/devices/template_splitted_am2_led_analyzer.py`
+- alternatives YAML-Geraeteprofil: `simtest/device/devices/template_splitted_am2_led_analyzer.yaml`
 
-Die Desktop-App startet daraus automatisch die gemeinsame Bibliothek `simtest/device/main.py` mit dem Modul `template_splitted_am2_led_analyzer`.
+Die Desktop-App startet daraus automatisch die gemeinsame Bibliothek `simtest/device/main.py`, entweder mit dem Python-Modul `template_splitted_am2_led_analyzer` oder mit dem gleichwertigen YAML-Profil.
 
 ## Wichtiger Unterschied
 

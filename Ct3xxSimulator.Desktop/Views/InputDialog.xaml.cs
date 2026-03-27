@@ -1,9 +1,13 @@
+﻿// Provides Input Dialog for the desktop application window logic.
 using System.Windows;
 
 namespace Ct3xxSimulator.Desktop.Views;
 
 public partial class InputDialog : Window
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InputDialog"/> class.
+    /// </summary>
     public InputDialog(Window owner, string prompt, string? defaultValue = null)
     {
         InitializeComponent();
@@ -17,6 +21,9 @@ public partial class InputDialog : Window
         };
     }
 
+    /// <summary>
+    /// Gets the response.
+    /// </summary>
     public string Response => InputBox.Text;
 
     private void OnOk(object sender, RoutedEventArgs e)

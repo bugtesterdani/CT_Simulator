@@ -1,3 +1,4 @@
+﻿// Provides Binary Ct3xx File Document for the program parser document model support.
 using System;
 using Ct3xxProgramParser.Model;
 
@@ -11,6 +12,12 @@ public abstract class BinaryCt3xxFileDocument : Ct3xxFileDocument
         Content = content ?? Array.Empty<byte>();
     }
 
+    /// <summary>
+    /// Gets the content.
+    /// </summary>
     public byte[] Content { get; }
+    /// <summary>
+    /// Gets the length.
+    /// </summary>
     public long Length => Content.LongLength;
 }

@@ -1,3 +1,4 @@
+﻿// Provides Simulation Element Definition for the simulation model parser model support.
 using System;
 using System.Collections.Generic;
 
@@ -22,7 +23,16 @@ public abstract class SimulationElementDefinition
         Metadata = metadata ?? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Gets the id.
+    /// </summary>
     public string Id { get; }
+    /// <summary>
+    /// Gets the type.
+    /// </summary>
     public string Type { get; }
+    /// <summary>
+    /// Gets the metadata.
+    /// </summary>
     public IReadOnlyDictionary<string, string?> Metadata { get; }
 }

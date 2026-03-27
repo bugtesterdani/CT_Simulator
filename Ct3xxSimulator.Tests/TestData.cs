@@ -1,3 +1,4 @@
+﻿// Provides Test Data for the simulator test project support code.
 using System;
 using System.IO;
 
@@ -7,8 +8,14 @@ internal static class TestData
 {
     private static readonly Lazy<string> RootDirectoryLazy = new(ResolveRootDirectory);
 
+    /// <summary>
+    /// Gets the root directory.
+    /// </summary>
     public static string RootDirectory => RootDirectoryLazy.Value;
 
+    /// <summary>
+    /// Gets the path.
+    /// </summary>
     public static string GetPath(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))

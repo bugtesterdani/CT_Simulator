@@ -1,3 +1,4 @@
+﻿// Provides Wire Viz Element Behavior Tests for the simulator test project support code.
 using Ct3xxProgramParser.Programs;
 using Ct3xxSimulationModelParser.Parsing;
 using Ct3xxSimulator.Simulation.FaultInjection;
@@ -6,9 +7,15 @@ using Ct3xxSimulator.Simulation.WireViz;
 namespace Ct3xxSimulator.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the wire viz element behavior tests.
+/// </summary>
 public sealed class WireVizElementBehaviorTests
 {
     [TestMethod]
+    /// <summary>
+    /// Executes relay and resistor should resolve path trace and relay state.
+    /// </summary>
     public void RelayAndResistor_ShouldResolve_PathTraceAndRelayState()
     {
         using var scenario = CreateScenario(
@@ -86,6 +93,9 @@ public sealed class WireVizElementBehaviorTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes switch and fuse should respect control and faults.
+    /// </summary>
     public void SwitchAndFuse_ShouldRespect_ControlAndFaults()
     {
         using var scenario = CreateScenario(
@@ -166,6 +176,9 @@ public sealed class WireVizElementBehaviorTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes diode load and voltage divider should respect direction and scaling.
+    /// </summary>
     public void DiodeLoadAndVoltageDivider_ShouldRespect_DirectionAndScaling()
     {
         using var dividerScenario = CreateScenario(
@@ -275,6 +288,9 @@ public sealed class WireVizElementBehaviorTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes sensor opto and transistor should expose expected behavior.
+    /// </summary>
     public void SensorOptoAndTransistor_ShouldExposeExpectedBehavior()
     {
         using var sensorScenario = CreateScenario(
@@ -393,6 +409,9 @@ public sealed class WireVizElementBehaviorTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes transformer and current transformer should expose scaling and synthetic readback.
+    /// </summary>
     public void TransformerAndCurrentTransformer_ShouldExposeScalingAndSyntheticReadback()
     {
         using var scenario = CreateScenario(
@@ -459,6 +478,9 @@ public sealed class WireVizElementBehaviorTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes tester output configuration should map high low to declared supply and open.
+    /// </summary>
     public void TesterOutputConfiguration_ShouldMap_HighLow_ToDeclaredSupplyAndOpen()
     {
         using var scenario = CreateScenario(
@@ -544,9 +566,18 @@ public sealed class WireVizElementBehaviorTests
             Resolver = resolver;
         }
 
+        /// <summary>
+        /// Gets the directory path.
+        /// </summary>
         public string DirectoryPath { get; }
+        /// <summary>
+        /// Gets the resolver.
+        /// </summary>
         public WireVizHarnessResolver Resolver { get; }
 
+        /// <summary>
+        /// Executes create.
+        /// </summary>
         public static ResolverScenario Create(string wirevizYaml, string simulationYaml, IReadOnlyList<string> signalNames)
         {
             var directory = Path.Combine(Path.GetTempPath(), "ct3xx-wireviz-tests", Guid.NewGuid().ToString("N"));
@@ -569,6 +600,9 @@ public sealed class WireVizElementBehaviorTests
             return new ResolverScenario(directory, resolver);
         }
 
+        /// <summary>
+        /// Resolves the targets.
+        /// </summary>
         public IReadOnlyList<WireVizRuntimeTarget> ResolveTargets(
             string signalName,
             IReadOnlyDictionary<string, object?> signalState,
@@ -580,6 +614,9 @@ public sealed class WireVizElementBehaviorTests
             return targets;
         }
 
+        /// <summary>
+        /// Executes trace.
+        /// </summary>
         public IReadOnlyList<WireVizSignalTrace> Trace(
             string signalName,
             IReadOnlyDictionary<string, object?> signalState,
@@ -589,6 +626,9 @@ public sealed class WireVizElementBehaviorTests
             return traces;
         }
 
+        /// <summary>
+        /// Executes dispose.
+        /// </summary>
         public void Dispose()
         {
             try

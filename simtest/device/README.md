@@ -126,6 +126,23 @@ interfaces:
 Optional zusaetzlich:
 
 ```yaml
+aliases:
+  signals:
+    WAVE_IN_1:
+      - ARB_IN_1
+      - AM2/1 BNC + A-IO 3
+  interfaces:
+    INTERFACE LED ANALYZER:
+      - LED_ANALYZER
+
+derived_signals:
+  LED_ON:
+    compare:
+      signal: DUT_HV
+      gte: 12.0
+      true_value: 1.0
+      false_value: 0.0
+
 timers:
   READY_DELAY:
     when:
@@ -161,6 +178,25 @@ Waveform-Stimuli werden zur Laufzeit per Pipe mit `set_waveform` auf deklarierte
 - `internal`: interne Hilfssignale oder Zustandswerte
 
 Alle Namen werden intern gross geschrieben behandelt.
+
+## Alias-Namen
+
+`aliases` erlaubt mehrere externe Namen fuer ein kanonisches Signal oder Interface.
+
+- `aliases.signals`
+- `aliases.interfaces`
+
+Damit koennen WireViz-Pinlabels, generische Namen und fachliche DUT-Signale auf denselben internen Namen zeigen.
+
+Beispiel:
+
+```yaml
+aliases:
+  signals:
+    WAVE_OUT_1:
+      - SCO_OUT_1
+      - AM2/1 BNC + A-IO 8
+```
 
 ## Anfangswerte
 
@@ -225,6 +261,67 @@ outputs:
 ```
 
 `set_waveform` kann ausserdem `observe_signals` und `capture_signals` mitgeben. Das Modell liefert dann direkt im Response aktuelle Werte und einen vorausberechneten Verlauf fuer diese Signale.
+
+## Abgeleitete interne Signale
+
+`derived_signals` berechnet interne Hilfssignale ohne eigenes Python-Modul.
+
+Aktuell unterstuetzt:
+
+- `compare`
+- `dominant_signal_window`
+
+### `compare`
+
+Setzt ein internes Signal anhand eines Schwellwertvergleichs.
+
+Beispiel:
+
+```yaml
+derived_signals:
+  LED_ON:
+    compare:
+      signal: DUT_HV
+      gte: 12.0
+      true_value: 1.0
+      false_value: 0.0
+```
+
+### `dominant_signal_window`
+
+Prueft, ob ein Signal ueber ein Zeitfenster gegenueber mehreren Vergleichssignalen dominant ist.
+
+Unterstuetzte Felder:
+
+- `signal`
+- `peers`
+- `window_ms`
+- `metric`
+- `min_metric`
+- `min_delta`
+- `true_value`
+- `false_value`
+
+Unterstuetzte Metriken:
+
+- `peak_or_rms_abs`
+- `peak_abs`
+- `rms_abs`
+- `avg_abs`
+
+Beispiel:
+
+```yaml
+derived_signals:
+  L3_OVERVOLTAGE:
+    dominant_signal_window:
+      signal: WAVE_IN_3
+      peers: [WAVE_IN_1, WAVE_IN_2]
+      window_ms: 40
+      metric: peak_or_rms_abs
+      min_metric: 0.2
+      min_delta: 0.01
+```
 
 ## Ausgangsregeln
 
@@ -302,6 +399,7 @@ Unterstuetzte Felder:
 - `requests`
 - `when.equals`
 - `when.contains`
+- `state_when`
 - `response`
 
 Beispiel:
@@ -317,6 +415,12 @@ interfaces:
       - when:
           equals: "READ:STATUS"
         response: "STATUS=OK"
+      - when:
+          equals: "LSENS3,2,200?"
+        state_when:
+          signal: LED_ON
+          gte: 1
+        response: "15,1,25,40"
 ```
 
 Zur Laufzeit merkt sich das Profil pro Schnittstelle:
@@ -356,6 +460,7 @@ Fuer jeden Zustand wird automatisch ein internes Flag gesetzt:
 - `devices/IKI_waveform.yaml`: waveform-basierter DUT mit Signalform-Erkennung und Response-Kurve
 - `devices/template_sm2_led_analyzer.py`: gemeinsames Python-Modul fuer das `template_SM2`-Beispiel
 - `devices/template_splitted_am2_led_analyzer.py`: gemeinsames Python-Modul fuer das `template_splitted_am2`-Beispiel
+- `devices/template_splitted_am2_led_analyzer.yaml`: deklaratives Profil fuer dasselbe `template_splitted_am2`-Verhalten
 - `devices/TrafoStromwandler_good.yaml`: gemeinsames deklaratives Profil fuer das Transformator-/Stromwandler-Beispiel
 
 ## Idee

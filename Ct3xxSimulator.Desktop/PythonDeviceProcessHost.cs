@@ -1,3 +1,4 @@
+﻿// Provides Python Device Process Host for the desktop application support code.
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -22,8 +23,14 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         _launchCommand = launchCommand;
     }
 
+    /// <summary>
+    /// Gets the pipe path.
+    /// </summary>
     public string PipePath => _pipePath;
 
+    /// <summary>
+    /// Executes start.
+    /// </summary>
     public static PythonDeviceProcessHost? Start(string scriptPath)
     {
         if (scriptPath == null || !File.Exists(scriptPath))
@@ -76,6 +83,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         return host;
     }
 
+    /// <summary>
+    /// Executes dispose.
+    /// </summary>
     public void Dispose()
     {
         try
@@ -105,7 +115,7 @@ internal sealed class PythonDeviceProcessHost : IDisposable
             if (host._process.HasExited)
             {
                 var details = host.GetProcessOutput();
-                throw new InvalidOperationException($"Python-Gerätesimulation wurde sofort beendet. Command='{host._launchCommand}' ExitCode={host._process.ExitCode}{details}");
+                throw new InvalidOperationException($"Python-GerÃ¤tesimulation wurde sofort beendet. Command='{host._launchCommand}' ExitCode={host._process.ExitCode}{details}");
             }
 
             try
@@ -124,7 +134,7 @@ internal sealed class PythonDeviceProcessHost : IDisposable
             Thread.Sleep(100);
         }
 
-        throw new TimeoutException($"Python-Gerätesimulation auf Pipe '{pipePath}' wurde nicht rechtzeitig gestartet. Command='{host._launchCommand}'.{host.GetProcessOutput()}");
+        throw new TimeoutException($"Python-GerÃ¤tesimulation auf Pipe '{pipePath}' wurde nicht rechtzeitig gestartet. Command='{host._launchCommand}'.{host.GetProcessOutput()}");
     }
 
     private static (string Server, string PipeName) SplitPipePath(string pipePath)
@@ -132,7 +142,7 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         var parts = pipePath.Split('\\', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 3)
         {
-            throw new FormatException($"Ungültiger Pipe-Pfad '{pipePath}'.");
+            throw new FormatException($"UngÃ¼ltiger Pipe-Pfad '{pipePath}'.");
         }
 
         return (parts[0], parts[2]);

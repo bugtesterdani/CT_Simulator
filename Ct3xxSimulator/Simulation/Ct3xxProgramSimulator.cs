@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -16,6 +16,9 @@ using Ct3xxSimulator.Simulation.Waveforms;
 
 namespace Ct3xxSimulator.Simulation;
 
+/// <summary>
+/// Executes CT3xx programs against the simulator runtime, external device model and wiring model.
+/// </summary>
 public partial class Ct3xxProgramSimulator
 {
     private readonly SimulationContext _context = new();
@@ -43,6 +46,12 @@ public partial class Ct3xxProgramSimulator
     private int? _activeConcurrentBranchIndex;
     private ActiveWaveformSession? _activeWaveformSession;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Ct3xxProgramSimulator"/> class.
+    /// </summary>
+    /// <param name="interactionProvider">The optional interaction provider used for operator prompts.</param>
+    /// <param name="observer">The optional observer that receives lifecycle and state notifications.</param>
+    /// <param name="executionController">The optional execution controller used for step and snapshot pauses.</param>
     public Ct3xxProgramSimulator(
         IInteractionProvider? interactionProvider = null,
         ISimulationObserver? observer = null,
@@ -54,6 +63,12 @@ public partial class Ct3xxProgramSimulator
         _evaluator = new ExpressionEvaluator(_context);
     }
 
+    /// <summary>
+    /// Executes an already parsed CT3xx program without an attached file set.
+    /// </summary>
+    /// <param name="program">The parsed CT3xx program to execute.</param>
+    /// <param name="dutLoopIterations">The number of DUT loop iterations to execute.</param>
+    /// <param name="cancellationToken">A token that cancels the simulation.</param>
     public void Run(Ct3xxProgram program, int dutLoopIterations, CancellationToken cancellationToken = default)
     {
         _externalDeviceSession?.Dispose();
@@ -66,6 +81,13 @@ public partial class Ct3xxProgramSimulator
         RunCore(program, dutLoopIterations, cancellationToken);
     }
 
+    /// <summary>
+    /// Executes a loaded CT3xx file set including signal tables, documents and program metadata.
+    /// </summary>
+    /// <param name="fileSet">The loaded CT3xx file set to execute.</param>
+    /// <param name="dutLoopIterations">The number of DUT loop iterations to execute.</param>
+    /// <param name="cancellationToken">A token that cancels the simulation.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fileSet"/> is <see langword="null"/>.</exception>
     public void Run(Ct3xxProgramFileSet fileSet, int dutLoopIterations, CancellationToken cancellationToken = default)
     {
         if (fileSet == null)
@@ -180,6 +202,7 @@ public partial class Ct3xxProgramSimulator
         }
 
         _observer.OnGroupCompleted(group);
+        _executionController.WaitAfterGroup(group, _cancellationToken);
     }
 
     private void ExecuteSequenceItems(IEnumerable<SequenceNode> items)
@@ -412,7 +435,16 @@ public partial class Ct3xxProgramSimulator
 
                 var msg = $"{label}: {valueDisplay} {unit} (limits {lower?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-inf"} .. {upper?.ToString("0.###", CultureInfo.InvariantCulture) ?? "+inf"}) => {(pass ? "PASS" : "FAIL")}";
                 _observer.OnMessage(msg);
-                _observer.OnStepEvaluated(test, new StepEvaluation(label, pass ? TestOutcome.Pass : TestOutcome.Fail, measured, lower, upper, unit, traces: traces, curvePoints: CaptureCurvePoints()));
+                PublishStepEvaluation(
+                    test,
+                    pass ? TestOutcome.Pass : TestOutcome.Fail,
+                    measured: measured,
+                    lower: lower,
+                    upper: upper,
+                    unit: unit,
+                    stepNameOverride: label,
+                    traces: traces,
+                    curvePoints: CaptureCurvePoints());
                 if (!pass)
                 {
                     overall = TestOutcome.Fail;
@@ -904,7 +936,7 @@ public partial class Ct3xxProgramSimulator
 
         if (_externalDeviceSession == null)
         {
-            PublishStepEvaluation(test, TestOutcome.Error, details: "E488 ohne aktive Gerätesimulation.");
+            PublishStepEvaluation(test, TestOutcome.Error, details: "E488 ohne aktive GerÃ¤tesimulation.");
             return TestOutcome.Error;
         }
 
@@ -985,7 +1017,7 @@ public partial class Ct3xxProgramSimulator
         PublishStepEvaluation(
             test,
             overallOutcome,
-            details: operations.Count == 0 ? "E488 ohne wirksame Datensätze." : string.Join(", ", operations));
+            details: operations.Count == 0 ? "E488 ohne wirksame DatensÃ¤tze." : string.Join(", ", operations));
         return overallOutcome;
     }
 
@@ -993,7 +1025,7 @@ public partial class Ct3xxProgramSimulator
     {
         if (_externalDeviceSession == null)
         {
-            PublishStepEvaluation(test, TestOutcome.Error, details: "Waveform-Test ohne aktive Gerätesimulation.");
+            PublishStepEvaluation(test, TestOutcome.Error, details: "Waveform-Test ohne aktive GerÃ¤tesimulation.");
             return TestOutcome.Error;
         }
 
@@ -1073,6 +1105,7 @@ public partial class Ct3xxProgramSimulator
         var primaryChannel = channelRuns[0];
         TryPublishWaveformVariables(primaryChannel.StimulusSignal, primaryChannel.ObserveSignal, primaryChannel.Response);
         var waveformOutcome = EvaluateWaveformOutcome(completedWaveformSession, channelRuns, out var waveformDetails, out var lastObserved);
+        var waveformCurvePoints = BuildWaveformCurvePoints(completedWaveformSession);
         PublishStepEvaluation(
             test,
             waveformOutcome,
@@ -1083,7 +1116,8 @@ public partial class Ct3xxProgramSimulator
                 string.Join(", ", channelRuns.Select(item => $"{item.Waveform.WaveformName} -> {item.StimulusSignal}")),
                 waveformDetails
             }.Where(item => !string.IsNullOrWhiteSpace(item))),
-            traces: traces);
+            traces: traces,
+            curvePoints: waveformCurvePoints.Count == 0 ? null : waveformCurvePoints);
         EndActiveWaveformSession();
         return waveformOutcome;
     }
@@ -1137,7 +1171,7 @@ public partial class Ct3xxProgramSimulator
 
         if (_externalDeviceSession == null)
         {
-            PublishStepEvaluation(test, TestOutcome.Error, details: "Python-Gerätesimulation ist nicht verbunden.");
+            PublishStepEvaluation(test, TestOutcome.Error, details: "Python-GerÃ¤tesimulation ist nicht verbunden.");
             return TestOutcome.Error;
         }
 
@@ -1375,10 +1409,33 @@ public partial class Ct3xxProgramSimulator
         PublishStateSnapshot();
     }
 
-    private void PublishStepEvaluation(Test test, TestOutcome outcome, double? measured = null, double? lower = null, double? upper = null, string? unit = null, string? details = null, IReadOnlyList<StepConnectionTrace>? traces = null)
+    private void PublishStepEvaluation(Test test, TestOutcome outcome, double? measured = null, double? lower = null, double? upper = null, string? unit = null, string? details = null, IReadOnlyList<StepConnectionTrace>? traces = null, IReadOnlyList<MeasurementCurvePoint>? curvePoints = null, string? stepNameOverride = null)
     {
-        var stepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
-        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details, traces, CaptureCurvePoints()));
+        var stepName = stepNameOverride ?? test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
+        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details, traces, curvePoints ?? CaptureCurvePoints()));
+        PublishStateSnapshot(force: true);
+    }
+
+    private IReadOnlyList<MeasurementCurvePoint> BuildWaveformCurvePoints(ActiveWaveformSession? session)
+    {
+        if (session == null)
+        {
+            return CaptureCurvePoints();
+        }
+
+        var points = new List<MeasurementCurvePoint>();
+        foreach (var monitor in session.Monitors)
+        {
+            foreach (var sample in monitor.Samples)
+            {
+                var absoluteTimeMs = session.StartTimeMs + (long)Math.Round(sample.TimeMs, MidpointRounding.AwayFromZero);
+                var stimulusValue = monitor.Waveform.GetValueAt(sample.TimeMs);
+                points.Add(new MeasurementCurvePoint(absoluteTimeMs, $"WF {monitor.StimulusSignal}", stimulusValue, "V"));
+                points.Add(new MeasurementCurvePoint(absoluteTimeMs, $"WF {monitor.ObserveSignal}", sample.Value, "V"));
+            }
+        }
+
+        return points.Count == 0 ? CaptureCurvePoints() : points;
     }
 
     private string? ResolveMeasurementBusSignal(string busName)
@@ -1840,8 +1897,13 @@ public partial class Ct3xxProgramSimulator
         PublishStateSnapshot();
     }
 
-    private void PublishStateSnapshot()
+    private void PublishStateSnapshot(bool force = false)
     {
+        if (!force)
+        {
+            return;
+        }
+
         var signalSnapshot = _signalState
             .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
@@ -2067,7 +2129,7 @@ public partial class Ct3xxProgramSimulator
         var rms = Math.Sqrt(values.Average(item => item * item));
         var threshold = (max + min) / 2d;
         var pulseCount = CountPulses(samples, threshold);
-        var avgPulseWidthSeconds = CalculateAveragePulseWidthMs(samples, threshold) / 1000d;
+        var avgPulseWidthMs = CalculateAveragePulseWidthMs(samples, threshold);
 
         var messages = new List<string>();
         var outcome = TestOutcome.Pass;
@@ -2076,7 +2138,7 @@ public partial class Ct3xxProgramSimulator
         ApplyMetricCheck("UAVG", average, "V");
         ApplyMetricCheck("UEFF", rms, "V");
         ApplyMetricCheck("NPUL", pulseCount, string.Empty);
-        ApplyMetricCheck("AWID", avgPulseWidthSeconds, "s");
+        ApplyMetricCheck("AWID", avgPulseWidthMs, "ms");
         return new WaveformEvaluationResult(outcome, string.Join(", ", messages));
 
         void ApplyMetricCheck(string metricName, double actualValue, string defaultUnit)
@@ -2165,6 +2227,9 @@ public partial class Ct3xxProgramSimulator
     {
         private readonly Dictionary<string, ActiveWaveformMonitor> _monitorsBySignal;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveWaveformSession"/> class.
+        /// </summary>
         public ActiveWaveformSession(long startTimeMs, long sampleStepMs, IReadOnlyList<ActiveWaveformMonitor> monitors)
         {
             StartTimeMs = startTimeMs;
@@ -2173,10 +2238,22 @@ public partial class Ct3xxProgramSimulator
             _monitorsBySignal = monitors.ToDictionary(item => item.ObserveSignal, StringComparer.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Gets the start time ms.
+        /// </summary>
         public long StartTimeMs { get; }
+        /// <summary>
+        /// Gets the sample step ms.
+        /// </summary>
         public long SampleStepMs { get; }
+        /// <summary>
+        /// Gets the monitors.
+        /// </summary>
         public IReadOnlyList<ActiveWaveformMonitor> Monitors { get; }
 
+        /// <summary>
+        /// Attempts to get monitor.
+        /// </summary>
         public bool TryGetMonitor(string? signalName, out ActiveWaveformMonitor monitor)
         {
             if (!string.IsNullOrWhiteSpace(signalName) && _monitorsBySignal.TryGetValue(signalName, out monitor!))
@@ -2191,6 +2268,9 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class ActiveWaveformMonitor
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveWaveformMonitor"/> class.
+        /// </summary>
         public ActiveWaveformMonitor(AppliedWaveform waveform, string stimulusSignal, string observeSignal)
         {
             Waveform = waveform;
@@ -2198,11 +2278,29 @@ public partial class Ct3xxProgramSimulator
             ObserveSignal = observeSignal;
         }
 
+        /// <summary>
+        /// Gets the waveform.
+        /// </summary>
         public AppliedWaveform Waveform { get; }
+        /// <summary>
+        /// Gets the stimulus signal.
+        /// </summary>
         public string StimulusSignal { get; }
+        /// <summary>
+        /// Gets the observe signal.
+        /// </summary>
         public string ObserveSignal { get; }
+        /// <summary>
+        /// Executes new.
+        /// </summary>
         public List<WaveformPoint> Samples { get; } = new();
+        /// <summary>
+        /// Gets the last sample time ms.
+        /// </summary>
         public long LastSampleTimeMs { get; set; } = long.MinValue;
+        /// <summary>
+        /// Gets the last observed value.
+        /// </summary>
         public double? LastObservedValue { get; set; }
     }
 
@@ -2286,6 +2384,9 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class ConcurrentTestHandle
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConcurrentTestHandle"/> class.
+        /// </summary>
         public ConcurrentTestHandle(int branchIndex, Test test, Process process, string executablePath, bool evaluateExitCode, int expectedExitCode)
         {
             BranchIndex = branchIndex;
@@ -2296,11 +2397,29 @@ public partial class Ct3xxProgramSimulator
             ExpectedExitCode = expectedExitCode;
         }
 
+        /// <summary>
+        /// Gets the branch index.
+        /// </summary>
         public int BranchIndex { get; }
+        /// <summary>
+        /// Gets the test.
+        /// </summary>
         public Test Test { get; }
+        /// <summary>
+        /// Gets the process.
+        /// </summary>
         public Process Process { get; }
+        /// <summary>
+        /// Gets the executable path.
+        /// </summary>
         public string ExecutablePath { get; }
+        /// <summary>
+        /// Gets the evaluate exit code.
+        /// </summary>
         public bool EvaluateExitCode { get; }
+        /// <summary>
+        /// Gets the expected exit code.
+        /// </summary>
         public int ExpectedExitCode { get; }
     }
 

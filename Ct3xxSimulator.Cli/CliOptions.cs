@@ -1,21 +1,58 @@
+﻿// Provides Cli Options for the command-line interface support code.
 using System.Text;
 
 namespace Ct3xxSimulator.Cli;
 
 internal sealed class CliOptions
 {
+    /// <summary>
+    /// Gets the program file.
+    /// </summary>
     public string? ProgramFile { get; set; }
+    /// <summary>
+    /// Gets the program folder.
+    /// </summary>
     public string? ProgramFolder { get; set; }
+    /// <summary>
+    /// Gets the wiring folder.
+    /// </summary>
     public string? WiringFolder { get; set; }
+    /// <summary>
+    /// Gets the simulation folder.
+    /// </summary>
     public string? SimulationFolder { get; set; }
+    /// <summary>
+    /// Gets the dut model path.
+    /// </summary>
     public string? DutModelPath { get; set; }
+    /// <summary>
+    /// Gets the export path.
+    /// </summary>
     public string? ExportPath { get; set; }
+    /// <summary>
+    /// Gets the preset file.
+    /// </summary>
     public string? PresetFile { get; set; }
+    /// <summary>
+    /// Gets the preset name.
+    /// </summary>
     public string? PresetName { get; set; }
+    /// <summary>
+    /// Gets the dut loop iterations.
+    /// </summary>
     public int DutLoopIterations { get; set; } = 1;
+    /// <summary>
+    /// Gets the validate only.
+    /// </summary>
     public bool ValidateOnly { get; set; }
+    /// <summary>
+    /// Gets the help requested.
+    /// </summary>
     public bool HelpRequested { get; set; }
 
+    /// <summary>
+    /// Executes parse.
+    /// </summary>
     public static CliOptions Parse(string[] args)
     {
         var options = new CliOptions();
@@ -69,6 +106,9 @@ internal sealed class CliOptions
         return options;
     }
 
+    /// <summary>
+    /// Gets the usage.
+    /// </summary>
     public static string GetUsage()
     {
         var builder = new StringBuilder();

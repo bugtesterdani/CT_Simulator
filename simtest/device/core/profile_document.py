@@ -1,3 +1,5 @@
+"""Profile loading helpers for declarative JSON and YAML device models."""
+
 from __future__ import annotations
 
 import json
@@ -6,6 +8,7 @@ from typing import Any
 
 
 def load_profile_document(path: str) -> dict[str, Any]:
+    """Load one declarative device profile and normalize it to a mapping."""
     profile_path = Path(path)
     if not profile_path.is_file():
         raise ValueError(f"Profile '{path}' not found.")

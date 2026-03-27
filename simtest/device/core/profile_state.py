@@ -1,3 +1,5 @@
+"""Timer and state-machine helpers for declarative device profiles."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -6,6 +8,7 @@ from .profile_helpers import condition_matches, normalize_mapping
 
 
 def update_timers(model: Any) -> None:
+    """Advance all declarative timers to the current simulation time."""
     for name, definition in model.timer_definitions.items():
         if not isinstance(definition, dict):
             continue
@@ -32,6 +35,7 @@ def update_timers(model: Any) -> None:
 
 
 def update_state_machines(model: Any) -> None:
+    """Advance all declarative state machines by evaluating their active state transitions."""
     for name, definition in model.state_machine_definitions.items():
         if not isinstance(definition, dict):
             continue
@@ -61,11 +65,13 @@ def update_state_machines(model: Any) -> None:
 
 
 def apply_state_actions(model: Any, machine_name: str, state_name: str, state_config: dict[str, Any]) -> None:
+    """Apply the immediate side effects declared for one active state."""
     for signal_name, raw_value in normalize_mapping(state_config.get("set_internal") or {}).items():
         model.internal[signal_name] = float(raw_value)
 
 
 def set_state_flags(model: Any, machine_name: str, active_state: str, definition: dict[str, Any]) -> None:
+    """Expose one-hot internal state flags for the current machine state."""
     states = definition.get("states") or {}
     if not isinstance(states, dict):
         return
@@ -77,5 +83,6 @@ def set_state_flags(model: Any, machine_name: str, active_state: str, definition
 
 
 def timer_output_signal(name: str, definition: dict[str, Any]) -> str:
+    """Resolve the internal output signal used for one declarative timer."""
     configured = str(definition.get("output_signal") or "").strip().upper()
     return configured or f"TIMER_{name.strip().upper()}"

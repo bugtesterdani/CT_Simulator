@@ -1,3 +1,4 @@
+﻿// Provides Python Device Process Fixture for the simulator test project support code.
 using System.Diagnostics;
 using System.IO.Pipes;
 
@@ -13,8 +14,14 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         PipePath = pipePath;
     }
 
+    /// <summary>
+    /// Gets the pipe path.
+    /// </summary>
     public string PipePath { get; }
 
+    /// <summary>
+    /// Executes start profile.
+    /// </summary>
     public static PythonDeviceProcessFixture StartProfile(string profileRelativePath)
     {
         var profilePath = TestData.GetPath(profileRelativePath);
@@ -45,6 +52,9 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         return new PythonDeviceProcessFixture(process, pipePath);
     }
 
+    /// <summary>
+    /// Executes start module.
+    /// </summary>
     public static PythonDeviceProcessFixture StartModule(string mainRelativePath, string deviceModuleName)
     {
         var mainPath = TestData.GetPath(mainRelativePath);
@@ -74,6 +84,9 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         return new PythonDeviceProcessFixture(process, pipePath);
     }
 
+    /// <summary>
+    /// Executes dispose.
+    /// </summary>
     public void Dispose()
     {
         try

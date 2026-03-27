@@ -1,3 +1,4 @@
+﻿// Provides Ct3xx Program Simulator Concurrent for the simulator core simulation support.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -317,6 +318,9 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class ConcurrentBranchExecutionState
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConcurrentBranchExecutionState"/> class.
+        /// </summary>
         public ConcurrentBranchExecutionState(int branchIndex, string branchName, string initialDescription, IReadOnlyList<SequenceNode> steps)
         {
             BranchIndex = branchIndex;
@@ -325,16 +329,46 @@ public partial class Ct3xxProgramSimulator
             Steps = steps;
         }
 
+        /// <summary>
+        /// Gets the branch index.
+        /// </summary>
         public int BranchIndex { get; }
+        /// <summary>
+        /// Gets the branch name.
+        /// </summary>
         public string BranchName { get; }
+        /// <summary>
+        /// Gets the steps.
+        /// </summary>
         public IReadOnlyList<SequenceNode> Steps { get; }
+        /// <summary>
+        /// Gets the step index.
+        /// </summary>
         public int StepIndex { get; set; }
+        /// <summary>
+        /// Gets the current item.
+        /// </summary>
         public string? CurrentItem { get; set; }
+        /// <summary>
+        /// Gets a value indicating whether the started condition is met.
+        /// </summary>
         public bool HasStarted { get; set; }
+        /// <summary>
+        /// Gets a value indicating whether the completed condition is met.
+        /// </summary>
         public bool IsCompleted { get; set; }
+        /// <summary>
+        /// Gets the pending wait.
+        /// </summary>
         public ConcurrentPendingWait? PendingWait { get; set; }
+        /// <summary>
+        /// Gets the running process.
+        /// </summary>
         public ConcurrentTestHandle? RunningProcess { get; set; }
 
+        /// <summary>
+        /// Determines whether the advance at condition is met.
+        /// </summary>
         public bool CanAdvanceAt(long simulatedTimeMs)
         {
             return !IsCompleted &&
@@ -343,6 +377,9 @@ public partial class Ct3xxProgramSimulator
                    StepIndex < Steps.Count;
         }
 
+        /// <summary>
+        /// Gets the current item description.
+        /// </summary>
         public string? GetCurrentItemDescription()
         {
             if (StepIndex < Steps.Count)
@@ -356,6 +393,9 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class ConcurrentPendingWait
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConcurrentPendingWait"/> class.
+        /// </summary>
         public ConcurrentPendingWait(Test test, long delayMs, long resumeAtTimeMs)
         {
             Test = test;
@@ -363,8 +403,17 @@ public partial class Ct3xxProgramSimulator
             ResumeAtTimeMs = resumeAtTimeMs;
         }
 
+        /// <summary>
+        /// Gets the test.
+        /// </summary>
         public Test Test { get; }
+        /// <summary>
+        /// Gets the delay ms.
+        /// </summary>
         public long DelayMs { get; }
+        /// <summary>
+        /// Gets the resume at time ms.
+        /// </summary>
         public long ResumeAtTimeMs { get; }
     }
 }

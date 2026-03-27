@@ -1,3 +1,4 @@
+// Provides Main Window Step Tree for the desktop application support code.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,19 +14,24 @@ public partial class MainWindow
         StepTreeRootNodes.Clear();
         _stepTreeNodes.Clear();
         _groupTreeNodes.Clear();
+        _treeNodeTests.Clear();
+        _treeNodeGroups.Clear();
+        _breakpointTests.Clear();
+        _breakpointGroups.Clear();
         SelectedStepTreeNode = null;
 
         foreach (var item in program.RootItems)
         {
-            AddSequenceNodeToTree(item, null, StepTreeRootNodes);
+            AddSequenceNodeToTree(item, null, StepTreeRootNodes, "root");
         }
 
         if (program.DutLoop != null)
         {
-            var loopNode = new StepTreeNodeViewModel(program.DutLoop.Name ?? "DUT Loop", isGroup: true);
+            var loopNode = new StepTreeNodeViewModel(program.DutLoop.Name ?? "DUT Loop", isGroup: true, "dutloop");
             loopNode.KeepExpanded = true;
             loopNode.IsExpanded = true;
             loopNode.GroupMode = "Test Loop";
+            loopNode.HasBreakpoint = _breakpointNodeKeys.Contains(loopNode.NodeKey);
             if (!string.IsNullOrWhiteSpace(program.DutLoop.LoopCount))
             {
                 loopNode.GroupHint = $"Wiederholt den enthaltenen Ablauf fuer die konfigurierte DUT-Anzahl. LoopCnt={program.DutLoop.LoopCount}.";
@@ -36,7 +42,7 @@ public partial class MainWindow
             }
             foreach (var item in program.DutLoop.Items)
             {
-                AddSequenceNodeToTree(item, loopNode, loopNode.Children);
+                AddSequenceNodeToTree(item, loopNode, loopNode.Children, loopNode.NodeKey);
             }
 
             StepTreeRootNodes.Add(loopNode);
@@ -48,11 +54,13 @@ public partial class MainWindow
         StepTreeRootNodes.Clear();
         _stepTreeNodes.Clear();
         _groupTreeNodes.Clear();
+        _treeNodeTests.Clear();
+        _treeNodeGroups.Clear();
         SelectedStepTreeNode = null;
 
         foreach (var step in StepResults)
         {
-            var node = new StepTreeNodeViewModel(step.StepName, isGroup: false);
+            var node = new StepTreeNodeViewModel(step.StepName, isGroup: false, $"result:{StepTreeRootNodes.Count}");
             node.ApplyResult(step);
             node.Refresh();
             StepTreeRootNodes.Add(node);
@@ -108,11 +116,13 @@ public partial class MainWindow
         StepTreeRootNodes.Clear();
         _stepTreeNodes.Clear();
         _groupTreeNodes.Clear();
+        _treeNodeTests.Clear();
+        _treeNodeGroups.Clear();
         SelectedStepTreeNode = null;
 
         foreach (var step in StepResults.Where(step => IsResultVisibleAtTimeline(step, timelineIndex)))
         {
-            var node = new StepTreeNodeViewModel(step.StepName, isGroup: false);
+            var node = new StepTreeNodeViewModel(step.StepName, isGroup: false, $"result:{StepTreeRootNodes.Count}");
             node.ApplyResult(step);
             node.Refresh();
             StepTreeRootNodes.Add(node);
@@ -129,33 +139,48 @@ public partial class MainWindow
         return result.TimelineIndex.Value <= timelineIndex;
     }
 
-    private void AddSequenceNodeToTree(SequenceNode item, StepTreeNodeViewModel? parent, ICollection<StepTreeNodeViewModel> target)
+    private void AddSequenceNodeToTree(SequenceNode item, StepTreeNodeViewModel? parent, ICollection<StepTreeNodeViewModel> target, string parentKey)
     {
+        var nodeIndex = target.Count;
         switch (item)
         {
             case Group group:
-                var groupNode = new StepTreeNodeViewModel(group.Name ?? group.Id ?? "Gruppe", isGroup: true, parent);
+                var groupKey = $"{parentKey}/group:{nodeIndex}:{group.Name ?? group.Id ?? "group"}";
+                var groupNode = new StepTreeNodeViewModel(group.Name ?? group.Id ?? "Gruppe", isGroup: true, groupKey, parent);
                 groupNode.IsExpanded = true;
+                groupNode.HasBreakpoint = _breakpointNodeKeys.Contains(groupKey);
                 ConfigureGroupPresentation(groupNode, group);
                 _groupTreeNodes[group] = groupNode;
+                _treeNodeGroups[groupNode] = group;
+                if (groupNode.HasBreakpoint)
+                {
+                    _breakpointGroups.Add(group);
+                }
                 target.Add(groupNode);
                 foreach (var child in group.Items)
                 {
-                    AddSequenceNodeToTree(child, groupNode, groupNode.Children);
+                    AddSequenceNodeToTree(child, groupNode, groupNode.Children, groupKey);
                 }
 
                 break;
 
             case Test test:
-                var testNode = new StepTreeNodeViewModel(test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test", isGroup: false, parent)
+                var testKey = $"{parentKey}/test:{nodeIndex}:{test.Parameters?.Name ?? test.Name ?? test.Id ?? "test"}";
+                var testNode = new StepTreeNodeViewModel(test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test", isGroup: false, testKey, parent)
                 {
                     ExpectedEvaluationCount = EstimateEvaluationCount(test)
                 };
+                testNode.HasBreakpoint = _breakpointNodeKeys.Contains(testKey);
                 _stepTreeNodes[test] = testNode;
+                _treeNodeTests[testNode] = test;
+                if (testNode.HasBreakpoint)
+                {
+                    _breakpointTests.Add(test);
+                }
                 target.Add(testNode);
                 foreach (var child in test.Items)
                 {
-                    AddSequenceNodeToTree(child, testNode, testNode.Children);
+                    AddSequenceNodeToTree(child, testNode, testNode.Children, testKey);
                 }
                 break;
         }
@@ -207,7 +232,7 @@ public partial class MainWindow
     {
         if (!_stepTreeNodes.TryGetValue(test, out var testNode))
         {
-            var fallbackNode = new StepTreeNodeViewModel(result.StepName, isGroup: false);
+            var fallbackNode = new StepTreeNodeViewModel(result.StepName, isGroup: false, $"fallback:{StepTreeRootNodes.Count}");
             fallbackNode.ApplyResult(result);
             fallbackNode.Refresh();
             StepTreeRootNodes.Add(fallbackNode);
@@ -222,7 +247,7 @@ public partial class MainWindow
         }
 
         testNode.IsExpanded = true;
-        var childNode = new StepTreeNodeViewModel(result.StepName, isGroup: false, testNode);
+        var childNode = new StepTreeNodeViewModel(result.StepName, isGroup: false, $"{testNode.NodeKey}/result:{testNode.Children.Count}", testNode);
         childNode.ApplyResult(result);
         childNode.Refresh();
         testNode.Children.Add(childNode);
@@ -266,5 +291,75 @@ public partial class MainWindow
 
         SelectTimelineIndex(index.Value);
         AddLog($"Zu letztem Snapshot von '{SelectedStepTreeNode?.Title ?? "Testschritt"}' gesprungen.");
+    }
+
+    private bool TryGetSelectedNodeTest(out Test test)
+    {
+        if (SelectedStepTreeNode != null && _treeNodeTests.TryGetValue(SelectedStepTreeNode, out var selectedTest))
+        {
+            test = selectedTest;
+            return true;
+        }
+
+        test = null!;
+        return false;
+    }
+
+    private bool TryGetSelectedNodeGroup(out Group group)
+    {
+        if (SelectedStepTreeNode != null && _treeNodeGroups.TryGetValue(SelectedStepTreeNode, out var selectedGroup))
+        {
+            group = selectedGroup;
+            return true;
+        }
+
+        group = null!;
+        return false;
+    }
+
+    private void ToggleBreakpointForSelectedNode()
+    {
+        if (SelectedStepTreeNode == null)
+        {
+            return;
+        }
+
+        if (TryGetSelectedNodeTest(out var test))
+        {
+            if (_breakpointTests.Contains(test))
+            {
+                _breakpointTests.Remove(test);
+                _breakpointNodeKeys.Remove(SelectedStepTreeNode.NodeKey);
+                SelectedStepTreeNode.HasBreakpoint = false;
+                AddLog($"Breakpoint entfernt: {SelectedStepTreeNode.Title}");
+            }
+            else
+            {
+                _breakpointTests.Add(test);
+                _breakpointNodeKeys.Add(SelectedStepTreeNode.NodeKey);
+                SelectedStepTreeNode.HasBreakpoint = true;
+                AddLog($"Breakpoint gesetzt: {SelectedStepTreeNode.Title}");
+            }
+        }
+        else if (TryGetSelectedNodeGroup(out var group))
+        {
+            if (_breakpointGroups.Contains(group))
+            {
+                _breakpointGroups.Remove(group);
+                _breakpointNodeKeys.Remove(SelectedStepTreeNode.NodeKey);
+                SelectedStepTreeNode.HasBreakpoint = false;
+                AddLog($"Gruppen-Breakpoint entfernt: {SelectedStepTreeNode.Title}");
+            }
+            else
+            {
+                _breakpointGroups.Add(group);
+                _breakpointNodeKeys.Add(SelectedStepTreeNode.NodeKey);
+                SelectedStepTreeNode.HasBreakpoint = true;
+                AddLog($"Gruppen-Breakpoint gesetzt: {SelectedStepTreeNode.Title}");
+            }
+        }
+
+        OnPropertyChanged(nameof(CanToggleBreakpoint));
+        OnPropertyChanged(nameof(BreakpointButtonText));
     }
 }

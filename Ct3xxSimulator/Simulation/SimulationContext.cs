@@ -5,15 +5,30 @@ using Ct3xxProgramParser.Model;
 
 namespace Ct3xxSimulator.Simulation;
 
+/// <summary>
+/// Stores CT3xx variables, arrays and run-level state for one simulation session.
+/// </summary>
 public class SimulationContext
 {
     private readonly Dictionary<string, object?> _scalars = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ProgramArray> _arrays = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Gets the textual result of the last completed test or step.
+    /// </summary>
     public string LastResult { get; private set; } = "PASS";
+    /// <summary>
+    /// Gets the active CT3xx program directory.
+    /// </summary>
     public string ProgramDirectory { get; private set; } = Directory.GetCurrentDirectory();
+    /// <summary>
+    /// Gets the active CT3xx program file path, if known.
+    /// </summary>
     public string? ProgramPath { get; private set; }
 
+    /// <summary>
+    /// Updates the active program file and directory context.
+    /// </summary>
     public void SetProgramContext(string? programPath)
     {
         ProgramPath = string.IsNullOrWhiteSpace(programPath) ? null : Path.GetFullPath(programPath);
@@ -25,6 +40,9 @@ public class SimulationContext
         _scalars["$TestProgramFile"] = ProgramPath ?? string.Empty;
     }
 
+    /// <summary>
+    /// Applies all variable tables to the context.
+    /// </summary>
     public void ApplyTables(IEnumerable<Table> tables, ExpressionEvaluator evaluator)
     {
         foreach (var table in tables)
@@ -33,6 +51,9 @@ public class SimulationContext
         }
     }
 
+    /// <summary>
+    /// Applies one variable table to the context.
+    /// </summary>
     public void ApplyTable(Table table, ExpressionEvaluator evaluator)
     {
         if (table.Variables.Count == 0)
@@ -53,6 +74,9 @@ public class SimulationContext
         }
     }
 
+    /// <summary>
+    /// Sets one scalar or indexed variable value by name.
+    /// </summary>
     public void SetValue(string name, object? value)
     {
         if (!VariableAddress.TryParse(name, out var address))
@@ -63,6 +87,9 @@ public class SimulationContext
         ApplyValue(address, value);
     }
 
+    /// <summary>
+    /// Sets one scalar or indexed variable value by parsed address.
+    /// </summary>
     public void SetValue(VariableAddress address, object? value) => ApplyValue(address, value);
 
     private void ApplyValue(VariableAddress address, object? value)
@@ -96,6 +123,9 @@ public class SimulationContext
         return array;
     }
 
+    /// <summary>
+    /// Reads one scalar or indexed variable value by parsed address.
+    /// </summary>
     public object? GetValue(VariableAddress address)
     {
         if (address.HasIndex)
@@ -108,6 +138,9 @@ public class SimulationContext
         return _scalars.TryGetValue(address.Name, out var value) ? value : null;
     }
 
+    /// <summary>
+    /// Reads one scalar or indexed variable value by its textual name.
+    /// </summary>
     public object? GetValue(string? name)
     {
         if (!VariableAddress.TryParse(name, out var address))
@@ -118,6 +151,9 @@ public class SimulationContext
         return GetValue(address);
     }
 
+    /// <summary>
+    /// Returns one array by name when it exists.
+    /// </summary>
     public ProgramArray? GetArray(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -128,6 +164,9 @@ public class SimulationContext
         return _arrays.TryGetValue(name.Trim(), out var array) ? array : null;
     }
 
+    /// <summary>
+    /// Updates the cached textual result variables from a normalized outcome.
+    /// </summary>
     public void MarkOutcome(TestOutcome outcome)
     {
         LastResult = outcome switch
@@ -142,6 +181,9 @@ public class SimulationContext
         _scalars["$DUTResult"] = LastResult;
     }
 
+    /// <summary>
+    /// Converts one value into a user-facing CT3xx-style text representation.
+    /// </summary>
     public string Describe(object? value)
     {
         return value switch
@@ -155,10 +197,16 @@ public class SimulationContext
     }
 }
 
+/// <summary>
+/// Stores one one-based CT3xx array.
+/// </summary>
 public class ProgramArray
 {
     private readonly SortedDictionary<int, object?> _items = new();
 
+    /// <summary>
+    /// Resets the array to the specified one-based length.
+    /// </summary>
     public void Reset(int length)
     {
         _items.Clear();
@@ -168,19 +216,38 @@ public class ProgramArray
         }
     }
 
+    /// <summary>
+    /// Stores one array item at the specified one-based index.
+    /// </summary>
     public void Set(int index, object? value) => _items[index] = value;
 
+    /// <summary>
+    /// Reads one array item at the specified one-based index.
+    /// </summary>
     public object? Get(int index) => _items.TryGetValue(index, out var value) ? value : null;
 
+    /// <summary>
+    /// Returns an immutable view of the current array content.
+    /// </summary>
     public IReadOnlyDictionary<int, object?> Snapshot() => _items;
 }
 
+/// <summary>
+/// Represents a deferred CT3xx array allocation request such as <c>Dim(10)</c>.
+/// </summary>
 public sealed class ArrayAllocation
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArrayAllocation"/> class.
+    /// </summary>
+    /// <param name="length">The requested one-based array length.</param>
     public ArrayAllocation(int length)
     {
         Length = length;
     }
 
+    /// <summary>
+    /// Gets the requested one-based array length.
+    /// </summary>
     public int Length { get; }
 }

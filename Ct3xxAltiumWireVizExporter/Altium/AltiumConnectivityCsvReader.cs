@@ -1,10 +1,17 @@
+﻿// Provides Altium Connectivity Csv Reader for the Altium exporter Altium import support.
 using System.Text;
 using Ct3xxAltiumWireVizExporter.Configuration;
 
 namespace Ct3xxAltiumWireVizExporter.Altium;
 
+/// <summary>
+/// Represents the altium connectivity csv reader.
+/// </summary>
 public sealed class AltiumConnectivityCsvReader
 {
+    /// <summary>
+    /// Executes read.
+    /// </summary>
     public IReadOnlyList<AltiumConnectivityRecord> Read(string path, ExportConfiguration configuration)
     {
         if (!File.Exists(path))

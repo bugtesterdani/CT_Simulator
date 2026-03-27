@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ct3xxSimulation.Abstractions\Ct3xxSimulation.Abstractions.csproj" />
+    <ProjectReference Include="..\Ct3xxSimulator.Modules\Ct3xxSimulator.Modules.csproj" />
+    <ProjectReference Include="..\Ct3xxSimulator.Waveforms\Ct3xxSimulator.Waveforms.csproj" />
+  </ItemGroup>
+
+</Project>

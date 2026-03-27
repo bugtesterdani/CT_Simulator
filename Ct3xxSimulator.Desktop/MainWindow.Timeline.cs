@@ -1,3 +1,4 @@
+// Provides Main Window Timeline for the desktop application support code.
 using System.Collections.Generic;
 using System.Globalization;
 using Ct3xxSimulator.Desktop.ViewModels;

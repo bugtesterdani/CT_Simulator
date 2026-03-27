@@ -1,3 +1,4 @@
+﻿// Provides Startup Tests for the WinAppDriver test project support code.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,10 +14,16 @@ using OpenQA.Selenium.Appium;
 namespace Ct3xxSimulator.WinAppDriverTests;
 
 [TestClass]
+/// <summary>
+/// Represents the startup tests.
+/// </summary>
 public sealed class StartupTests : WinAppDriverTestBase
 {
     [TestMethod]
     [TestCategory("Smoke")]
+    /// <summary>
+    /// Executes main window title should contain product name.
+    /// </summary>
     public void MainWindowTitleShouldContainProductName()
     {
         var title = Session.Title ?? string.Empty;
@@ -25,6 +32,9 @@ public sealed class StartupTests : WinAppDriverTestBase
 
     [TestMethod]
     [TestCategory("Smoke")]
+    /// <summary>
+    /// Executes window handle should exist.
+    /// </summary>
     public void WindowHandleShouldExist()
     {
         var handles = WaitForWindowHandles();
@@ -34,9 +44,12 @@ public sealed class StartupTests : WinAppDriverTestBase
     [DataTestMethod]
     [TestCategory("Simulation")]
     [DynamicData(nameof(GetSamplePrograms), DynamicDataSourceType.Method)]
+    /// <summary>
+    /// Executes simulation should complete for sample program.
+    /// </summary>
     public void SimulationShouldCompleteForSampleProgram(string programPath, string displayName)
     {
-        TestContext?.WriteLine($"Simulation für: {displayName}");
+        TestContext?.WriteLine($"Simulation fÃ¼r: {displayName}");
         LoadProgramViaUi(programPath, displayName);
         SeedMeasurementQueue(20);
         StartSimulation();
@@ -105,7 +118,7 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
         catch (WebDriverException ex)
         {
-            TestContext?.WriteLine($"SampleProgramList nicht verfügbar ({ex.Message}).");
+            TestContext?.WriteLine($"SampleProgramList nicht verfÃ¼gbar ({ex.Message}).");
             return false;
         }
     }
@@ -284,7 +297,7 @@ public sealed class StartupTests : WinAppDriverTestBase
             return false;
         }
 
-        var keywords = new[] { "fehler", "error", "fehlgeschlagen", "ungültig", "nicht möglich" };
+        var keywords = new[] { "fehler", "error", "fehlgeschlagen", "ungÃ¼ltig", "nicht mÃ¶glich" };
         var normalized = text.ToLowerInvariant();
         return keywords.Any(normalized.Contains);
     }

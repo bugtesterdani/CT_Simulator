@@ -1,3 +1,4 @@
+﻿// Provides Simulation Model Parser for the simulation model parser parsing support.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -7,10 +8,16 @@ using YamlDotNet.Serialization;
 
 namespace Ct3xxSimulationModelParser.Parsing;
 
+/// <summary>
+/// Represents the simulation model parser.
+/// </summary>
 public sealed class SimulationModelParser
 {
     private readonly IDeserializer _deserializer = new DeserializerBuilder().Build();
 
+    /// <summary>
+    /// Parses the file.
+    /// </summary>
     public SimulationModelDocument ParseFile(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))

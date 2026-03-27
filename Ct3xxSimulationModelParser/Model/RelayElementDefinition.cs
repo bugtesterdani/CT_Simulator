@@ -1,10 +1,17 @@
+﻿// Provides Relay Element Definition for the simulation model parser model support.
 using System;
 using System.Collections.Generic;
 
 namespace Ct3xxSimulationModelParser.Model;
 
+/// <summary>
+/// Represents the relay element definition.
+/// </summary>
 public sealed class RelayElementDefinition : SimulationElementDefinition
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RelayElementDefinition"/> class.
+    /// </summary>
     public RelayElementDefinition(
         string id,
         RelayCoilDefinition coil,
@@ -16,12 +23,24 @@ public sealed class RelayElementDefinition : SimulationElementDefinition
         Contacts = contacts ?? Array.Empty<RelayContactDefinition>();
     }
 
+    /// <summary>
+    /// Gets the coil.
+    /// </summary>
     public RelayCoilDefinition Coil { get; }
+    /// <summary>
+    /// Gets the contacts.
+    /// </summary>
     public IReadOnlyList<RelayContactDefinition> Contacts { get; }
 }
 
+/// <summary>
+/// Represents the relay coil definition.
+/// </summary>
 public sealed class RelayCoilDefinition
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RelayCoilDefinition"/> class.
+    /// </summary>
     public RelayCoilDefinition(string signal, double thresholdV)
     {
         if (string.IsNullOrWhiteSpace(signal))
@@ -33,12 +52,24 @@ public sealed class RelayCoilDefinition
         ThresholdV = thresholdV;
     }
 
+    /// <summary>
+    /// Gets the signal.
+    /// </summary>
     public string Signal { get; }
+    /// <summary>
+    /// Gets the threshold v.
+    /// </summary>
     public double ThresholdV { get; }
 }
 
+/// <summary>
+/// Represents the relay contact definition.
+/// </summary>
 public sealed class RelayContactDefinition
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RelayContactDefinition"/> class.
+    /// </summary>
     public RelayContactDefinition(string a, string b, string mode)
     {
         if (string.IsNullOrWhiteSpace(a))
@@ -61,7 +92,16 @@ public sealed class RelayContactDefinition
         Mode = mode.Trim();
     }
 
+    /// <summary>
+    /// Gets the a.
+    /// </summary>
     public string A { get; }
+    /// <summary>
+    /// Gets the b.
+    /// </summary>
     public string B { get; }
+    /// <summary>
+    /// Gets the mode.
+    /// </summary>
     public string Mode { get; }
 }

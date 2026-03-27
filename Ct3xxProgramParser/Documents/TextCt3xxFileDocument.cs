@@ -1,3 +1,4 @@
+﻿// Provides Text Ct3xx File Document for the program parser document model support.
 using System;
 using System.Collections.Generic;
 using Ct3xxProgramParser.Model;
@@ -12,6 +13,12 @@ public abstract class TextCt3xxFileDocument : Ct3xxFileDocument
         Lines = lines ?? Array.Empty<string>();
     }
 
+    /// <summary>
+    /// Gets the lines.
+    /// </summary>
     public IReadOnlyList<string> Lines { get; }
+    /// <summary>
+    /// Gets the raw text.
+    /// </summary>
     public string RawText => string.Join(Environment.NewLine, Lines);
 }

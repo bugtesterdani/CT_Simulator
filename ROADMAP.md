@@ -38,6 +38,22 @@ Umgesetzt:
 Ergebnis:
 - automatisierbare Regressionstests und CI-nahe Ausfuehrung
 
+3. Simulator-Modularisierung fuer Testtypenausbau
+
+Status:
+- abgeschlossen als vorbereitende Architekturmassnahme
+
+Umgesetzt:
+- neues Projekt `Ct3xxSimulator.Interfaces`
+- neues Projekt `Ct3xxSimulator.Modules`
+- neues Projekt `Ct3xxSimulator.Waveforms`
+- neues Projekt `Ct3xxSimulator.TestTypes`
+- Auslagerung von Device-, WireViz-, Fault- und Waveform-Bausteinen aus dem Kernprojekt
+
+Ergebnis:
+- bessere Grundlage fuer die schrittweise Umsetzung der `SUPPORT_MATRIX`
+- kuenftige Testtypen koennen sauberer in kleinere Handler und Laufzeitslices aufgeteilt werden
+
 Priorisierung
 -------------
 

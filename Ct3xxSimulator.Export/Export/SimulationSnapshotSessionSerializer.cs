@@ -1,3 +1,4 @@
+﻿// Provides Simulation Snapshot Session Serializer for the export layer export support.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,11 +15,17 @@ public static class SimulationSnapshotSessionSerializer
         WriteIndented = true
     };
 
+    /// <summary>
+    /// Executes save.
+    /// </summary>
     public static void Save(string path, SimulationSnapshotSessionDocument document)
     {
         File.WriteAllText(path, JsonSerializer.Serialize(document, JsonOptions));
     }
 
+    /// <summary>
+    /// Executes load.
+    /// </summary>
     public static SimulationSnapshotSessionDocument Load(string path)
     {
         var json = File.ReadAllText(path);
@@ -28,6 +35,9 @@ public static class SimulationSnapshotSessionSerializer
         return document.ToDocument();
     }
 
+    /// <summary>
+    /// Executes create.
+    /// </summary>
     public static SimulationSnapshotSessionDocument Create(
         DateTimeOffset exportedAt,
         string? configurationSummary,
@@ -52,6 +62,9 @@ public static class SimulationSnapshotSessionSerializer
             selectedTimelineIndex);
     }
 
+    /// <summary>
+    /// Executes to snapshot.
+    /// </summary>
     public static SimulationStateSnapshot ToSnapshot(SimulationSnapshotEntry entry)
     {
         return new SimulationStateSnapshot(
@@ -114,14 +127,38 @@ public static class SimulationSnapshotSessionSerializer
 
     private sealed class SimulationSnapshotSessionDocumentData
     {
+        /// <summary>
+        /// Gets the exported at.
+        /// </summary>
         public DateTimeOffset ExportedAt { get; set; }
+        /// <summary>
+        /// Gets the configuration summary.
+        /// </summary>
         public string? ConfigurationSummary { get; set; }
+        /// <summary>
+        /// Gets the steps.
+        /// </summary>
         public List<SimulationExportStep>? Steps { get; set; }
+        /// <summary>
+        /// Gets the logs.
+        /// </summary>
         public List<SimulationExportLogEntry>? Logs { get; set; }
+        /// <summary>
+        /// Gets the timeline.
+        /// </summary>
         public List<SimulationSnapshotEntry>? Timeline { get; set; }
+        /// <summary>
+        /// Gets the signal history.
+        /// </summary>
         public Dictionary<string, List<SimulationSnapshotCurvePoint>>? SignalHistory { get; set; }
+        /// <summary>
+        /// Gets the selected timeline index.
+        /// </summary>
         public int SelectedTimelineIndex { get; set; }
 
+        /// <summary>
+        /// Executes to document.
+        /// </summary>
         public SimulationSnapshotSessionDocument ToDocument()
         {
             return new SimulationSnapshotSessionDocument(

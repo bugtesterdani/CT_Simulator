@@ -1,3 +1,5 @@
+"""Shared helper functions used by the declarative profile runtime."""
+
 from __future__ import annotations
 
 import json
@@ -5,16 +7,19 @@ from typing import Any
 
 
 def normalize_mapping(raw: Any) -> dict[str, Any]:
+    """Normalize profile mappings to upper-case keys for case-insensitive access."""
     if not isinstance(raw, dict):
         return {}
     return {str(key).strip().upper(): value for key, value in raw.items()}
 
 
 def lookup_numeric(values: dict[str, Any], key: str, default: float) -> float:
+    """Read one numeric value from a normalized mapping with a fallback."""
     return float(values.get(key, values.get(key.lower(), default)) or default)
 
 
 def compare(value: float, conditions: dict[str, Any]) -> bool:
+    """Evaluate simple declarative comparison operators against a numeric value."""
     if "gte" in conditions and value < float(conditions["gte"]):
         return False
     if "gt" in conditions and value <= float(conditions["gt"]):
@@ -29,6 +34,7 @@ def compare(value: float, conditions: dict[str, Any]) -> bool:
 
 
 def read_signal_value(model: Any, signal: str) -> float:
+    """Read one signal value from the runtime, including waveform-backed inputs."""
     if signal in model.input_waveforms:
         return float(model._waveform_value_at(model.input_waveforms[signal], model.now_ms))
     if signal in model.inputs:
@@ -43,6 +49,7 @@ def read_signal_value(model: Any, signal: str) -> float:
 
 
 def condition_matches(model: Any, condition: Any) -> bool:
+    """Evaluate a declarative condition tree against the current model state."""
     if condition is None:
         return True
     if not isinstance(condition, dict):
@@ -62,6 +69,7 @@ def condition_matches(model: Any, condition: Any) -> bool:
 
 
 def interface_request_matches(condition: Any, payload: Any) -> bool:
+    """Match one declarative interface request filter against a payload."""
     if condition is None:
         return True
     if not isinstance(condition, dict):
@@ -76,6 +84,7 @@ def interface_request_matches(condition: Any, payload: Any) -> bool:
 
 
 def are_sources_enabled(model: Any) -> bool:
+    """Check whether source-control minimum conditions allow output evaluation."""
     minimums = model.source_control.get("minimums") or {}
     if not minimums:
         return True

@@ -1,9 +1,13 @@
+﻿// Provides Wire Viz Parser Tests for the WireViz parser test project support code.
 using Ct3xxWireVizParser.Model;
 using Ct3xxWireVizParser.Parsing;
 
 namespace Ct3xxWireVizParser.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the wire viz parser tests.
+/// </summary>
 public sealed class WireVizParserTests
 {
     private const string SampleYaml = """
@@ -59,6 +63,9 @@ custom_section:
 """;
 
     [TestMethod]
+    /// <summary>
+    /// Determines whether the parse known wire viz sections condition is met.
+    /// </summary>
     public void ShouldParseKnownWireVizSections()
     {
         var parser = new WireVizParser();
@@ -81,6 +88,9 @@ custom_section:
     }
 
     [TestMethod]
+    /// <summary>
+    /// Determines whether the preserve unknown sections and nested values condition is met.
+    /// </summary>
     public void ShouldPreserveUnknownSectionsAndNestedValues()
     {
         var parser = new WireVizParser();

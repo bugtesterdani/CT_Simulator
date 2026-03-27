@@ -1,12 +1,19 @@
+﻿// Provides Signal Table Parser Tests for the program parser test project support code.
 using System.Linq;
 using Ct3xxProgramParser.Parsing;
 
 namespace Ct3xxProgramParser.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the signal table parser tests.
+/// </summary>
 public sealed class SignalTableParserTests
 {
     [TestMethod]
+    /// <summary>
+    /// Determines whether the parse multi module signal table condition is met.
+    /// </summary>
     public void ShouldParseMultiModuleSignalTable()
     {
         var parser = new SignalTableParser();

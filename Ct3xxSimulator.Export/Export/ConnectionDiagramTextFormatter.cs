@@ -1,3 +1,4 @@
+﻿// Provides Connection Diagram Text Formatter for the export layer export support.
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -5,6 +6,9 @@ namespace Ct3xxSimulator.Export;
 
 internal static class ConnectionDiagramTextFormatter
 {
+    /// <summary>
+    /// Executes format step diagrams.
+    /// </summary>
     public static string FormatStepDiagrams(SimulationExportStep step)
     {
         var builder = new StringBuilder();
@@ -22,6 +26,9 @@ internal static class ConnectionDiagramTextFormatter
         return builder.ToString().Trim();
     }
 
+    /// <summary>
+    /// Creates the serializable diagrams.
+    /// </summary>
     public static IReadOnlyList<object> CreateSerializableDiagrams(SimulationExportStep step)
     {
         return step.Traces

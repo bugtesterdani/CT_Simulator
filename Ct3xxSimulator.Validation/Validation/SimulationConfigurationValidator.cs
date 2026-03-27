@@ -1,3 +1,4 @@
+﻿// Provides Simulation Configuration Validator for the validation layer validation support.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +8,9 @@ namespace Ct3xxSimulator.Validation;
 
 public static class SimulationConfigurationValidator
 {
+    /// <summary>
+    /// Executes validate.
+    /// </summary>
     public static IReadOnlyList<string> Validate(
         string? selectedFilePath,
         string? wiringFolderPath,

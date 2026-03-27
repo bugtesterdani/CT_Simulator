@@ -1,3 +1,4 @@
+﻿// Provides Script Execution Tests for the simulator test project support code.
 using System.Xml;
 using Ct3xxProgramParser.Model;
 using Ct3xxProgramParser.Programs;
@@ -6,9 +7,15 @@ using Ct3xxSimulator.Simulation;
 namespace Ct3xxSimulator.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the script execution tests.
+/// </summary>
 public sealed class ScriptExecutionTests
 {
     [TestMethod]
+    /// <summary>
+    /// Executes expression evaluator should resolve com tcp demo style write file expression.
+    /// </summary>
     public void ExpressionEvaluator_ShouldResolve_ComTcpDemoStyleWriteFileExpression()
     {
         var workspace = CreateTempWorkspace();
@@ -40,6 +47,9 @@ public sealed class ScriptExecutionTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes ecll should pass when exit code evaluation is disabled.
+    /// </summary>
     public void Ecll_ShouldPass_WhenExitCodeEvaluationIsDisabled()
     {
         var workspace = CreateTempWorkspace();
@@ -61,6 +71,9 @@ public sealed class ScriptExecutionTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes ecll should fail when evaluated exit code differs from expected.
+    /// </summary>
     public void Ecll_ShouldFail_WhenEvaluatedExitCodeDiffersFromExpected()
     {
         var workspace = CreateTempWorkspace();

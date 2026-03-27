@@ -1,3 +1,4 @@
+﻿// Provides Test Details Factory for the desktop application view model support.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -50,6 +51,9 @@ public static class TestDetailsFactory
         AnsiEncoding = Encoding.GetEncoding(1252);
     }
 
+    /// <summary>
+    /// Executes create.
+    /// </summary>
     public static TestDetailsViewModel? Create(Test test, string? programDirectory)
     {
         var parameters = test.Parameters;
@@ -440,7 +444,7 @@ internal static string? Clean(string? value)
             {
                 var time = index * sampleTime;
                 samples.Add(new Point(time, value));
-                viewModel.Description ??= $"Arbiträrsignal ({unit})";
+                viewModel.Description ??= $"ArbitrÃ¤rsignal ({unit})";
             }
 
             index++;
@@ -490,7 +494,7 @@ internal static string? Clean(string? value)
             return false;
         }
 
-        cleaned = cleaned.Replace("æ", "µ");
+        cleaned = cleaned.Replace("Ã¦", "µ");
         var parts = cleaned.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
@@ -542,8 +546,8 @@ internal static string? Clean(string? value)
             return (null, null);
         }
 
-        raw = raw.Replace("ñ", "±");
-        if (raw.StartsWith("±", StringComparison.Ordinal))
+        raw = raw.Replace("Ã±", "Â±");
+        if (raw.StartsWith("Â±", StringComparison.Ordinal))
         {
             var percent = ParseSinglePercent(raw[1..]);
             return (-percent, percent);

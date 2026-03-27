@@ -1,3 +1,4 @@
+﻿// Provides Program Details View Model for the desktop application view model support.
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -5,41 +6,107 @@ using Ct3xxProgramParser.Model;
 
 namespace Ct3xxSimulator.Desktop.ViewModels;
 
+/// <summary>
+/// Represents the program details view model.
+/// </summary>
 public class ProgramDetailsViewModel
 {
+    /// <summary>
+    /// Gets the program id.
+    /// </summary>
     public string? ProgramId { get; init; }
+    /// <summary>
+    /// Gets the revision.
+    /// </summary>
     public string? Revision { get; init; }
+    /// <summary>
+    /// Gets the author.
+    /// </summary>
     public string? Author { get; init; }
+    /// <summary>
+    /// Gets the version.
+    /// </summary>
     public string? Version { get; init; }
+    /// <summary>
+    /// Gets the comment.
+    /// </summary>
     public string? Comment { get; init; }
+    /// <summary>
+    /// Gets the dut name.
+    /// </summary>
     public string? DutName { get; init; }
+    /// <summary>
+    /// Gets the dut revision.
+    /// </summary>
     public string? DutRevision { get; init; }
+    /// <summary>
+    /// Gets the dut variant.
+    /// </summary>
     public string? DutVariant { get; init; }
+    /// <summary>
+    /// Gets the fixture code.
+    /// </summary>
     public string? FixtureCode { get; init; }
+    /// <summary>
+    /// Gets the handling code.
+    /// </summary>
     public string? HandlingCode { get; init; }
+    /// <summary>
+    /// Gets the lot code.
+    /// </summary>
     public string? LotCode { get; init; }
 
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<OperatorDisplayViewModel> OperatorDisplays { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<UserButtonViewModel> UserButtons { get; } = new();
 
+    /// <summary>
+    /// Gets a value indicating whether the operator displays condition is met.
+    /// </summary>
     public bool HasOperatorDisplays => OperatorDisplays.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the user buttons condition is met.
+    /// </summary>
     public bool HasUserButtons => UserButtons.Count > 0;
 }
 
+/// <summary>
+/// Represents the operator display view model.
+/// </summary>
 public class OperatorDisplayViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OperatorDisplayViewModel"/> class.
+    /// </summary>
     public OperatorDisplayViewModel(string title, string text)
     {
         Title = title;
         Text = text;
     }
 
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; }
+    /// <summary>
+    /// Gets the text.
+    /// </summary>
     public string Text { get; }
 }
 
+/// <summary>
+/// Represents the user button view model.
+/// </summary>
 public class UserButtonViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="UserButtonViewModel"/> class.
+    /// </summary>
     public UserButtonViewModel(string label, string? library, string? function, bool isEnabled)
     {
         Label = label;
@@ -48,39 +115,117 @@ public class UserButtonViewModel
         IsEnabled = isEnabled;
     }
 
+    /// <summary>
+    /// Gets the label.
+    /// </summary>
     public string Label { get; }
+    /// <summary>
+    /// Gets the library.
+    /// </summary>
     public string? Library { get; }
+    /// <summary>
+    /// Gets the function.
+    /// </summary>
     public string? Function { get; }
+    /// <summary>
+    /// Gets a value indicating whether the enabled condition is met.
+    /// </summary>
     public bool IsEnabled { get; }
+    /// <summary>
+    /// Gets a value indicating whether the library condition is met.
+    /// </summary>
     public bool HasLibrary => !string.IsNullOrWhiteSpace(Library);
+    /// <summary>
+    /// Gets a value indicating whether the function condition is met.
+    /// </summary>
     public bool HasFunction => !string.IsNullOrWhiteSpace(Function);
+    /// <summary>
+    /// Gets the status text.
+    /// </summary>
     public string StatusText => IsEnabled ? "Aktiv" : "Deaktiviert";
 }
 
+/// <summary>
+/// Represents the table details view model.
+/// </summary>
 public class TableDetailsViewModel
 {
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; init; } = "Tabelle";
+    /// <summary>
+    /// Gets the file.
+    /// </summary>
     public string? File { get; init; }
+    /// <summary>
+    /// Gets the digest.
+    /// </summary>
     public string? Digest { get; init; }
+    /// <summary>
+    /// Gets the interface file.
+    /// </summary>
     public string? InterfaceFile { get; init; }
+    /// <summary>
+    /// Gets the interface digest.
+    /// </summary>
     public string? InterfaceDigest { get; init; }
+    /// <summary>
+    /// Gets the length.
+    /// </summary>
     public string? Length { get; init; }
 
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<TableVariableViewModel> Variables { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<TableRecordViewModel> Records { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<TableFileEntryViewModel> Files { get; } = new();
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public ObservableCollection<LibrarySummaryViewModel> Libraries { get; } = new();
 
+    /// <summary>
+    /// Gets a value indicating whether the file condition is met.
+    /// </summary>
     public bool HasFile => !string.IsNullOrWhiteSpace(File);
+    /// <summary>
+    /// Gets a value indicating whether the interface condition is met.
+    /// </summary>
     public bool HasInterface => !string.IsNullOrWhiteSpace(InterfaceFile);
+    /// <summary>
+    /// Gets a value indicating whether the variables condition is met.
+    /// </summary>
     public bool HasVariables => Variables.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the records condition is met.
+    /// </summary>
     public bool HasRecords => Records.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the files condition is met.
+    /// </summary>
     public bool HasFiles => Files.Count > 0;
+    /// <summary>
+    /// Gets a value indicating whether the libraries condition is met.
+    /// </summary>
     public bool HasLibraries => Libraries.Count > 0;
 }
 
+/// <summary>
+/// Represents the table variable view model.
+/// </summary>
 public class TableVariableViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TableVariableViewModel"/> class.
+    /// </summary>
     public TableVariableViewModel(string name, string? type, string? initial)
     {
         Name = name;
@@ -88,13 +233,28 @@ public class TableVariableViewModel
         Initial = initial;
     }
 
+    /// <summary>
+    /// Gets the name.
+    /// </summary>
     public string Name { get; }
+    /// <summary>
+    /// Gets the type.
+    /// </summary>
     public string? Type { get; }
+    /// <summary>
+    /// Gets the initial.
+    /// </summary>
     public string? Initial { get; }
 }
 
+/// <summary>
+/// Represents the table record view model.
+/// </summary>
 public class TableRecordViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TableRecordViewModel"/> class.
+    /// </summary>
     public TableRecordViewModel(string title, string? destination, string? expression)
     {
         Title = title;
@@ -102,66 +262,162 @@ public class TableRecordViewModel
         Expression = expression;
     }
 
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; }
+    /// <summary>
+    /// Gets the destination.
+    /// </summary>
     public string? Destination { get; }
+    /// <summary>
+    /// Gets the expression.
+    /// </summary>
     public string? Expression { get; }
 }
 
+/// <summary>
+/// Represents the table file entry view model.
+/// </summary>
 public class TableFileEntryViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TableFileEntryViewModel"/> class.
+    /// </summary>
     public TableFileEntryViewModel(string name, string? digest)
     {
         Name = name;
         Digest = digest;
     }
 
+    /// <summary>
+    /// Gets the name.
+    /// </summary>
     public string Name { get; }
+    /// <summary>
+    /// Gets the digest.
+    /// </summary>
     public string? Digest { get; }
 }
 
+/// <summary>
+/// Represents the library summary view model.
+/// </summary>
 public class LibrarySummaryViewModel
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LibrarySummaryViewModel"/> class.
+    /// </summary>
     public LibrarySummaryViewModel(string title, int functionCount)
     {
         Title = title;
         FunctionCount = functionCount;
     }
 
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; }
+    /// <summary>
+    /// Gets the function count.
+    /// </summary>
     public int FunctionCount { get; }
+    /// <summary>
+    /// Gets the subtitle.
+    /// </summary>
     public string Subtitle => FunctionCount == 1
         ? "1 Funktion"
         : $"{FunctionCount} Funktionen";
 }
 
+/// <summary>
+/// Represents the library details view model.
+/// </summary>
 public class LibraryDetailsViewModel
 {
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; init; } = "Bibliothek";
+    /// <summary>
+    /// Gets the revision.
+    /// </summary>
     public string? Revision { get; init; }
+    /// <summary>
+    /// Gets a value indicating whether the external condition is met.
+    /// </summary>
     public bool IsExternal { get; init; }
+    /// <summary>
+    /// Gets a value indicating whether the h condition is met.
+    /// </summary>
     public string? Hash { get; init; }
+    /// <summary>
+    /// Gets the function count.
+    /// </summary>
     public int FunctionCount { get; init; }
+    /// <summary>
+    /// Gets a value indicating whether the hash condition is met.
+    /// </summary>
     public bool HasHash => !string.IsNullOrWhiteSpace(Hash);
+    /// <summary>
+    /// Gets the external display.
+    /// </summary>
     public string ExternalDisplay => IsExternal ? "Ja" : "Nein";
 }
 
+/// <summary>
+/// Represents the library function details view model.
+/// </summary>
 public class LibraryFunctionDetailsViewModel
 {
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; init; } = "Funktion";
+    /// <summary>
+    /// Gets the exec condition.
+    /// </summary>
     public string? ExecCondition { get; init; }
+    /// <summary>
+    /// Gets the log prefix.
+    /// </summary>
     public string? LogPrefix { get; init; }
+    /// <summary>
+    /// Gets the log suffix.
+    /// </summary>
     public string? LogSuffix { get; init; }
+    /// <summary>
+    /// Gets a value indicating whether the h condition is met.
+    /// </summary>
     public string? Hash { get; init; }
+    /// <summary>
+    /// Gets a value indicating whether the disabled condition is met.
+    /// </summary>
     public bool IsDisabled { get; init; }
 
+    /// <summary>
+    /// Gets a value indicating whether the exec condition condition is met.
+    /// </summary>
     public bool HasExecCondition => !string.IsNullOrWhiteSpace(ExecCondition);
+    /// <summary>
+    /// Gets a value indicating whether the logging condition is met.
+    /// </summary>
     public bool HasLogging => !string.IsNullOrWhiteSpace(LogPrefix) || !string.IsNullOrWhiteSpace(LogSuffix);
+    /// <summary>
+    /// Gets a value indicating whether the hash condition is met.
+    /// </summary>
     public bool HasHash => !string.IsNullOrWhiteSpace(Hash);
+    /// <summary>
+    /// Gets the status text.
+    /// </summary>
     public string StatusText => IsDisabled ? "Deaktiviert" : "Aktiv";
 }
 
 public static class ProgramDetailsFactory
 {
+    /// <summary>
+    /// Creates the program details.
+    /// </summary>
     public static ProgramDetailsViewModel CreateProgramDetails(Ct3xxProgram program)
     {
         var viewModel = new ProgramDetailsViewModel
@@ -192,6 +448,9 @@ public static class ProgramDetailsFactory
         return viewModel;
     }
 
+    /// <summary>
+    /// Creates the table details.
+    /// </summary>
     public static TableDetailsViewModel CreateTableDetails(Table table)
     {
         var viewModel = new TableDetailsViewModel
@@ -239,6 +498,9 @@ public static class ProgramDetailsFactory
         return viewModel;
     }
 
+    /// <summary>
+    /// Creates the library details.
+    /// </summary>
     public static LibraryDetailsViewModel CreateLibraryDetails(LibraryDefinition library)
     {
         return new LibraryDetailsViewModel
@@ -251,6 +513,9 @@ public static class ProgramDetailsFactory
         };
     }
 
+    /// <summary>
+    /// Creates the library function details.
+    /// </summary>
     public static LibraryFunctionDetailsViewModel CreateLibraryFunctionDetails(LibraryFunction function)
     {
         return new LibraryFunctionDetailsViewModel

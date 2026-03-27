@@ -1,3 +1,4 @@
+﻿// Provides Step Tree Node View Model for the desktop application view model support.
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.ComponentModel;
@@ -5,25 +6,58 @@ using System.Runtime.CompilerServices;
 
 namespace Ct3xxSimulator.Desktop.ViewModels;
 
+/// <summary>
+/// Represents the step tree node view model.
+/// </summary>
 public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
 {
     private bool _isExpanded;
+    private bool _hasBreakpoint;
 
-    public StepTreeNodeViewModel(string title, bool isGroup, StepTreeNodeViewModel? parent = null)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="StepTreeNodeViewModel"/> class.
+    /// </summary>
+    public StepTreeNodeViewModel(string title, bool isGroup, string nodeKey, StepTreeNodeViewModel? parent = null)
     {
         Title = title;
         IsGroup = isGroup;
+        NodeKey = nodeKey;
         Parent = parent;
         Children = new ObservableCollection<StepTreeNodeViewModel>();
         _isExpanded = isGroup;
     }
 
+    /// <summary>
+    /// Gets the title.
+    /// </summary>
     public string Title { get; }
+    /// <summary>
+    /// Gets a value indicating whether the group condition is met.
+    /// </summary>
     public bool IsGroup { get; }
+    /// <summary>
+    /// Gets the node key.
+    /// </summary>
+    public string NodeKey { get; }
+    /// <summary>
+    /// Gets the parent.
+    /// </summary>
     public StepTreeNodeViewModel? Parent { get; }
+    /// <summary>
+    /// Gets the children.
+    /// </summary>
     public ObservableCollection<StepTreeNodeViewModel> Children { get; }
+    /// <summary>
+    /// Gets the group mode.
+    /// </summary>
     public string? GroupMode { get; set; }
+    /// <summary>
+    /// Gets the group hint.
+    /// </summary>
     public string? GroupHint { get; set; }
+    /// <summary>
+    /// Gets the keep expanded.
+    /// </summary>
     public bool KeepExpanded { get; set; }
     public bool IsExpanded
     {
@@ -39,28 +73,103 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
+    /// <summary>
+    /// Gets the expected evaluation count.
+    /// </summary>
     public int ExpectedEvaluationCount { get; set; } = 1;
+    /// <summary>
+    /// Gets the actual evaluation count.
+    /// </summary>
     public int ActualEvaluationCount { get; set; }
+    /// <summary>
+    /// Gets the result.
+    /// </summary>
     public StepResultViewModel? Result { get; private set; }
+    public bool HasBreakpoint
+    {
+        get => _hasBreakpoint;
+        set
+        {
+            if (_hasBreakpoint == value)
+            {
+                return;
+            }
 
+            _hasBreakpoint = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(BreakpointText));
+        }
+    }
+    /// <summary>
+    /// Gets the breakpoint text.
+    /// </summary>
+    public string BreakpointText => HasBreakpoint ? "BP" : string.Empty;
+
+    /// <summary>
+    /// Executes compute aggregate outcome.
+    /// </summary>
     public string Outcome => Result?.Outcome ?? ComputeAggregateOutcome();
+    /// <summary>
+    /// Gets the measured value.
+    /// </summary>
     public string MeasuredValue => Result?.MeasuredValue ?? string.Empty;
+    /// <summary>
+    /// Gets the lower limit.
+    /// </summary>
     public string LowerLimit => Result?.LowerLimit ?? string.Empty;
+    /// <summary>
+    /// Gets the upper limit.
+    /// </summary>
     public string UpperLimit => Result?.UpperLimit ?? string.Empty;
+    /// <summary>
+    /// Gets the unit.
+    /// </summary>
     public string Unit => Result?.Unit ?? string.Empty;
+    /// <summary>
+    /// Gets the details.
+    /// </summary>
     public string Details => Result?.Details ?? string.Empty;
+    /// <summary>
+    /// Gets a value indicating whether the trace view condition is met.
+    /// </summary>
     public bool HasTraceView => Result != null && Result.Traces.Count > 0;
+    /// <summary>
+    /// Builds the node type label.
+    /// </summary>
     public string NodeTypeLabel => BuildNodeTypeLabel();
+    /// <summary>
+    /// Builds the test summary.
+    /// </summary>
     public string SummaryLine => IsGroup ? BuildGroupSummary() : BuildTestSummary();
+    /// <summary>
+    /// Builds the value summary.
+    /// </summary>
+    public string ValueSummary => IsGroup ? BuildGroupSummary() : BuildValueSummary();
+    /// <summary>
+    /// Builds the range summary.
+    /// </summary>
+    public string RangeSummary => IsGroup ? BuildGroupRangeSummary() : BuildRangeSummary();
+    /// <summary>
+    /// Gets a value indicating whether the detail line condition is met.
+    /// </summary>
     public bool HasDetailLine => !string.IsNullOrWhiteSpace(DetailLine);
+    /// <summary>
+    /// Gets the detail line.
+    /// </summary>
     public string DetailLine => IsGroup ? (GroupHint ?? string.Empty) : Details;
 
+    /// <summary>
+    /// Executes apply result.
+    /// </summary>
     public void ApplyResult(StepResultViewModel result)
     {
         Result = result;
         ActualEvaluationCount++;
     }
 
+    /// <summary>
+    /// Executes refresh.
+    /// </summary>
     public void Refresh()
     {
         OnPropertyChanged(nameof(Outcome));
@@ -70,8 +179,12 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(Unit));
         OnPropertyChanged(nameof(Details));
         OnPropertyChanged(nameof(HasTraceView));
+        OnPropertyChanged(nameof(HasBreakpoint));
+        OnPropertyChanged(nameof(BreakpointText));
         OnPropertyChanged(nameof(NodeTypeLabel));
         OnPropertyChanged(nameof(SummaryLine));
+        OnPropertyChanged(nameof(ValueSummary));
+        OnPropertyChanged(nameof(RangeSummary));
         OnPropertyChanged(nameof(HasDetailLine));
         OnPropertyChanged(nameof(DetailLine));
     }
@@ -114,16 +227,16 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
     {
         var parts = new System.Collections.Generic.List<string>();
 
-        if (!string.IsNullOrWhiteSpace(MeasuredValue))
+        var valueSummary = BuildValueSummary();
+        if (!string.IsNullOrWhiteSpace(valueSummary))
         {
-            parts.Add($"Ist: {MeasuredValue}{AppendUnit(Unit)}");
+            parts.Add(valueSummary);
         }
 
-        if (!string.IsNullOrWhiteSpace(LowerLimit) || !string.IsNullOrWhiteSpace(UpperLimit))
+        var rangeSummary = BuildRangeSummary();
+        if (!string.IsNullOrWhiteSpace(rangeSummary))
         {
-            var lower = string.IsNullOrWhiteSpace(LowerLimit) ? "-" : LowerLimit;
-            var upper = string.IsNullOrWhiteSpace(UpperLimit) ? "-" : UpperLimit;
-            parts.Add($"Grenzen: {lower} .. {upper}{AppendUnit(Unit)}");
+            parts.Add(rangeSummary);
         }
 
         return string.Join("   |   ", parts);
@@ -144,6 +257,40 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         }
 
         return BuildMeasurementSummary();
+    }
+
+    private string BuildValueSummary()
+    {
+        if (string.IsNullOrWhiteSpace(MeasuredValue))
+        {
+            return string.Empty;
+        }
+
+        return $"{MeasuredValue}{AppendUnit(Unit)}";
+    }
+
+    private string BuildRangeSummary()
+    {
+        if (string.IsNullOrWhiteSpace(LowerLimit) && string.IsNullOrWhiteSpace(UpperLimit))
+        {
+            return string.Empty;
+        }
+
+        var lower = string.IsNullOrWhiteSpace(LowerLimit) ? "-" : LowerLimit;
+        var upper = string.IsNullOrWhiteSpace(UpperLimit) ? "-" : UpperLimit;
+        return $"{lower} .. {upper}{AppendUnit(Unit)}";
+    }
+
+    private string BuildGroupRangeSummary()
+    {
+        if (string.IsNullOrWhiteSpace(GroupHint))
+        {
+            return string.Empty;
+        }
+
+        var firstSentence = GroupHint!.Split(new[] { '.', '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+        return firstSentence ?? GroupHint!;
     }
 
     private static string AppendUnit(string unit)

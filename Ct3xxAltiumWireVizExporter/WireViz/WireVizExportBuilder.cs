@@ -1,3 +1,4 @@
+﻿// Provides Wire Viz Export Builder for the Altium exporter WireViz runtime support.
 using Ct3xxAltiumWireVizExporter.Altium;
 using Ct3xxAltiumWireVizExporter.Configuration;
 
@@ -5,6 +6,9 @@ namespace Ct3xxAltiumWireVizExporter.WireViz;
 
 public static class WireVizExportBuilder
 {
+    /// <summary>
+    /// Executes build.
+    /// </summary>
     public static WireVizExportDocument Build(IReadOnlyList<AltiumConnectivityRecord> records, ExportConfiguration configuration)
     {
         if (records == null)

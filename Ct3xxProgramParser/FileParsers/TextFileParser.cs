@@ -1,3 +1,4 @@
+﻿// Provides Text File Parser for the program parser file parsing support.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,12 +9,21 @@ namespace Ct3xxProgramParser.FileParsers;
 
 public abstract class TextFileParser<TDocument> : ICt3xxFileParser where TDocument : TextCt3xxFileDocument
 {
+    /// <summary>
+    /// Gets the extension.
+    /// </summary>
     public abstract string Extension { get; }
 
+    /// <summary>
+    /// Determines whether the parse condition is met.
+    /// </summary>
     public bool CanParse(string filePath) =>
         !string.IsNullOrWhiteSpace(filePath) &&
         filePath.EndsWith(Extension, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Executes parse.
+    /// </summary>
     public Ct3xxFileDocument Parse(string filePath, Table? tableDefinition = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))

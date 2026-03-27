@@ -1,3 +1,4 @@
+﻿// Provides Main Window Simulation for the desktop application support code.
 using System;
 using System.IO;
 using System.Threading;
@@ -51,6 +52,8 @@ public partial class MainWindow
         _replayPauseAfterStepCount = replayPauseAfterStepCount;
         UpdateLiveStateWindow();
         IsSimulationRunning = true;
+        SimulationRunStateText = "Laeuft";
+        SimulationRunStateBrush = System.Windows.Media.Brushes.SeaGreen;
         _cts = new CancellationTokenSource();
 
         try
@@ -163,19 +166,46 @@ public partial class MainWindow
     private void OnClosed(object? sender, EventArgs e)
     {
         _liveStateWindow?.Close();
+        _evaluationDetailsWindow?.Close();
         DisposePythonDeviceHost();
         RestoreSimulationOverrides();
     }
 
+    /// <summary>
+    /// Executes wait before test.
+    /// </summary>
     public void WaitBeforeTest(Test test, CancellationToken cancellationToken)
     {
     }
 
+    /// <summary>
+    /// Executes wait after test.
+    /// </summary>
     public void WaitAfterTest(Test test, CancellationToken cancellationToken)
     {
         _executedTestCount++;
+        if (_breakpointTests.Contains(test))
+        {
+            var label = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
+            PauseExecutionAtInteractionPoint($"Breakpoint erreicht: {label}", cancellationToken);
+        }
     }
 
+    /// <summary>
+    /// Executes wait after group.
+    /// </summary>
+    public void WaitAfterGroup(Group group, CancellationToken cancellationToken)
+    {
+        if (_breakpointGroups.Contains(group))
+        {
+            var label = group.Name ?? group.Id ?? "Gruppe";
+            PauseExecutionAtInteractionPoint($"Gruppen-Breakpoint erreicht: {label}", cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Executes wait after snapshot.
+    /// </summary>
     public void WaitAfterSnapshot(SimulationStateSnapshot snapshot, CancellationToken cancellationToken)
     {
         var shouldPause =
@@ -191,13 +221,27 @@ public partial class MainWindow
         _pauseAtNextStep = false;
         if (_replayPauseAfterStepCount.HasValue && _executedTestCount >= _replayPauseAfterStepCount.Value)
         {
-            AddLog($"Navigation an Snapshot {_timelineIndex + 1} angehalten.");
+            PauseExecutionAtInteractionPoint($"Navigation an Snapshot {_timelineIndex + 1} angehalten.", cancellationToken, addLog: false);
             _replayPauseAfterStepCount = null;
         }
         else
         {
-            AddLog($"Pause an Snapshot {_timelineIndex + 1}: {snapshot.ConcurrentEvent ?? snapshot.CurrentStep ?? "-"}");
+            PauseExecutionAtInteractionPoint($"Pause an Snapshot {_timelineIndex + 1}: {snapshot.ConcurrentEvent ?? snapshot.CurrentStep ?? "-"}", cancellationToken, addLog: false);
         }
+    }
+
+    private void PauseExecutionAtInteractionPoint(string message, CancellationToken cancellationToken, bool addLog = true)
+    {
+        if (addLog)
+        {
+            AddLog(message);
+        }
+
+        Dispatcher.Invoke(() =>
+        {
+            SimulationRunStateText = "Pausiert";
+            SimulationRunStateBrush = System.Windows.Media.Brushes.DarkOrange;
+        });
 
         _stepGate.Reset();
         while (!_stepGate.Wait(100))
@@ -205,5 +249,13 @@ public partial class MainWindow
             cancellationToken.ThrowIfCancellationRequested();
         }
 
+        Dispatcher.Invoke(() =>
+        {
+            if (IsSimulationRunning)
+            {
+                SimulationRunStateText = "Laeuft";
+                SimulationRunStateBrush = System.Windows.Media.Brushes.SeaGreen;
+            }
+        });
     }
 }

@@ -1,3 +1,4 @@
+﻿// Provides Ct3xx Program for the program parser model support.
 using System;
 using System.Collections.Generic;
 using System.Xml;
@@ -6,6 +7,9 @@ using System.Xml.Serialization;
 namespace Ct3xxProgramParser.Model;
 
 [XmlRoot("CT3xxProgram")]
+/// <summary>
+/// Represents the ct3xx program.
+/// </summary>
 public class Ct3xxProgram
 {
     [XmlAttribute("HashAlg")] public string? HashAlgorithm { get; set; }
@@ -35,12 +39,18 @@ public class Ct3xxProgram
     [XmlElement("Table")] public List<Table> Tables { get; set; } = new();
     [XmlElement("Group", typeof(Group))]
     [XmlElement("Test", typeof(Test))]
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public List<SequenceNode> RootItems { get; set; } = new();
     [XmlElement("DUTLoop")] public DutLoop? DutLoop { get; set; }
     [XmlElement("Application")] public ApplicationInfo? Application { get; set; }
     [XmlElement("Hash")] public HashInfo? Hash { get; set; }
 }
 
+/// <summary>
+/// Represents the operator screen.
+/// </summary>
 public class OperatorScreen
 {
     [XmlElement("Display1")] public DisplayLine? Display1 { get; set; }
@@ -49,12 +59,18 @@ public class OperatorScreen
     [XmlElement("Display4")] public DisplayLine? Display4 { get; set; }
 }
 
+/// <summary>
+/// Represents the display line.
+/// </summary>
 public class DisplayLine
 {
     [XmlAttribute("Title")] public string? Title { get; set; }
     [XmlAttribute("Text")] public string? Text { get; set; }
 }
 
+/// <summary>
+/// Represents the user button panel.
+/// </summary>
 public class UserButtonPanel
 {
     [XmlElement("Button1")] public UserButton? Button1 { get; set; }
@@ -66,6 +82,9 @@ public class UserButtonPanel
     [XmlElement("Button7")] public UserButton? Button7 { get; set; }
 }
 
+/// <summary>
+/// Represents the user button.
+/// </summary>
 public class UserButton
 {
     [XmlAttribute("Enable")] public string? Enable { get; set; }
@@ -82,6 +101,9 @@ public abstract class SequenceNode
 }
 
 [XmlType("Group")]
+/// <summary>
+/// Represents the group.
+/// </summary>
 public class Group : SequenceNode
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -99,10 +121,16 @@ public class Group : SequenceNode
     [XmlElement("Group", typeof(Group))]
     [XmlElement("Test", typeof(Test))]
     [XmlElement("Table", typeof(Table))]
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public List<SequenceNode> Items { get; set; } = new();
 }
 
 [XmlType("Test")]
+/// <summary>
+/// Represents the test.
+/// </summary>
 public class Test : SequenceNode
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -119,9 +147,15 @@ public class Test : SequenceNode
     [XmlElement("Group", typeof(Group))]
     [XmlElement("Test", typeof(Test))]
     [XmlElement("Table", typeof(Table))]
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public List<SequenceNode> Items { get; set; } = new();
 }
 
+/// <summary>
+/// Represents the test parameters.
+/// </summary>
 public class TestParameters
 {
     [XmlAttribute("Name")] public string? Name { get; set; }
@@ -155,6 +189,9 @@ public class TestParameters
     [XmlAnyAttribute] public XmlAttribute[]? AdditionalAttributes { get; set; }
 }
 
+/// <summary>
+/// Represents the acquisition channel.
+/// </summary>
 public class AcquisitionChannel
 {
     [XmlAttribute("Source")] public string? Source { get; set; }
@@ -165,6 +202,9 @@ public class AcquisitionChannel
     [XmlAnyAttribute] public XmlAttribute[]? AdditionalAttributes { get; set; }
 }
 
+/// <summary>
+/// Represents the stimulus channel.
+/// </summary>
 public class StimulusChannel
 {
     [XmlAttribute("Target")] public string? Target { get; set; }
@@ -178,6 +218,9 @@ public class StimulusChannel
 }
 
 [XmlType("Table")]
+/// <summary>
+/// Represents the table.
+/// </summary>
 public class Table : SequenceNode
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -194,6 +237,9 @@ public class Table : SequenceNode
     [XmlElement("Library")] public List<LibraryDefinition> Libraries { get; set; } = new();
 }
 
+/// <summary>
+/// Represents the library definition.
+/// </summary>
 public class LibraryDefinition
 {
     [XmlAttribute("HashAlg")] public string? HashAlgorithm { get; set; }
@@ -206,6 +252,9 @@ public class LibraryDefinition
     [XmlElement("Hash")] public HashInfo? Hash { get; set; }
 }
 
+/// <summary>
+/// Represents the library function.
+/// </summary>
 public class LibraryFunction
 {
     [XmlAttribute("HashAlg")] public string? HashAlgorithm { get; set; }
@@ -220,10 +269,16 @@ public class LibraryFunction
     [XmlElement("Table", typeof(Table))] public List<Table> Tables { get; set; } = new();
     [XmlElement("Group", typeof(Group))]
     [XmlElement("Test", typeof(Test))]
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public List<SequenceNode> Items { get; set; } = new();
     [XmlElement("Hash")] public HashInfo? Hash { get; set; }
 }
 
+/// <summary>
+/// Represents the variable definition.
+/// </summary>
 public class VariableDefinition
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -234,6 +289,9 @@ public class VariableDefinition
     [XmlAttribute("Initial")] public string? Initial { get; set; }
 }
 
+/// <summary>
+/// Represents the record.
+/// </summary>
 public class Record
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -263,6 +321,9 @@ public class Record
     [XmlAnyAttribute] public XmlAttribute[]? AdditionalAttributes { get; set; }
 }
 
+/// <summary>
+/// Represents the table file.
+/// </summary>
 public class TableFile
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -273,6 +334,9 @@ public class TableFile
     [XmlAttribute("Digest")] public string? Digest { get; set; }
 }
 
+/// <summary>
+/// Represents the dut loop.
+/// </summary>
 public class DutLoop
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -290,9 +354,15 @@ public class DutLoop
     [XmlElement("Group", typeof(Group))]
     [XmlElement("Test", typeof(Test))]
     [XmlElement("Table", typeof(Table))]
+    /// <summary>
+    /// Executes new.
+    /// </summary>
     public List<SequenceNode> Items { get; set; } = new();
 }
 
+/// <summary>
+/// Represents the application info.
+/// </summary>
 public class ApplicationInfo
 {
     [XmlAttribute("Id")] public string? Id { get; set; }
@@ -303,11 +373,17 @@ public class ApplicationInfo
     [XmlElement("Table")] public List<Table> Tables { get; set; } = new();
 }
 
+/// <summary>
+/// Represents the hash info.
+/// </summary>
 public class HashInfo
 {
     [XmlAttribute("Val")] public string? Value { get; set; }
 }
 
+/// <summary>
+/// Represents the debug node.
+/// </summary>
 public class DebugNode
 {
     [XmlAttribute("Id")] public string? Id { get; set; }

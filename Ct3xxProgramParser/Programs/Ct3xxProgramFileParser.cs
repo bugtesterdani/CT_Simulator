@@ -1,3 +1,4 @@
+﻿// Provides Ct3xx Program File Parser for the program parser program loading support.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,11 +10,17 @@ using Ct3xxProgramParser.Parsing;
 
 namespace Ct3xxProgramParser.Programs;
 
+/// <summary>
+/// Represents the ct3xx program file parser.
+/// </summary>
 public sealed class Ct3xxProgramFileParser
 {
     private readonly Ct3xxProgramLoader _programLoader;
     private readonly Ct3xxFileParserRegistry _registry;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Ct3xxProgramFileParser"/> class.
+    /// </summary>
     public Ct3xxProgramFileParser(
         Ct3xxProgramLoader? programLoader = null,
         Ct3xxFileParserRegistry? registry = null)
@@ -22,6 +29,9 @@ public sealed class Ct3xxProgramFileParser
         _registry = registry ?? Ct3xxFileParserRegistry.CreateDefault();
     }
 
+    /// <summary>
+    /// Executes load.
+    /// </summary>
     public Ct3xxProgramFileSet Load(string programFilePath, bool includeExternalFiles = true)
     {
         if (string.IsNullOrWhiteSpace(programFilePath))

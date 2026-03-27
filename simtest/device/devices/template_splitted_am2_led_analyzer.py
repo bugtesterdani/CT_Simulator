@@ -8,7 +8,9 @@ from core import BaseDeviceModel
 class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
     LOW_LEVEL = 0.2
     HIGH_LEVEL = 1.3
-    ERROR_THRESHOLD = 0.5
+    ERROR_THRESHOLD = 0.2
+    DOMINANCE_WINDOW_MS = 40
+    DOMINANCE_EPSILON = 0.01
 
     def reset(self) -> None:
         self.now_ms = 0
@@ -50,6 +52,7 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
 
         if signal in phase_3_inputs:
             self.wave_in_3 = numeric
+            self.wave_out_3 = numeric
             return
 
         raise KeyError(f"Unknown input '{name}'.")
@@ -58,11 +61,11 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
         signal = name.strip().upper()
 
         if signal in {"WAVE_OUT", "WAVE_OUT_1", "WAVE_OUT_A", "SCO_OUT", "SCO_OUT_1", "SCO_OUT_A", "AM2/1 BNC + A-IO 8", "AM2/1 AM2_SCO_8", "BNC + A-IO 8", "AM2_SCO_8"}:
-            return self._phase_output(self.wave_in_1)
+            return self._phase_output(1)
         if signal in {"WAVE_OUT_2", "WAVE_OUT_B", "SCO_OUT_2", "SCO_OUT_B", "AM2/2 BNC + A-IO 8", "AM2/2 AM2_SCO_8"}:
-            return self._phase_output(self.wave_in_2)
+            return self._phase_output(2)
         if signal in {"WAVE_OUT_3", "WAVE_OUT_C", "SCO_OUT_3", "SCO_OUT_C", "AM2/3 BNC + A-IO 8", "AM2/3 AM2_SCO_8"}:
-            return self._phase_output(self.wave_in_3)
+            return self._phase_output(3)
         if signal in {"WAVE_IN", "WAVE_IN_1", "WAVE_IN_A", "ARB_IN", "ARB_IN_1", "ARB_IN_A", "AM2/1 BNC + A-IO 3", "AM2/1 AM2_ARB_3", "BNC + A-IO 3", "AM2_ARB_3"}:
             return self.wave_in_1
         if signal in {"WAVE_IN_2", "WAVE_IN_B", "ARB_IN_2", "ARB_IN_B", "AM2/2 BNC + A-IO 3", "AM2/2 AM2_ARB_3"}:
@@ -73,10 +76,66 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
             return self.dut_hv_voltage
         raise KeyError(f"Unknown signal '{name}'.")
 
-    def _phase_output(self, phase_value: float) -> float:
+    def _phase_output(self, phase_index: int) -> float:
         if self.dut_hv_voltage < 12.0:
-            return self.LOW_LEVEL
-        return self.HIGH_LEVEL if phase_value >= self.ERROR_THRESHOLD else self.LOW_LEVEL
+            return 0.0
+
+        detected_phase = self._detect_fault_phase()
+        return self.HIGH_LEVEL if detected_phase == phase_index else self.LOW_LEVEL
+
+    def _phase_has_dominant_overvoltage(self, phase_index: int) -> bool:
+        return self._detect_fault_phase() == phase_index
+
+    def _detect_fault_phase(self) -> int | None:
+        window_start = max(0, self.now_ms - self.DOMINANCE_WINDOW_MS)
+        sample_times = self._build_sample_times(window_start, self.now_ms)
+        if not sample_times:
+            sample_times = [self.now_ms]
+
+        metrics = {
+            phase_index: self._phase_window_metric(phase_index, sample_times)
+            for phase_index in (1, 2, 3)
+        }
+        dominant_phase = max(metrics, key=metrics.get)
+        dominant_metric = metrics[dominant_phase]
+        other_metrics = [value for phase, value in metrics.items() if phase != dominant_phase]
+        if dominant_metric < self.ERROR_THRESHOLD:
+            return None
+
+        if all(dominant_metric > other_metric + self.DOMINANCE_EPSILON for other_metric in other_metrics):
+            return dominant_phase
+
+        return None
+
+    def _build_sample_times(self, start_time_ms: int, end_time_ms: int) -> list[int]:
+        if end_time_ms <= start_time_ms:
+            return [end_time_ms]
+
+        sample_times = list(range(start_time_ms, end_time_ms + 1))
+        if sample_times[-1] != end_time_ms:
+            sample_times.append(end_time_ms)
+        return sample_times
+
+    def _phase_value_at(self, phase_index: int, sample_time_ms: int) -> float:
+        signal = f"WAVE_IN_{phase_index}"
+        waveform = self.input_waveforms.get(signal)
+        if waveform is not None:
+            return float(self._waveform_value_at(waveform, sample_time_ms))
+
+        if phase_index == 1:
+            return self.wave_in_1
+        if phase_index == 2:
+            return self.wave_in_2
+        return self.wave_in_3
+
+    def _phase_window_metric(self, phase_index: int, sample_times: list[int]) -> float:
+        samples = [abs(self._phase_value_at(phase_index, sample_time)) for sample_time in sample_times]
+        if not samples:
+            return 0.0
+
+        peak = max(samples)
+        rms = (sum(sample * sample for sample in samples) / len(samples)) ** 0.5
+        return max(peak, rms)
 
     def send_interface(self, name: str, payload: Any) -> Any:
         interface_name = name.strip().upper()
@@ -111,11 +170,14 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
             "sources": {},
             "internal": {
                 "LED_ON": 1.0 if self.dut_hv_voltage >= 12.0 else 0.0,
+                "L1_OVERVOLTAGE": 1.0 if self._phase_has_dominant_overvoltage(1) else 0.0,
+                "L2_OVERVOLTAGE": 1.0 if self._phase_has_dominant_overvoltage(2) else 0.0,
+                "L3_OVERVOLTAGE": 1.0 if self._phase_has_dominant_overvoltage(3) else 0.0,
             },
             "outputs": {
-                "WAVE_OUT_1": self._phase_output(self.wave_in_1),
-                "WAVE_OUT_2": self._phase_output(self.wave_in_2),
-                "WAVE_OUT_3": self._phase_output(self.wave_in_3),
+                "WAVE_OUT_1": self._phase_output(1),
+                "WAVE_OUT_2": self._phase_output(2),
+                "WAVE_OUT_3": self._phase_output(3),
             },
             "interfaces": {
                 "INTERFACE LED ANALYZER": self.last_led_response,
@@ -132,12 +194,15 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
                 "WAVE_IN_3": self.wave_in_3,
             },
             "outputs": {
-                "WAVE_OUT_1": self._phase_output(self.wave_in_1),
-                "WAVE_OUT_2": self._phase_output(self.wave_in_2),
-                "WAVE_OUT_3": self._phase_output(self.wave_in_3),
+                "WAVE_OUT_1": self._phase_output(1),
+                "WAVE_OUT_2": self._phase_output(2),
+                "WAVE_OUT_3": self._phase_output(3),
             },
             "internal": {
                 "LED_ON": 1.0 if self.dut_hv_voltage >= 12.0 else 0.0,
+                "L1_OVERVOLTAGE": 1.0 if self._phase_has_dominant_overvoltage(1) else 0.0,
+                "L2_OVERVOLTAGE": 1.0 if self._phase_has_dominant_overvoltage(2) else 0.0,
+                "L3_OVERVOLTAGE": 1.0 if self._phase_has_dominant_overvoltage(3) else 0.0,
             },
         }
 

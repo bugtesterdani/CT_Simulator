@@ -1,3 +1,4 @@
+﻿// Provides Connection Diagram Svg Formatter for the export layer export support.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -9,6 +10,9 @@ namespace Ct3xxSimulator.Export;
 
 internal static class ConnectionDiagramSvgFormatter
 {
+    /// <summary>
+    /// Executes format step svg.
+    /// </summary>
     public static string FormatStepSvg(SimulationExportStep step)
     {
         var traces = step.Traces.Count == 0

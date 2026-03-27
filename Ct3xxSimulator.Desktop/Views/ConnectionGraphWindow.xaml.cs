@@ -1,3 +1,4 @@
+﻿// Provides Connection Graph Window for the desktop application window logic.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -15,9 +16,21 @@ public partial class ConnectionGraphWindow : Window
 {
     private sealed class DisplayBlock
     {
+        /// <summary>
+        /// Gets the group.
+        /// </summary>
         public required NodeGroup Group { get; init; }
+        /// <summary>
+        /// Gets the title.
+        /// </summary>
         public required string Title { get; init; }
+        /// <summary>
+        /// Gets the detail.
+        /// </summary>
         public string? Detail { get; init; }
+        /// <summary>
+        /// Gets the module root.
+        /// </summary>
         public string? ModuleRoot { get; init; }
     }
 
@@ -36,6 +49,9 @@ public partial class ConnectionGraphWindow : Window
     private StepConnectionTrace? _selectedTrace;
     private StepConnectionTrace? _selectedRawTrace;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ConnectionGraphWindow"/> class.
+    /// </summary>
     public ConnectionGraphWindow(
         string stepName,
         IReadOnlyList<StepConnectionTrace> traces,

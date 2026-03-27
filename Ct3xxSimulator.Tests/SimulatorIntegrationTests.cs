@@ -1,3 +1,4 @@
+﻿// Provides Simulator Integration Tests for the simulator test project support code.
 using Ct3xxProgramParser.Programs;
 using Ct3xxProgramParser.Model;
 using Ct3xxSimulator.Simulation;
@@ -8,9 +9,15 @@ using System.Globalization;
 namespace Ct3xxSimulator.Tests;
 
 [TestClass]
+/// <summary>
+/// Represents the simulator integration tests.
+/// </summary>
 public sealed class SimulatorIntegrationTests
 {
     [TestMethod]
+    /// <summary>
+    /// Executes validation should accept simtest scenario.
+    /// </summary>
     public void Validation_ShouldAccept_SimtestScenario()
     {
         var issues = SimulationConfigurationValidator.Validate(
@@ -23,6 +30,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes runtime targets should preserve logical signal names for simtest.
+    /// </summary>
     public void RuntimeTargets_ShouldPreserve_LogicalSignalNames_ForSimtest()
     {
         var parser = new Ct3xxProgramFileParser();
@@ -41,6 +51,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes simtest good profile should pass and expose final device state.
+    /// </summary>
     public void Simtest_GoodProfile_ShouldPass_AndExposeFinalDeviceState()
     {
         using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\IKI_good.json");
@@ -82,6 +95,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes simtest bad profile should fail last step with real measured value.
+    /// </summary>
     public void Simtest_BadProfile_ShouldFail_LastStep_WithRealMeasuredValue()
     {
         using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\IKI_bad.json");
@@ -103,6 +119,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes transformer scenario should pass end to end.
+    /// </summary>
     public void TransformerScenario_ShouldPass_EndToEnd()
     {
         using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\TrafoStromwandler_good.yaml");
@@ -119,6 +138,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes validation should accept template sm2 scenario.
+    /// </summary>
     public void Validation_ShouldAccept_TemplateSm2Scenario()
     {
         var issues = SimulationConfigurationValidator.Validate(
@@ -131,6 +153,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes template sm2 scenario should pass end to end.
+    /// </summary>
     public void TemplateSm2Scenario_ShouldPass_EndToEnd()
     {
         using var python = PythonDeviceProcessFixture.StartModule(
@@ -158,7 +183,7 @@ public sealed class SimulatorIntegrationTests
         Assert.IsTrue(observer.Messages.Any(message => message.Contains("E488 Schnittstelle RECV Interface LED Analyzer: 15,1,25,40", StringComparison.OrdinalIgnoreCase)));
 
         var petEvaluations = observer.Evaluations
-            .Where(item => item.StepName is "Helligkeit LED" or "Rot Anteil LED" or "Grün Anteil LED" or "Blau Anteil LED")
+            .Where(item => item.StepName is "Helligkeit LED" or "Rot Anteil LED" or "GrÃ¼n Anteil LED" or "Blau Anteil LED")
             .ToList();
 
         Assert.AreEqual(8, petEvaluations.Count, "template_SM2 sollte zwei PET$-Bloecke mit je vier Auswertungen liefern.");
@@ -188,6 +213,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes template splitted am2 parser should read split child sequence.
+    /// </summary>
     public void TemplateSplittedAm2Parser_ShouldRead_SplitChildSequence()
     {
         var parser = new Ct3xxProgramFileParser();
@@ -208,6 +236,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes template splitted am2 scenario should pass end to end.
+    /// </summary>
     public void TemplateSplittedAm2Scenario_ShouldPass_EndToEnd()
     {
         using var python = PythonDeviceProcessFixture.StartModule(
@@ -239,7 +270,7 @@ public sealed class SimulatorIntegrationTests
             "Es sollten zwei IOXX-Schritte aus dem Split-Unterablauf sichtbar sein.");
 
         var petEvaluations = observer.Evaluations
-            .Where(item => item.StepName is "Helligkeit LED" or "Rot Anteil LED" or "Gruen Anteil LED" or "Grün Anteil LED" or "Blau Anteil LED" or "GrÃ¼n Anteil LED")
+            .Where(item => item.StepName is "Helligkeit LED" or "Rot Anteil LED" or "Gruen Anteil LED" or "GrÃ¼n Anteil LED" or "Blau Anteil LED" or "GrÃƒÂ¼n Anteil LED")
             .ToList();
         Assert.AreEqual(8, petEvaluations.Count, "Es sollten zwei PET$-Bloecke mit je vier Auswertungen sichtbar sein.");
         Assert.IsTrue(petEvaluations.All(item => item.Outcome == TestOutcome.Pass),
@@ -263,6 +294,9 @@ public sealed class SimulatorIntegrationTests
     }
 
     [TestMethod]
+    /// <summary>
+    /// Executes concurrent group should advance on shared simulation clock.
+    /// </summary>
     public void ConcurrentGroup_ShouldAdvance_OnSharedSimulationClock()
     {
         var program = new Ct3xxProgram
@@ -351,7 +385,7 @@ public sealed class SimulatorIntegrationTests
             $"Kein Runtime-Target fuer '{signalName}' gefunden.");
 
         Assert.IsTrue(targets.Any(target => string.Equals(target.SignalName, signalName, StringComparison.OrdinalIgnoreCase)),
-            $"Das logische Signal '{signalName}' wurde nicht bis zum DUT durchgereicht. Tatsächliche Targets: {string.Join(", ", targets.Select(item => item.SignalName))}");
+            $"Das logische Signal '{signalName}' wurde nicht bis zum DUT durchgereicht. TatsÃ¤chliche Targets: {string.Join(", ", targets.Select(item => item.SignalName))}");
     }
 
     private static double ParseNumeric(string value)

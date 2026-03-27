@@ -61,6 +61,8 @@ Diese Variante ist fuer aehnliche DUT-Varianten gedacht, die sich ohne eigenen P
 
 - `name`
 - `signals`
+- `aliases`
+- `derived_signals`
 - `source_control`
 - `initial_inputs`
 - `initial_sources`
@@ -84,6 +86,48 @@ Wichtig:
 
 - Namen werden intern in Grossbuchstaben behandelt
 - diese Namen muessen zu dem passen, was der Simulator ueber WireViz und Signaltabelle aufloest
+
+### `aliases`
+
+Gedacht fuer:
+
+- mehrere externe Signalnamen fuer denselben internen Signalnamen
+- WireViz-Pinlabels
+- alternative Interface-Namen
+
+Unterstuetzt:
+
+- `aliases.signals`
+- `aliases.interfaces`
+
+Wichtig:
+
+- Alias-Namen werden vor der eigentlichen Signal- oder Interface-Aufloesung auf einen kanonischen Namen gemappt
+- das eigentliche Profil soll trotzdem nur einen fachlich sauberen Kernnamen pro Signal fuehren
+
+### `derived_signals`
+
+Gedacht fuer:
+
+- interne Hilfssignale ohne eigenes Python-Modul
+- Schwellwertsignale
+- Phasen-/Dominanz-Erkennung ueber Waveform-Fenster
+
+Unterstuetzt:
+
+- `compare`
+- `dominant_signal_window`
+
+Bei `dominant_signal_window` aktuell wichtig:
+
+- `signal`
+- `peers`
+- `window_ms`
+- `metric`
+- `min_metric`
+- `min_delta`
+- `true_value`
+- `false_value`
 
 ### `source_control`
 
@@ -185,6 +229,7 @@ Unterstuetzt:
 - `requests`
 - `when.equals`
 - `when.contains`
+- `state_when`
 - `response`
 
 ### `timers`
