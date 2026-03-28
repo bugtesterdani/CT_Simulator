@@ -151,6 +151,12 @@ public partial class MainWindow
             return;
         }
 
+        if (TryOpenMeasurementOverviewForNode(node))
+        {
+            e.Handled = true;
+            return;
+        }
+
         var stepResult = ResolveTraceResultForNode(node);
         var traces = stepResult?.Traces;
         string? failureReason = null;
@@ -606,6 +612,162 @@ public partial class MainWindow
         }
 
         ShowEvaluationDetails(SelectedStepTreeNode.Result);
+    }
+
+    private List<MeasurementEntryViewModel> BuildMeasurementEntries()
+    {
+        var entries = new List<MeasurementEntryViewModel>();
+        foreach (var entry in _stepEvaluationHistory)
+        {
+            var testType = entry.Test?.Id?.Trim();
+            if (string.IsNullOrWhiteSpace(testType))
+            {
+                continue;
+            }
+
+            testType = testType.ToUpperInvariant();
+            if (testType is not ("ICT" or "CTCT" or "SHRT"))
+            {
+                continue;
+            }
+
+            var result = entry.Result;
+            entries.Add(new MeasurementEntryViewModel(
+                testType,
+                result.StepName,
+                result.Outcome,
+                result.MeasuredValue,
+                result.LowerLimit,
+                result.UpperLimit,
+                result.Unit,
+                BuildContactSummary(result),
+                result.Details,
+                result.Traces,
+                result.CurvePoints));
+        }
+
+        return entries;
+    }
+
+    private static string BuildContactSummary(StepResultViewModel result)
+    {
+        if (result.Traces.Count == 0)
+        {
+            return "-";
+        }
+
+        var contacts = new List<string>();
+        foreach (var trace in result.Traces)
+        {
+            if (trace == null)
+            {
+                continue;
+            }
+
+            if (TryParseContact(trace.Title, out var contact))
+            {
+                contacts.Add(contact);
+            }
+            else if (!string.IsNullOrWhiteSpace(trace.Title))
+            {
+                contacts.Add(trace.Title);
+            }
+        }
+
+        var distinct = contacts
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return distinct.Count == 0 ? "-" : string.Join(", ", distinct);
+    }
+
+    private static bool TryParseContact(string? title, out string contact)
+    {
+        contact = string.Empty;
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return false;
+        }
+
+        var normalized = title.Trim();
+        if (normalized.StartsWith("CTCT:", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("SHRT:", StringComparison.OrdinalIgnoreCase))
+        {
+            var separator = normalized.IndexOf(':');
+            var arrowIndex = normalized.IndexOf("->", StringComparison.Ordinal);
+            if (separator > 0 && arrowIndex > separator)
+            {
+                var left = normalized[(separator + 1)..arrowIndex].Trim();
+                var right = normalized[(arrowIndex + 2)..].Trim();
+                var bracket = right.IndexOf("(", StringComparison.Ordinal);
+                if (bracket > 0)
+                {
+                    right = right[..bracket].Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(left) && !string.IsNullOrWhiteSpace(right))
+                {
+                    contact = $"{left} -> {right}";
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryOpenMeasurementOverviewForNode(StepTreeNodeViewModel node)
+    {
+        var test = GetTestForNode(node);
+        if (test == null)
+        {
+            return false;
+        }
+
+        var testType = test.Id?.Trim();
+        if (string.IsNullOrWhiteSpace(testType))
+        {
+            return false;
+        }
+
+        testType = testType.ToUpperInvariant();
+        if (testType is not ("ICT" or "CTCT" or "SHRT"))
+        {
+            return false;
+        }
+
+        try
+        {
+            var entries = BuildMeasurementEntries();
+            var preferredStep = node.Title;
+            var window = new MeasurementOverviewWindow(entries, testType, preferredStep) { Owner = this };
+            window.Show();
+            window.Activate();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            var reasonText = $"Messuebersicht konnte nicht geoeffnet werden. Grund: {ex.Message}";
+            AddLog(reasonText);
+            MessageBox.Show(this, reasonText, "Messuebersicht", MessageBoxButton.OK, MessageBoxImage.Error);
+            return true;
+        }
+    }
+
+    private Test? GetTestForNode(StepTreeNodeViewModel node)
+    {
+        var current = node;
+        while (current != null)
+        {
+            if (_treeNodeTests.TryGetValue(current, out var test))
+            {
+                return test;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
     }
 
     private void OnToggleBreakpoint(object sender, RoutedEventArgs e)

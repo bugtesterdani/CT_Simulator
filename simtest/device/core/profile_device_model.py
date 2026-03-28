@@ -26,6 +26,8 @@ from .profile_helpers import (
     read_signal_value,
 )
 from .profile_dm30 import handle_dm30_request, initialize_dm30_interfaces
+from .profile_ict import handle_ict_request
+from .profile_shrt import handle_shrt_request
 from .profile_i2c import handle_i2c_transaction, initialize_i2c_interfaces
 from .profile_spi import handle_spi_transaction, initialize_spi_interfaces
 from .profile_state import (
@@ -253,6 +255,18 @@ class DeclarativeDeviceModel(BaseDeviceModel):
 
         if str(definition.get("protocol") or "").strip().lower() == "dm30":
             response = handle_dm30_request(self, interface_name, definition, payload)
+            state["last_response"] = response
+            state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+            return response
+
+        if str(definition.get("protocol") or "").strip().lower() == "ict":
+            response = handle_ict_request(self, interface_name, definition, payload)
+            state["last_response"] = response
+            state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+            return response
+
+        if str(definition.get("protocol") or "").strip().lower() == "shrt":
+            response = handle_shrt_request(self, interface_name, definition, payload)
             state["last_response"] = response
             state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
             return response
@@ -485,6 +499,8 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         if not isinstance(groups, list):
             groups = [groups]
 
+        ring = raw.get("ring") or raw.get("loop") or None
+
         normalized: list[dict[str, Any]] = []
         index = 0
 
@@ -553,6 +569,29 @@ class DeclarativeDeviceModel(BaseDeviceModel):
                     continue
                 identifier = f"{base_id}_{offset}" if base_id else None
                 append_entry(a, b, ohms, identifier)
+
+        if isinstance(ring, dict):
+            prefix = str(ring.get("prefix") or "").strip()
+            start_raw = ring.get("start")
+            end_raw = ring.get("end")
+            skip_raw = ring.get("skip") or []
+            try:
+                start = int(start_raw)
+                end = int(end_raw)
+            except (TypeError, ValueError):
+                start = 0
+                end = -1
+            try:
+                ohms = float(ring.get("ohms"))
+            except (TypeError, ValueError):
+                ohms = None
+
+            if start > 0 and end >= start and ohms is not None:
+                skip = {int(item) for item in (skip_raw if isinstance(skip_raw, list) else [skip_raw]) if str(item).strip()}
+                pins = [index for index in range(start, end + 1) if index not in skip]
+                for offset, source in enumerate(pins):
+                    target = pins[(offset + 1) % len(pins)]
+                    append_entry(f"{prefix}{source}", f"{prefix}{target}", ohms)
 
         return normalized
 

@@ -41,9 +41,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         Assert.IsTrue(handles.Count > 0, "No window handles returned. Ensure the CT3xx desktop window stays open.");
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [TestCategory("Simulation")]
-    [DynamicData(nameof(GetSamplePrograms), DynamicDataSourceType.Method)]
+    [DynamicData(nameof(GetSamplePrograms))]
     /// <summary>
     /// Executes simulation should complete for sample program.
     /// </summary>

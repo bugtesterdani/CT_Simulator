@@ -115,6 +115,7 @@ Unterstuetzt:
 
 - `ctct.resistances[]`
 - `ctct.groups[]`
+- `ctct.ring`
 
 Jeder Eintrag:
 
@@ -143,6 +144,18 @@ ctct:
       a: DUT_P1
       ohms: 120
       pins: [DUT_P2, DUT_P3, DUT_P4]
+```
+
+Ring-Variante:
+
+```yaml
+ctct:
+  ring:
+    prefix: "DevicePort."
+    start: 1
+    end: 96
+    skip: [14, 28]
+    ohms: 1.0
 ```
 
 ### `derived_signals`
@@ -276,6 +289,8 @@ Zusaetzlich unterstuetzt:
 
 - `protocol: i2c`
 - `protocol: spi`
+- `protocol: ict`
+- `protocol: shrt`
 - `required_supply_v`
 - `master_readback: echo`
 - `master_readback: fixed`
@@ -315,6 +330,21 @@ Fuer einfache `SMUD`-Lastprofile aktuell wichtig:
 - `frequency_hz`
 - per-Testlauf persistenter Speicher ueber `initial_memory`, `initial_memory_hex` oder Byte-Initialwerte
 - Sonderfaelle wie `WREN`, Status-Register, Busy-/Write-Delay, Page-Boundaries und Write-Protect
+
+Fuer ICT zusaetzlich aktuell wichtig:
+
+- das Testsystem bleibt der Mess-Master
+- das Profil liefert den Messwert, die Grenzwertbewertung passiert im Simulator
+- `measurements[]` mit `when`-Filtern wie `name`, `reference`, `metric` oder `type_id`
+- optional `mode: echo_nominal` fuer Fallback ueber Payload-Grenzwerte
+
+Fuer SHRT zusaetzlich aktuell wichtig:
+
+- das Testsystem bleibt der Mess-Master
+- das Profil liefert die gefundenen Kurzschluss-Paare
+- `shorts[]` mit `a`, `b`, `ohms`
+- optional `default_ohms` + `pairs[]`/`overrides[]` fuer WireViz-basierte Paarlisten
+- wenn `pairs[]` im Payload gesetzt ist, verwendet das Profil diese Paarliste
 
 ### `timers`
 

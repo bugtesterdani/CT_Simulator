@@ -45,6 +45,7 @@ Dadurch kann die weitere Testtypen-Abdeckung schrittweise aus dem monolithischen
 
 - `SC2C`
 - `CTCT`
+- `SHRT`
 - `2C2I`
 - `SMUD`
 - `SPIX`
@@ -110,11 +111,21 @@ Fuer `CTCT` gilt:
 
 - bewertet wird der aktive DUT-Pfad zwischen den im Test gelisteten Testpunkten
 - Relais, Schalter, Widerstaende und Faults aus `simulation.yaml` wirken auf die Messung
-- optional zusaetzliche DUT-Widerstaende aus dem Geraetemodell (`ctct.resistances`)
+- optional zusaetzliche DUT-Widerstaende aus dem Geraetemodell (`ctct.resistances`, `ctct.groups`, `ctct.ring`)
 - `K='closed'` bewertet die kleinste gefundene Pfadresistenz gegen eine Maximalgrenze
 - `K='open'` bewertet Isolation bzw. fehlende Verbindung gegen eine Minimalgrenze
 - `FAIL` steht fuer Toleranzverletzung oder offene Leitung
 - `ERROR` steht fuer nicht aufloesbare oder nicht pruefbare Testpunkte
+
+Fuer `SHRT` gilt:
+
+- bewertet werden unerwartete Kurzschluesse zwischen den Testpunkten aus `STP$`
+- bekannte Kurzschluesse aus `SSH$` werden ignoriert
+- `FAIL` steht fuer unerwartete Shorts unterhalb des Thresholds
+- `ERROR` steht fuer nicht aufloesbare Testpunkte
+- Messwerte kommen aus der DUT-Simulation ueber `send_interface("SHRT", payload)`
+- WireViz bestimmt die zu messenden Paare, die an das DUT uebergeben werden
+- Verdrahtung dient als Pfadfilter und liefert die Traces fuer die Analyse
 
 Aktuell unterstuetzt der Simulationskern dabei:
 

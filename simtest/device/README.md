@@ -254,6 +254,18 @@ ctct:
       pins: [DUT_P2, DUT_P3, DUT_P4]
 ```
 
+Ring-Variante (konstruiert eine Ringverbindung):
+
+```yaml
+ctct:
+  ring:
+    prefix: "DevicePort."
+    start: 1
+    end: 96
+    skip: [14, 28]
+    ohms: 1.0
+```
+
 ## Deklarative I2C-Busse
 
 Wenn unter `interfaces` ein Eintrag `protocol: i2c` setzt, behandelt die Runtime `send_interface(...)` als I2C-Transaktion statt als einfache Textantwort.
@@ -326,6 +338,67 @@ Referenzprofile:
 - [spi_cat25128_fail.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/spi_cat25128_fail.yaml)
 - [spi_cat25128_error.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/spi_cat25128_error.yaml)
 - [spi_93c46b_good.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/spi_93c46b_good.yaml)
+
+## Deklarative ICT-Messungen
+
+Wenn unter `interfaces` ein Eintrag `protocol: ict` setzt, behandelt die Runtime `send_interface("ICT", payload)` als ICT-Messung.
+
+Wichtig:
+
+- das CT3xx-Testsystem bleibt der Mess-Master
+- der DUT liefert nur den gemessenen Wert, die Grenzwertbewertung passiert im Simulator
+- fuer jeden ICT-Teiltest wird ein einzelner Messwert angefordert
+- optionaler Fallback `mode: echo_nominal` nutzt die Grenzwerte aus dem Payload, falls keine Messmatrix definiert ist
+
+Beispiel:
+
+```yaml
+interfaces:
+  ICT:
+    protocol: ict
+    mode: echo_nominal
+    measurements:
+      - when:
+          name: C1
+          metric: value
+        value: 1000e-6
+        details: "C1 nominal"
+      - when:
+          reference: PWR_1
+          metric: voltage
+        value: 5.02
+```
+
+## Deklarative SHRT-Kurzschlussmessungen
+
+Wenn unter `interfaces` ein Eintrag `protocol: shrt` gesetzt ist, behandelt die Runtime `send_interface("SHRT", payload)` als Kurzschlussmessung.
+
+Wichtig:
+
+- das CT3xx-Testsystem bleibt der Mess-Master
+- der DUT liefert die gemessenen Kurzschluss-Paare
+- Grenzwertbewertung erfolgt im Simulator
+- bei SHRT wird optional ein `pairs[]`-Payload uebergeben, das vom Simulator aus WireViz abgeleitet wird
+- bei gesetztem `pairs[]` liefert das Profil Werte ueber `default_ohms` plus optionale `pairs`-Overrides
+
+Beispiel:
+
+```yaml
+interfaces:
+  SHRT:
+    protocol: shrt
+    default_ohms: 1000.0
+    pairs:
+      - a: TP1
+        b: TP2
+        ohms: 5.0
+      - a: TP3
+        b: TP7
+        ohms: 18.0
+      - a: TP3
+        b: TP7
+        ohms: 18.0
+```
 
 ## Deklarative SMUD-Lastprofile
 

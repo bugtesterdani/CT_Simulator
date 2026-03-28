@@ -1,0 +1,1322 @@
+xtile	{"4096"}
+
+xtiletest	{"7527"}
+
+DefaultToleranceR	{"±10%"}
+DefaultToleranceL	{"±20%"}
+DefaultToleranceC	{"-20% / +10%"}
+MaximumBridgeResistance	{"20.0  Ohm"}
+HandleCoilAsShortCut	{"no"}
+	Name {"In-Circuit Test"}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C1"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1000 µF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"±20%"}
+		MeasDelay {"0 s"}
+		GndTime {"20 ms"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"20.0 ms"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP18"}
+		Net.Stim.Sense {"TP17"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C1"}
+		XTile {"6339"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C2"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"100 µF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"±20%"}
+		MeasDelay {"0 s"}
+		GndTime {"2.0 ms"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"2.00 ms"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP20"}
+		Net.Stim.Sense {"TP19"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C2"}
+		XTile {"6339"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C3"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"47.0 µF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"±20%"}
+		MeasDelay {"0 s"}
+		GndTime {"900 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"900 µs"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP23"}
+		Net.Stim.Sense {"TP23"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C3"}
+		XTile {"6339"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C4"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"10.0 µF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"±20%"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"500 µs"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP24"}
+		Net.Stim.Sense {"TP24"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C4"}
+		XTile {"7527"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C5"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 µF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"±20%"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"500 µs"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP25"}
+		Net.Stim.Sense {"TP25"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C5"}
+		XTile {"7527"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C6"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"100 nF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"±20%"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"500 µs"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP26"}
+		Net.Stim.Sense {"TP26"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C6"}
+		XTile {"7527"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C7"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"10.0 nF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"±20%"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"500 µs"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP27"}
+		Net.Stim.Sense {"TP27"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C7"}
+		XTile {"7527"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@05"}
+	parameters
+	{
+		Name {"C8"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 nF"}
+		Compensation {"100 pF"}
+		Compensation2 {" "}
+		Tolerance {"-20% / +50%"}
+		MeasDelay {"0 s"}
+		GndTime {"10 ms"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		DifferentialMeasuring {"auto"}
+		Discharge.Time {"10.0 ms"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP28"}
+		Net.Stim.Sense {"TP28"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"C8"}
+		XTile {"7527"}
+		CountCPulses {"1"}
+	}
+}
+
+test
+{
+	typeid {"S@06"}
+	parameters
+	{
+		Name {"L1"}
+		Comment {" "}
+		PartNumber {" "}
+		Compensation {" "}
+		Compensation2 {" "}
+		Value {"470 µH"}
+		Tolerance {"±25%"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP32"}
+		Net.Stim.Sense {"TP31"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"L1"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@06"}
+	parameters
+	{
+		Name {"L2"}
+		Comment {" "}
+		PartNumber {" "}
+		Compensation {" "}
+		Compensation2 {" "}
+		Value {"1.00 mH"}
+		Tolerance {"±20%"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP34"}
+		Net.Stim.Sense {"TP33"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"L2"}
+		XTile {"6339"}
+	}
+}
+
+test
+{
+	typeid {"S@06"}
+	parameters
+	{
+		Name {"L3"}
+		Comment {" "}
+		PartNumber {" "}
+		Compensation {" "}
+		Compensation2 {" "}
+		Value {"10.0 mH"}
+		Tolerance {"±20%"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP37"}
+		Net.Stim.Sense {"TP37"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"L3"}
+		XTile {"6339"}
+	}
+}
+
+test
+{
+	typeid {"S@06"}
+	parameters
+	{
+		Name {"L4"}
+		Comment {" "}
+		PartNumber {" "}
+		Compensation {" "}
+		Compensation2 {" "}
+		Value {"100 mH"}
+		Tolerance {"±20%"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP38"}
+		Net.Stim.Sense {"TP38"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"L4"}
+		XTile {"6339"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R1"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00  Ohm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP2"}
+		Net.Stim.Sense {"TP1"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R1"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R2"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"10.0  Ohm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP4"}
+		Net.Stim.Sense {"TP3"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R2"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R3"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"100  Ohm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP6"}
+		Net.Stim.Sense {"TP5"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R3"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R4"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"10 ms"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP10"}
+		Net.Stim.Sense {"TP10"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R4"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R5"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"10.0 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP11"}
+		Net.Stim.Sense {"TP11"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R5"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R6"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"100 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"on"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP12"}
+		Net.Stim.Sense {"TP12"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R6"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R7"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"2.20 MOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"100 ms"}
+		GndTime {"500 µs"}
+		Filter50 {"on"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP13"}
+		Net.Stim.Sense {"TP13"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R7"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R8"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"10.0 MOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"100 ms"}
+		GndTime {"500 µs"}
+		Filter50 {"on"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP14"}
+		Net.Stim.Sense {"TP14"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R8"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R9"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"100  Ohm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"4"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP63"}
+		Net.Gnd.Sense {"TP63"}
+		Net.Stim.Out {"TP62"}
+		Net.Stim.Sense {"TP62"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R9"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R10"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"10 ms"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP63"}
+		Net.Gnd.Sense {"TP63"}
+		Net.Stim.Out {"TP64"}
+		Net.Stim.Sense {"TP64"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R10"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R12"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP65"}
+		Net.Stim.Sense {"TP65"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R12"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R13"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP67"}
+		Net.Stim.Sense {"TP67"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R13"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R14"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP68"}
+		Net.Stim.Sense {"TP68"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R14"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R15"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP70"}
+		Net.Stim.Sense {"TP70"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R15"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R16"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP77"}
+		Net.Stim.Sense {"TP77"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R16"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R17"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP72"}
+		Net.Gnd.Sense {"TP72"}
+		Net.Stim.Out {"TP71"}
+		Net.Stim.Sense {"TP71"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R17"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R18"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP78"}
+		Net.Stim.Sense {"TP78"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R18"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R19"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP75"}
+		Net.Gnd.Sense {"TP75"}
+		Net.Stim.Out {"TP74"}
+		Net.Stim.Sense {"TP74"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R19"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R20"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP67"}
+		Net.Gnd.Sense {"TP67"}
+		Net.Stim.Out {"TP66"}
+		Net.Stim.Sense {"TP66"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R20"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R21"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"10.0 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP70"}
+		Net.Gnd.Sense {"TP70"}
+		Net.Stim.Out {"TP69"}
+		Net.Stim.Sense {"TP69"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R21"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R22"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP72"}
+		Net.Gnd.Sense {"TP72"}
+		Net.Stim.Out {"TP73"}
+		Net.Stim.Sense {"TP73"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R22"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R23"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"10.0 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP75"}
+		Net.Gnd.Sense {"TP75"}
+		Net.Stim.Out {"TP76"}
+		Net.Stim.Sense {"TP76"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R23"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@04"}
+	parameters
+	{
+		Name {"R26"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.00 kOhm"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±15%"}
+		ToleranceAbsR {"±5.00  Ohm"}
+		ToleranceSelect {"off"}
+		MeasDelay {"0 s"}
+		GndTime {"500 µs"}
+		Filter50 {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP30"}
+		Net.Gnd.Sense {"TP30"}
+		Net.Stim.Out {"TP47"}
+		Net.Stim.Sense {"TP47"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"R26"}
+		XTile {"7527"}
+	}
+}
+
+test
+{
+	typeid {"S@07"}
+	parameters
+	{
+		Name {"VD1"}
+		Comment {" "}
+		PartNumber {"VD RGF1G 400V/1A"}
+		Value {"675 mV"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±25%"}
+		ToleranceAbsV {"±175 mV"}
+		ToleranceSelect {"off"}
+		ForwardCurrent {"5.00 mA"}
+		ReverseVoltage {"-1.00  V"}
+		ReverseCurrent {"-50 µA"}
+		MeasDelay {"0 s"}
+		MeasDelayB {"500 µs"}
+		Filter50 {"off"}
+		Filter50B {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP16"}
+		Net.Stim.Sense {"TP16"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"VD1"}
+		ForwardMeasurement {"enabled"}
+		ReverseMeasurement {"disabled"}
+		XTile {"6339"}
+	}
+}
+
+test
+{
+	typeid {"S@07"}
+	parameters
+	{
+		Name {"VD2"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"625 mV"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±36%"}
+		ToleranceAbsV {"±225 mV"}
+		ToleranceSelect {"off"}
+		ForwardCurrent {"1.00 mA"}
+		ReverseVoltage {"-1.00  V"}
+		ReverseCurrent {"-50 µA"}
+		MeasDelay {"0 s"}
+		MeasDelayB {"500 µs"}
+		Filter50 {"off"}
+		Filter50B {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP8,TP9,TP21,TP22,TP35,TP36,TP48"}
+		Net.Gnd.Sense {"TP7"}
+		Net.Stim.Out {"TP39"}
+		Net.Stim.Sense {"TP39"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"VD2"}
+		ForwardMeasurement {"enabled"}
+		ReverseMeasurement {"disabled"}
+		XTile {"6339"}
+	}
+}
+
+test
+{
+	typeid {"S@07"}
+	parameters
+	{
+		Name {"VL1"}
+		Comment {" "}
+		PartNumber {" "}
+		Value {"1.80  V"}
+		Compensation {" "}
+		Compensation2 {" "}
+		Tolerance {"±11%"}
+		ToleranceAbsV {"±200 mV"}
+		ToleranceSelect {"off"}
+		ForwardCurrent {"1.00 mA"}
+		ReverseVoltage {"-1.00  V"}
+		ReverseCurrent {"-50 µA"}
+		MeasDelay {"0 s"}
+		MeasDelayB {"500 µs"}
+		Filter50 {"off"}
+		Filter50B {"off"}
+		Scanner {"used"}
+		Wires {"2"}
+		Guard1 {"off"}
+		Net.Gnd.Out {"TP46"}
+		Net.Gnd.Sense {"TP46"}
+		Net.Stim.Out {"TP30"}
+		Net.Stim.Sense {"TP30"}
+		State {"enabled"}
+		RepairErrorMessage {" "}
+		DrawingReference {"VL1"}
+		ForwardMeasurement {"enabled"}
+		ReverseMeasurement {"disabled"}
+		XTile {"6339"}
+	}
+}
+
+test
+{
+	typeid {"S@0A"}
+	parameters
+	{
+		Name {"VT1"}
+		Comment {" "}
+		DrawingReference {"VT1"}
+		PartNumber {" "}
+		Type {"PNP"}
+		PartialTestMask {"3"}
+		Net.Emitter {"TP40"}
+		Net.Base {"TP42"}
+		Net.Collector {"TP43"}
+		RepairErrorMessage {"UBE"}
+		RepairErrorMessageB {"UBC"}
+		RepairErrorMessageC {"UCES"}
+		RepairErrorMessageD {"ICER"}
+		RepairErrorMessageE {"hFE"}
+		Value {"-660 mV"}
+		ValueB {"-660 mV"}
+		ValueC {"-50.0 mV"}
+		ValueD {"-10 µA"}
+		ValueE {"100"}
+		Tolerance {"±25%"}
+		ToleranceB {"±25%"}
+		ToleranceC {"±25%"}
+		ToleranceD {"±25%"}
+		ToleranceE {"±50%"}
+		Parameter {"-1.0 mA"}
+		ParameterB {"-1.0 mA"}
+		ParameterC {"-15 mA"}
+		ParameterD {"-500 mV"}
+		ParameterE {"-500 mV"}
+		Wires {"2"}
+		WiresB {"2"}
+		WiresC {"2"}
+		WiresD {"2"}
+		WiresE {"2"}
+		GndTime {"0 s"}
+		GndTimeB {"0 s"}
+		GndTimeC {"0 s"}
+		GndTimeD {"0 s"}
+		GndTimeE {"0 s"}
+		MeasDelay {"0 s"}
+		MeasDelayB {"0 s"}
+		MeasDelayC {"0 s"}
+		MeasDelayD {"1.0 ms"}
+		MeasDelayE {"0 s"}
+		Filter50 {"off"}
+		Filter50B {"off"}
+		Filter50C {"off"}
+		Filter50D {"off"}
+		Filter50E {"off"}
+		Guard1 {"off"}
+		Guard2 {"off"}
+		Guard3 {"off"}
+		Guard4 {"off"}
+		Guard5 {"off"}
+		State {"enabled"}
+		XTile {"6339"}
+	}
+}
+
+test
+{
+	typeid {"S@0A"}
+	parameters
+	{
+		Name {"VT2"}
+		Comment {" "}
+		DrawingReference {"VT2"}
+		PartNumber {" "}
+		Type {"NPN"}
+		PartialTestMask {"3"}
+		Net.Emitter {"TP41"}
+		Net.Base {"TP44"}
+		Net.Collector {"TP45"}
+		RepairErrorMessage {"UBE"}
+		RepairErrorMessageB {"UBC"}
+		RepairErrorMessageC {"UCES"}
+		RepairErrorMessageD {"ICER"}
+		RepairErrorMessageE {"hFE"}
+		Value {"660 mV"}
+		ValueB {"660 mV"}
+		ValueC {"50.0 mV"}
+		ValueD {"10 µA"}
+		ValueE {"100"}
+		Tolerance {"±25%"}
+		ToleranceB {"±25%"}
+		ToleranceC {"±25%"}
+		ToleranceD {"±25%"}
+		ToleranceE {"±50%"}
+		Parameter {"1.0 mA"}
+		ParameterB {"1.0 mA"}
+		ParameterC {"15 mA"}
+		ParameterD {"500 mV"}
+		ParameterE {"500 mV"}
+		Wires {"2"}
+		WiresB {"2"}
+		WiresC {"2"}
+		WiresD {"2"}
+		WiresE {"2"}
+		GndTime {"0 s"}
+		GndTimeB {"0 s"}
+		GndTimeC {"0 s"}
+		GndTimeD {"0 s"}
+		GndTimeE {"0 s"}
+		MeasDelay {"0 s"}
+		MeasDelayB {"0 s"}
+		MeasDelayC {"0 s"}
+		MeasDelayD {"1.0 ms"}
+		MeasDelayE {"0 s"}
+		Filter50 {"off"}
+		Filter50B {"off"}
+		Filter50C {"off"}
+		Filter50D {"off"}
+		Filter50E {"off"}
+		Guard1 {"off"}
+		Guard2 {"off"}
+		Guard3 {"off"}
+		Guard4 {"off"}
+		Guard5 {"off"}
+		State {"enabled"}
+		XTile {"6339"}
+	}
+}

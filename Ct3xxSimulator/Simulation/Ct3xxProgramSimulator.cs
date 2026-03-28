@@ -312,6 +312,8 @@ public partial class Ct3xxProgramSimulator
             "SPIX" => RunSpiIoControlTest(test),
             "SMUD" => RunSmudPowerSupplyTest(test),
             "CTCT" => RunConnectionContactTest(test),
+            "ICT " => RunIctTest(test),
+            "SHRT" => RunShortcutTest(test),
             "E488" => RunInterfaceTest(test),
             "PET$" => RunEvaluationTest(test),
             "PRT^" => RunOperatorTest(test),
@@ -1541,6 +1543,11 @@ public partial class Ct3xxProgramSimulator
         if (!measured.HasValue)
         {
             return TestOutcome.Error;
+        }
+
+        if (lowerLimit.HasValue && upperLimit.HasValue && lowerLimit.Value > upperLimit.Value)
+        {
+            (lowerLimit, upperLimit) = (upperLimit, lowerLimit);
         }
 
         if (lowerLimit.HasValue && measured.Value < lowerLimit.Value)

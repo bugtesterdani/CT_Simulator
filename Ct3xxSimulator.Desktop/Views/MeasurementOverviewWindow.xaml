@@ -1,0 +1,88 @@
+<Window x:Class="Ct3xxSimulator.Desktop.Views.MeasurementOverviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Messuebersicht"
+        Height="720"
+        Width="1160"
+        Background="#FFF5F7FA"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Padding="14"
+                Background="#FFFDFEFE"
+                BorderBrush="#FFD7DEE7"
+                BorderThickness="1"
+                CornerRadius="10">
+            <StackPanel>
+                <TextBlock FontSize="22"
+                           FontWeight="Bold"
+                           Foreground="#FF293241"
+                           Text="Messuebersicht (ICT / CTCT / SHRT)"/>
+                <TextBlock Margin="0,8,0,0"
+                           Foreground="#FF52606D"
+                           Text="Doppelklick auf einen Eintrag oeffnet die Verdrahtung fuer die jeweilige Messung."/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                Margin="0,12,0,12"
+                Padding="12"
+                Background="#FFF8FAFC"
+                BorderBrush="#FFD4E1EE"
+                BorderThickness="1"
+                CornerRadius="8">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox x:Name="IctCheckBox" IsChecked="True" Content="ICT" Margin="0,0,12,0" Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
+                    <CheckBox x:Name="CtctCheckBox" IsChecked="True" Content="CTCT" Margin="0,0,12,0" Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
+                    <CheckBox x:Name="ShrtCheckBox" IsChecked="True" Content="SHRT" Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
+                </StackPanel>
+                <TextBlock x:Name="SummaryTextBlock" DockPanel.Dock="Right" Foreground="#FF52606D" />
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="#FFFFFFFF"
+                BorderBrush="#FFD7DEE7"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="10">
+            <DataGrid x:Name="MeasurementsDataGrid"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserSortColumns="True"
+                      IsReadOnly="True"
+                      GridLinesVisibility="Horizontal"
+                      MouseDoubleClick="OnRowDoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Typ" Binding="{Binding TestType}" Width="70"/>
+                    <DataGridTextColumn Header="Schritt" Binding="{Binding StepName}" Width="220"/>
+                    <DataGridTextColumn Header="Ergebnis" Binding="{Binding Outcome}" Width="90"/>
+                    <DataGridTextColumn Header="Ist" Binding="{Binding MeasuredValue}" Width="110"/>
+                    <DataGridTextColumn Header="Soll Min" Binding="{Binding LowerLimit}" Width="110"/>
+                    <DataGridTextColumn Header="Soll Max" Binding="{Binding UpperLimit}" Width="110"/>
+                    <DataGridTextColumn Header="Einheit" Binding="{Binding Unit}" Width="80"/>
+                    <DataGridTextColumn Header="Kontakt(e)" Binding="{Binding ContactSummary}" Width="220"/>
+                    <DataGridTextColumn Header="Hinweis" Binding="{Binding Details}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <DockPanel Grid.Row="3" Margin="0,14,0,0">
+            <TextBlock x:Name="StatusTextBlock"
+                       VerticalAlignment="Center"
+                       Foreground="#FF52606D"/>
+            <Button DockPanel.Dock="Right"
+                    Padding="16,8"
+                    Content="Schliessen"
+                    Click="OnClose"/>
+        </DockPanel>
+    </Grid>
+</Window>

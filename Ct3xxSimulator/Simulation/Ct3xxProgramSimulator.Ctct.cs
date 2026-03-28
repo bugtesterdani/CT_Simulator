@@ -1,4 +1,5 @@
 using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -112,6 +113,7 @@ public partial class Ct3xxProgramSimulator
             .ToList();
 
         var bestMeasurement = connectedMeasurements.FirstOrDefault();
+        var bestMeasurements = SelectBestMeasurements(connectedMeasurements);
         if (expectedClosed)
         {
             if (bestMeasurement == null)
@@ -132,7 +134,7 @@ public partial class Ct3xxProgramSimulator
                 null,
                 maximumResistanceOhms,
                 BuildCtctDetailText(sourcePoint, expectedClosed, thresholdOhms, pairMeasurements, bestMeasurement),
-                BuildCtctTrace(sourcePoint, bestMeasurement));
+                BuildCtctTraces(sourcePoint, bestMeasurements));
         }
 
         if (bestMeasurement == null)
@@ -153,7 +155,7 @@ public partial class Ct3xxProgramSimulator
             minimumResistanceOhms,
             null,
             BuildCtctDetailText(sourcePoint, expectedClosed, thresholdOhms, pairMeasurements, bestMeasurement),
-            BuildCtctTrace(sourcePoint, bestMeasurement));
+            BuildCtctTraces(sourcePoint, bestMeasurements));
     }
 
     private static string BuildCtctDetailText(
@@ -187,18 +189,40 @@ public partial class Ct3xxProgramSimulator
         return $"{sourcePoint}: erwartet {expectation}, {bestText}, Messungen=[{string.Join("; ", pairTexts)}]";
     }
 
-    private static IReadOnlyList<StepConnectionTrace> BuildCtctTrace(string sourcePoint, WireVizResistanceMeasurement measurement)
+    private static IReadOnlyList<StepConnectionTrace> BuildCtctTraces(string sourcePoint, IReadOnlyList<WireVizResistanceMeasurement> measurements)
     {
-        if (!measurement.PathFound || measurement.Nodes.Count == 0)
+        if (measurements.Count == 0)
         {
             return Array.Empty<StepConnectionTrace>();
         }
 
-        var title = $"CTCT: {sourcePoint} -> {measurement.TargetSignalName} ({FormatEngineeringValue(measurement.ResistanceOhms)})";
-        return new[]
+        var traces = new List<StepConnectionTrace>();
+        foreach (var measurement in measurements)
         {
-            new StepConnectionTrace(title, measurement.Nodes)
-        };
+            if (!measurement.PathFound || measurement.Nodes.Count == 0)
+            {
+                continue;
+            }
+
+            var title = $"CTCT: {sourcePoint} -> {measurement.TargetSignalName} ({FormatEngineeringValue(measurement.ResistanceOhms)})";
+            traces.Add(new StepConnectionTrace(title, measurement.Nodes));
+        }
+
+        return traces;
+    }
+
+    private static IReadOnlyList<WireVizResistanceMeasurement> SelectBestMeasurements(IReadOnlyList<WireVizResistanceMeasurement> measurements)
+    {
+        if (measurements.Count == 0)
+        {
+            return Array.Empty<WireVizResistanceMeasurement>();
+        }
+
+        var minValue = measurements.Min(item => item.ResistanceOhms ?? double.MaxValue);
+        const double epsilon = 1e-6;
+        return measurements
+            .Where(item => item.ResistanceOhms.HasValue && Math.Abs(item.ResistanceOhms.Value - minValue) <= epsilon)
+            .ToList();
     }
 
     private static string FormatEngineeringValue(double? value)

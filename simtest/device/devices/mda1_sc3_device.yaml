@@ -1,0 +1,23 @@
+name: mda1_sc3_yaml
+
+signals:
+  inputs: []
+  outputs: []
+  sources: []
+
+ctct:
+  ring:
+    prefix: "DevicePort."
+    start: 1
+    end: 96
+    skip: [14, 28]
+    ohms: 1.0
+
+interfaces:
+  ICT:
+    protocol: ict
+    mode: echo_nominal
+
+  SHRT:
+    protocol: shrt
+    default_ohms: 1000.0
