@@ -9,6 +9,9 @@ namespace Ct3xxSimulator.Desktop.ViewModels;
 /// </summary>
 public sealed class SimulationTimelineEntry
 {
+    private string _resultSourceLabel = string.Empty;
+    private string _comparisonLabel = string.Empty;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SimulationTimelineEntry"/> class.
     /// </summary>
@@ -40,4 +43,24 @@ public sealed class SimulationTimelineEntry
     public string BranchSummary => Snapshot.ConcurrentBranches.Count == 0
         ? "-"
         : string.Join(", ", Snapshot.ConcurrentBranches.Select(item => $"{item.BranchName}: {item.Status}"));
+    /// <summary>
+    /// Gets or sets the result source label associated with this snapshot.
+    /// </summary>
+    public string ResultSourceLabel
+    {
+        get => _resultSourceLabel;
+        set => _resultSourceLabel = value ?? string.Empty;
+    }
+    /// <summary>
+    /// Gets or sets the short comparison label associated with this snapshot.
+    /// </summary>
+    public string ComparisonLabel
+    {
+        get => _comparisonLabel;
+        set => _comparisonLabel = value ?? string.Empty;
+    }
+    /// <summary>
+    /// Gets a value indicating whether the snapshot carries CSV comparison information.
+    /// </summary>
+    public bool HasComparisonLabel => !string.IsNullOrWhiteSpace(_comparisonLabel);
 }

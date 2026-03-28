@@ -261,6 +261,102 @@ public sealed partial class WireVizHarnessResolver
     }
 
     /// <summary>
+    /// Measures the active resistance path between two logical signals or test points.
+    /// </summary>
+    /// <param name="sourceSignalOrTestpoint">The logical source signal name or test point.</param>
+    /// <param name="targetSignalOrTestpoint">The logical target signal name or test point.</param>
+    /// <param name="signalState">The current live signal state.</param>
+    /// <param name="signalTimes">The change timestamps of the current signal state.</param>
+    /// <param name="currentTimeMs">The current simulated time in milliseconds.</param>
+    /// <param name="faults">The currently active faults.</param>
+    /// <returns>The measured active path and resistance information.</returns>
+    public WireVizResistanceMeasurement MeasureResistance(
+        string sourceSignalOrTestpoint,
+        string targetSignalOrTestpoint,
+        IReadOnlyDictionary<string, object?> signalState,
+        IReadOnlyDictionary<string, long>? signalTimes,
+        long currentTimeMs,
+        SimulationFaultSet faults)
+    {
+        if (string.IsNullOrWhiteSpace(sourceSignalOrTestpoint) || string.IsNullOrWhiteSpace(targetSignalOrTestpoint))
+        {
+            return new WireVizResistanceMeasurement(
+                sourceSignalOrTestpoint ?? string.Empty,
+                targetSignalOrTestpoint ?? string.Empty,
+                false,
+                false,
+                false,
+                null,
+                failureReason: "Quell- oder Zieltestpunkt fehlt.");
+        }
+
+        var sourceKey = sourceSignalOrTestpoint.Trim();
+        var targetKey = targetSignalOrTestpoint.Trim();
+        var sourceResolved = _resolutionSeeds.TryGetValue(sourceKey, out var sourceSeeds);
+        var targetResolved = _resolutionSeeds.TryGetValue(targetKey, out var targetSeeds);
+        if (!sourceResolved || !targetResolved)
+        {
+            var reason = !sourceResolved && !targetResolved
+                ? $"Quell- und Zieltestpunkt konnten nicht aufgeloest werden: {sourceKey}, {targetKey}."
+                : !sourceResolved
+                    ? $"Quelltestpunkt konnte nicht aufgeloest werden: {sourceKey}."
+                    : $"Zieltestpunkt konnte nicht aufgeloest werden: {targetKey}.";
+            return new WireVizResistanceMeasurement(
+                sourceKey,
+                targetKey,
+                sourceResolved,
+                targetResolved,
+                false,
+                null,
+                failureReason: reason);
+        }
+
+        WireVizResistanceMeasurement? bestMeasurement = null;
+        foreach (var sourceSeed in sourceSeeds!)
+        {
+            foreach (var targetSeed in targetSeeds!)
+            {
+                if (!string.Equals(sourceSeed.Graph.SourcePath, targetSeed.Graph.SourcePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var measurement = sourceSeed.Graph.MeasureResistance(
+                    sourceSeed.Source,
+                    targetSeed.Source,
+                    signalState,
+                    signalTimes,
+                    currentTimeMs,
+                    faults,
+                    sourceKey,
+                    targetKey);
+
+                if (!measurement.PathFound)
+                {
+                    bestMeasurement ??= measurement;
+                    continue;
+                }
+
+                if (bestMeasurement == null ||
+                    !bestMeasurement.PathFound ||
+                    (measurement.ResistanceOhms ?? double.MaxValue) < (bestMeasurement.ResistanceOhms ?? double.MaxValue))
+                {
+                    bestMeasurement = measurement;
+                }
+            }
+        }
+
+        return bestMeasurement ?? new WireVizResistanceMeasurement(
+            sourceKey,
+            targetKey,
+            true,
+            true,
+            false,
+            null,
+            failureReason: $"Kein gemeinsamer WireViz-Kontext fuer {sourceKey} und {targetKey}.");
+    }
+
+    /// <summary>
     /// Traces the currently active path of one logical signal or test point with timing and fault context.
     /// </summary>
     /// <param name="signalOrTestpoint">The logical signal name or test point to trace.</param>

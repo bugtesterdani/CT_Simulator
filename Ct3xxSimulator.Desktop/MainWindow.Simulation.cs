@@ -49,6 +49,7 @@ public partial class MainWindow
         _isLoadedSnapshotSession = false;
         SelectedTimelineEntry = null;
         _executedTestCount = 0;
+        PrepareCsvReplayExecutionState();
         _replayPauseAfterStepCount = replayPauseAfterStepCount;
         UpdateLiveStateWindow();
         IsSimulationRunning = true;

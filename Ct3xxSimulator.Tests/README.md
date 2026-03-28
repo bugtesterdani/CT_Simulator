@@ -16,6 +16,7 @@ Abgedeckt werden unter anderem:
 - Elementverhalten fuer `relay`, `resistor`, `switch`, `fuse`, `diode`, `load`, `voltage_divider`, `sensor`, `opto`, `transistor`, `transformer`, `current_transformer`
 - Tester-Ausgangslogik ueber `tester_supply` / `tester_output`
 - Skript- und Dateiausfuehrung aus Testprogrammen inklusive Exit-Code-Auswertung
+- CSV-/Snapshot-spezifische ViewModel- und Persistenztests fuer den Desktop-Replay-Modus
 
 ## Hinweise
 
@@ -27,4 +28,10 @@ Abgedeckt werden unter anderem:
 
 ```powershell
 dotnet test Ct3xxSimulator.Tests\Ct3xxSimulator.Tests.csproj
+```
+
+Gezielt fuer den CSV-Replay-Stand:
+
+```powershell
+dotnet test Ct3xxSimulator.Tests\Ct3xxSimulator.Tests.csproj --filter "FullyQualifiedName~CsvReplayViewModelTests|FullyQualifiedName~SnapshotSessionPersistenceTests"
 ```

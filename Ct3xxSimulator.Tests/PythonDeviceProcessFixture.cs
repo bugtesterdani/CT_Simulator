@@ -49,6 +49,7 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
 
         process.Start();
         WaitForPipe(pipePath, process);
+        Thread.Sleep(200);
         return new PythonDeviceProcessFixture(process, pipePath);
     }
 
@@ -81,6 +82,7 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
 
         process.Start();
         WaitForPipe(pipePath, process);
+        Thread.Sleep(200);
         return new PythonDeviceProcessFixture(process, pipePath);
     }
 

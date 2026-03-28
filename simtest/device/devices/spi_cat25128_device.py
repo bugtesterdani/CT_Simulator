@@ -1,0 +1,10 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import core.profile_device_model as profile_device_model
+
+
+class SpiCat25128DeviceModel(profile_device_model.DeclarativeDeviceModel):
+    def __init__(self) -> None:
+        super().__init__(str(Path(__file__).with_name("spi_cat25128_good.yaml")))

@@ -11,6 +11,7 @@ using Ct3xxSimulator.Desktop.ViewModels;
 using Ct3xxSimulator.Desktop.Views;
 using Ct3xxSimulator.Export;
 using Ct3xxSimulator.Simulation;
+using Ct3xxTestRunLogParser.Model;
 
 namespace Ct3xxSimulator.Desktop;
 
@@ -80,6 +81,7 @@ public partial class MainWindow
     {
         Dispatcher.Invoke(() =>
         {
+            var csvMatch = TryConsumeCsvReplayMatch(test, evaluation);
             var result = new StepResultViewModel(
                 evaluation.StepName,
                 evaluation.Outcome.ToString().ToUpperInvariant(),
@@ -90,10 +92,22 @@ public partial class MainWindow
                 evaluation.Details ?? string.Empty,
                 evaluation.Traces,
                 evaluation.CurvePoints,
-                _timeline.Count == 0 ? null : _timeline.Count - 1);
+                _timeline.Count == 0 ? null : _timeline.Count - 1,
+                csvMatch?.CsvStep.RowNumber,
+                csvMatch?.CsvStep.Description,
+                csvMatch?.CsvStep.Message,
+                csvMatch?.CsvStep.Result,
+                csvMatch?.CsvStep.RawMeasuredValue,
+                csvMatch?.CsvStep.RawLowerLimit,
+                csvMatch?.CsvStep.RawUpperLimit,
+                csvMatch?.Reason,
+                SelectedCsvReplayMode.ToString(),
+                test.LogFlags,
+                IsCsvLogExpectedForOutcome(test.LogFlags, evaluation.Outcome));
             StepResults.Add(result);
             _stepEvaluationHistory.Add(new StepEvaluationHistoryEntry(test, result));
             ApplyEvaluationToStepTree(test, result);
+            RefreshTimelineAnnotations();
         });
     }
 
@@ -347,7 +361,18 @@ public partial class MainWindow
                 step.Details,
                 step.Traces,
                 step.CurvePoints,
-                step.TimelineIndex))
+                step.TimelineIndex,
+                step.CsvRowNumber,
+                step.CsvDescription,
+                step.CsvMessage,
+                step.CsvOutcome,
+                step.CsvMeasuredValue,
+                step.CsvLowerLimit,
+                step.CsvUpperLimit,
+                step.CsvMatchReason,
+                step.CsvDisplayMode,
+                step.CsvLogFlags,
+                step.CsvLogExpectedForOutcome))
             .ToList();
 
         var logs = Logs
@@ -374,7 +399,18 @@ public partial class MainWindow
                 step.Details,
                 step.Traces,
                 step.CurvePoints,
-                step.TimelineIndex);
+                step.TimelineIndex,
+                step.CsvRowNumber,
+                step.CsvDescription,
+                step.CsvMessage,
+                step.CsvOutcome,
+                step.CsvMeasuredValue,
+                step.CsvLowerLimit,
+                step.CsvUpperLimit,
+                step.CsvMatchReason,
+                step.CsvDisplayMode,
+                step.CsvLogFlags,
+                step.CsvLogExpectedForOutcome);
             StepResults.Add(result);
             _stepEvaluationHistory.Add(new StepEvaluationHistoryEntry(null, result));
         }
@@ -394,6 +430,7 @@ public partial class MainWindow
             _timeline.Add(timelineEntry);
             TimelineEntries.Add(timelineEntry);
         }
+        RefreshTimelineAnnotations();
 
         _signalHistory.Clear();
         foreach (var item in document.SignalHistory)
@@ -418,5 +455,54 @@ public partial class MainWindow
             RaiseTimelineNavigationChanged();
             UpdateLiveStateWindow();
         }
+    }
+
+    private ImportedTestRunStepMatch? TryConsumeCsvReplayMatch(Test test, StepEvaluation evaluation)
+    {
+        if (_activeCsvReplayMatches.Count == 0 || _csvReplayMatchCursor >= _activeCsvReplayMatches.Count)
+        {
+            return null;
+        }
+
+        if (IsCsvMatchCompatible(_activeCsvReplayMatches[_csvReplayMatchCursor], test, evaluation))
+        {
+            return _activeCsvReplayMatches[_csvReplayMatchCursor++];
+        }
+
+        var searchLimit = Math.Min(_activeCsvReplayMatches.Count, _csvReplayMatchCursor + 4);
+        for (var index = _csvReplayMatchCursor + 1; index < searchLimit; index++)
+        {
+            if (!IsCsvMatchCompatible(_activeCsvReplayMatches[index], test, evaluation))
+            {
+                continue;
+            }
+
+            _csvReplayMatchCursor = index + 1;
+            return _activeCsvReplayMatches[index];
+        }
+
+        return null;
+    }
+
+    private static bool IsCsvMatchCompatible(ImportedTestRunStepMatch match, Test test, StepEvaluation evaluation)
+    {
+        return ReferenceEquals(match.ProgramStep.SourceTest, test) &&
+               string.Equals(match.ProgramStep.DisplayName, evaluation.StepName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsCsvLogExpectedForOutcome(string? logFlags, TestOutcome outcome)
+    {
+        if (string.IsNullOrWhiteSpace(logFlags))
+        {
+            return true;
+        }
+
+        return outcome switch
+        {
+            TestOutcome.Pass => logFlags.IndexOf('P', StringComparison.OrdinalIgnoreCase) >= 0,
+            TestOutcome.Fail => logFlags.IndexOf('F', StringComparison.OrdinalIgnoreCase) >= 0,
+            TestOutcome.Error => logFlags.IndexOf('E', StringComparison.OrdinalIgnoreCase) >= 0,
+            _ => true
+        };
     }
 }

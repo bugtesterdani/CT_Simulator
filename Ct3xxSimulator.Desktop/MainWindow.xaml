@@ -188,11 +188,19 @@
                             Margin="10,0,0,0"
                             Padding="8,3"
                             HorizontalAlignment="Left"
-                            Background="#FFEAF1F7"
+                            Background="{Binding OutcomeBadgeBackground}"
                             BorderBrush="#FFD7E3EF"
                             BorderThickness="1"
                             CornerRadius="10">
-                        <TextBlock FontWeight="Bold" Foreground="#FF2E5E86" Text="{Binding Outcome}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontWeight="Bold" Foreground="{Binding OutcomeBadgeForeground}" Text="{Binding Outcome}"/>
+                            <TextBlock Margin="6,0,0,0"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{Binding OutcomeBadgeForeground}"
+                                       Text="{Binding ResultSourceLabel}"
+                                       Visibility="{Binding HasResultSourceLabel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        </StackPanel>
                     </Border>
 
                     <TextBlock Grid.Column="2"
@@ -258,6 +266,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="200"/>
@@ -300,9 +309,21 @@
                 <TextBox Grid.Row="5" Grid.Column="1" Margin="10,0,10,8" Text="{Binding PythonScriptPath, UpdateSourceTrigger=PropertyChanged}"/>
                 <Button Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,8" Padding="14,8" Content="Datei..." Click="OnBrowsePythonScript"/>
 
-                <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Aufgeloestes Programm"/>
-                <TextBox Grid.Row="6" Grid.Column="1" Margin="10,0,10,0" Text="{Binding SelectedFilePath}" IsReadOnly="True" AutomationProperties.AutomationId="ProgramPathBox"/>
+                <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="CSV-Testlauf"/>
+                <TextBox Grid.Row="6" Grid.Column="1" Margin="10,0,10,8" Text="{Binding CsvReplayFilePath, UpdateSourceTrigger=PropertyChanged}"/>
                 <StackPanel Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Margin="0,0,8,8" Padding="14,8" Content="Datei..." Click="OnBrowseCsvReplayFile"/>
+                    <ComboBox Width="170"
+                              Margin="0,0,0,8"
+                              ItemsSource="{Binding CsvReplayModeOptions}"
+                              SelectedValue="{Binding SelectedCsvReplayMode}"
+                              SelectedValuePath="Key"
+                              DisplayMemberPath="Value"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="7" Grid.Column="0" VerticalAlignment="Center" Text="Aufgeloestes Programm"/>
+                <TextBox Grid.Row="7" Grid.Column="1" Margin="10,0,10,0" Text="{Binding SelectedFilePath}" IsReadOnly="True" AutomationProperties.AutomationId="ProgramPathBox"/>
+                <StackPanel Grid.Row="7" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
                     <CheckBox Margin="0,0,8,0" VerticalAlignment="Center" IsChecked="{Binding IsStepModeEnabled}" Content="Einzelschritt"/>
                     <Button Margin="0,0,8,0" Padding="14,8" Content="Zurueck" Click="OnStepBack" IsEnabled="{Binding CanStepBackward}"/>
                     <Button Margin="0,0,8,0" Padding="14,8" Content="Weiter" Click="OnContinueStep"/>
@@ -327,6 +348,7 @@
                     <TextBlock FontWeight="Bold" Text="Aktive Konfiguration"/>
                     <TextBlock Margin="0,4,0,0" Text="{Binding ConfigurationSummary}" TextWrapping="Wrap"/>
                     <TextBlock Margin="0,4,0,0" FontWeight="Bold" Text="{Binding ValidationSummary}" TextWrapping="Wrap"/>
+                    <TextBlock Margin="0,4,0,0" FontWeight="Bold" Foreground="#FF375A7F" Text="{Binding CsvReplaySummary}" TextWrapping="Wrap"/>
                     <TextBlock Margin="0,4,0,0" Foreground="#FF5A6470" Text="Wenn im Testprogramm-Ordner mehrere .ctxprg liegen, fragt die App beim Laden nach der gewuenschten Datei. Beim Geraetemodell sind .py, .json, .yaml und .yml moeglich." TextWrapping="Wrap"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -384,7 +406,7 @@
                                 <ColumnDefinition Width="1.5*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" FontWeight="Bold" Text="Struktur"/>
-                            <TextBlock Grid.Column="1" Margin="10,0,0,0" FontWeight="Bold" Text="Status"/>
+                            <TextBlock Grid.Column="1" Margin="10,0,0,0" FontWeight="Bold" Text="Status / Quelle"/>
                             <TextBlock Grid.Column="2" Margin="10,0,0,0" FontWeight="Bold" Text="Ist"/>
                             <TextBlock Grid.Column="3" Margin="10,0,0,0" FontWeight="Bold" Text="Bereich"/>
                         </Grid>
@@ -415,6 +437,12 @@
                                     <StackPanel>
                                         <TextBlock FontWeight="Bold" Text="{Binding Label}"/>
                                         <TextBlock Margin="0,3,0,0" Foreground="#FF375A7F" Text="{Binding EventLabel}" TextWrapping="Wrap"/>
+                                        <TextBlock Margin="0,3,0,0"
+                                                   Foreground="#FF7C5E10"
+                                                   FontSize="11"
+                                                   Text="{Binding ComparisonLabel}"
+                                                   TextWrapping="Wrap"
+                                                   Visibility="{Binding HasComparisonLabel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                         <TextBlock Margin="0,3,0,0" Foreground="#FF6C7886" FontSize="11" Text="{Binding BranchSummary}" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </Border>

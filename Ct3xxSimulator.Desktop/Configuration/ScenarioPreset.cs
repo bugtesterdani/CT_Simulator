@@ -37,6 +37,14 @@ public sealed class ScenarioPreset
     /// </summary>
     public string? PythonScriptPath { get; set; }
     /// <summary>
+    /// Gets the optional imported CSV replay file path.
+    /// </summary>
+    public string? CsvReplayFilePath { get; set; }
+    /// <summary>
+    /// Gets the selected CSV replay mode.
+    /// </summary>
+    public CsvReplayMode CsvReplayMode { get; set; }
+    /// <summary>
     /// Executes new.
     /// </summary>
     public List<string> BreakpointKeys { get; set; } = new();

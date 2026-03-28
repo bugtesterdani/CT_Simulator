@@ -11,6 +11,7 @@ Diese Beispielstruktur unterstuetzt zwei Varianten fuer DUT-Simulationen:
 
 - Python-Geraetemodule unter `devices/*.py`
 - deklarative Geraeteprofile unter `devices/*.json`, `devices/*.yaml` oder `devices/*.yml`
+- einfache Last- und Stromaufnahmeprofile fuer Versorgungstests wie `SMUD`
 
 Hinweis:
 
@@ -55,6 +56,8 @@ Das deklarative Profil ist fuer DUT-Varianten gedacht, die ohne eigenes Python-M
 - Waveform-Stimuli ueber die Pipe
 - Response-Captures waehrend einer angelegten Signalform
 - einfache Kommunikationsschnittstellen
+- deklarative I2C-Busse und I2C-Slave-Geraete
+- deklarative SPI-Busse und SPI-Slave-Geraete
 
 Wenn das Verhalten frei programmierbar sein muss, bleibt ein normales Python-Geraetemodul weiter moeglich.
 
@@ -121,6 +124,21 @@ interfaces:
       - when:
           contains: "PING"
         response: "PONG"
+```
+
+I2C kann ebenfalls deklarativ beschrieben werden:
+
+```yaml
+interfaces:
+  UIF1_FRONT_CONNECTOR:
+    protocol: i2c
+    required_supply_v: 5.0
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        temperature_c: 25.0
 ```
 
 Optional zusaetzlich:
@@ -197,6 +215,99 @@ aliases:
       - SCO_OUT_1
       - AM2/1 BNC + A-IO 8
 ```
+
+## Deklarative I2C-Busse
+
+Wenn unter `interfaces` ein Eintrag `protocol: i2c` setzt, behandelt die Runtime `send_interface(...)` als I2C-Transaktion statt als einfache Textantwort.
+
+Wichtig:
+
+- das CT3xx-Testsystem bleibt dabei der I2C-Master
+- das deklarative Profil beschreibt nur das externe I2C-Slave-Geraet auf diesem Bus
+- fuer die Referenzprogramme `UIF I2C Test`, `EA3 I2C Test` und `EA3-R I2C Test` ist das ein `LM75`-Slave
+
+Aktuell unterstuetzt:
+
+- Adressphase fuer Read/Write
+- `StartCond` / `EndCond`
+- `Ack='Read'`
+- `Ack='Write'`
+- `Ack='No Ack'`
+- mehrere aufeinanderfolgende Record-Schritte innerhalb eines `2C2I`
+- `required_supply_v`
+- `master_readback: echo`
+- `master_readback: fixed`
+- `devices` mit `kind: lm75`
+- per-Testlauf persistenten Registerzustand pro I2C-Slave
+- `initial_pointer`
+- `initial_registers`
+
+Wichtig:
+
+- der I2C-Slave-State bleibt ueber den kompletten Testlauf erhalten
+- Registerschreibvorgaenge gehen erst bei `reset()` oder beim Start eines neuen Testlaufs verloren
+- damit koennen I2C-DUTs jetzt wie beim SPI ueber echte Register-/Speicherwerte modelliert werden
+
+Referenzprofile:
+
+- [i2c_lm75_good.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/i2c_lm75_good.yaml)
+- [i2c_lm75_fail.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/i2c_lm75_fail.yaml)
+- [i2c_lm75_error.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/i2c_lm75_error.yaml)
+
+## Deklarative SPI-Busse
+
+Wenn unter `interfaces` ein Eintrag `protocol: spi` setzt, behandelt die Runtime `send_interface(...)` als SPI-Transaktion.
+
+Wichtig:
+
+- das CT3xx-Testsystem bleibt dabei der SPI-Master
+- das deklarative Profil beschreibt nur das externe SPI-Slave-Geraet auf diesem Bus
+- Takt, Phase, Polarity, Chip-Select-Aktivlevel und Versorgung koennen direkt validiert werden
+
+Aktuell unterstuetzt:
+
+- `protocol: spi`
+- `required_supply_v`
+- `clock_phase`
+- `clock_polarity`
+- `chip_select_active`
+- `frequency_hz`
+- `devices`
+- per-Testlauf persistenten Speicher
+- `WREN`
+- Status-Register-Lesen
+- `READ`
+- `WRITE`
+- Busy-/Write-Delay
+- Page-Boundaries
+- Write-Protect
+
+Referenzprofile:
+
+- [spi_cat25128_good.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/spi_cat25128_good.yaml)
+- [spi_cat25128_fail.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/spi_cat25128_fail.yaml)
+- [spi_cat25128_error.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/spi_cat25128_error.yaml)
+- [spi_93c46b_good.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/spi_93c46b_good.yaml)
+
+## Deklarative SMUD-Lastprofile
+
+Fuer `SMUD`-Referenzszenarien koennen dieselben Profile als einfache Lastmodelle verwendet werden.
+
+Wichtig:
+
+- das CT3xx-Testsystem schreibt die Versorgung auf einen normalen DUT-Eingang wie `DUT_SUPPLY`
+- das Profil liefert den gemessenen Strom ueber ein normales Ausgangssignal wie `DUT_CURRENT`
+- dadurch bleiben Verdrahtung, Snapshot-Analyse und Live-Zustand im normalen Signalmodell
+
+Referenzprofile:
+
+- [smud_boundary_scan_good.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/smud_boundary_scan_good.yaml)
+- [smud_boundary_scan_fail.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/smud_boundary_scan_fail.yaml)
+- [smud_boundary_scan_error.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/smud_boundary_scan_error.yaml)
+
+Referenzmodul:
+
+- [smud_boundary_scan_adapter.py](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/smud_boundary_scan_adapter.py)
 
 ## Anfangswerte
 
@@ -462,6 +573,13 @@ Fuer jeden Zustand wird automatisch ein internes Flag gesetzt:
 - `devices/template_splitted_am2_led_analyzer.py`: gemeinsames Python-Modul fuer das `template_splitted_am2`-Beispiel
 - `devices/template_splitted_am2_led_analyzer.yaml`: deklaratives Profil fuer dasselbe `template_splitted_am2`-Verhalten
 - `devices/TrafoStromwandler_good.yaml`: gemeinsames deklaratives Profil fuer das Transformator-/Stromwandler-Beispiel
+- `devices/spi_cat25128_device.py`: Python-Wrapper fuer das deklarative SPI-CAT25128-Referenzgeraet
+- `devices/spi_93c46b_device.py`: Python-Wrapper fuer das deklarative SPI-93C46B-Referenzgeraet
+- `devices/spi_cat25128_good.yaml`: deklaratives SPI-CAT25128-Gutprofil
+- `devices/spi_cat25128_fail.yaml`: deklaratives SPI-CAT25128-Failprofil
+- `devices/spi_cat25128_error.yaml`: deklaratives SPI-CAT25128-Errorprofil
+- `devices/spi_93c46b_good.yaml`: deklaratives SPI-93C46B-Referenzprofil
+- `devices/noop_device.yaml`: neutrales Dummy-Geraetemodell fuer Szenarien, die in der Desktop-App ein Pflicht-Geraetemodell brauchen, aber keine fachliche DUT-Logik benoetigen
 
 ## Idee
 

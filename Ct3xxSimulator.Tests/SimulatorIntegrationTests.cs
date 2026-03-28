@@ -347,6 +347,487 @@ public sealed class SimulatorIntegrationTests
                 snapshot.ConcurrentEvent?.StartsWith("branch_resumed:", StringComparison.OrdinalIgnoreCase) == true));
     }
 
+    [TestMethod]
+    /// <summary>
+    /// Executes uif i2c scenario should pass end to end.
+    /// </summary>
+    public void UifI2cScenario_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\i2c_lm75_good.yaml");
+
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"testprogramme\UIF I2C Test\UIF I2C Test.ctxprg"),
+            TestData.GetPath(@"simtest_uif_i2c\wireplan"),
+            TestData.GetPath(@"simtest_uif_i2c\wireplan"),
+            TestData.GetPath(@"simtest\device\devices\i2c_lm75_good.yaml"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+
+        var observer = RunProgram(
+            @"testprogramme\UIF I2C Test\UIF I2C Test.ctxprg",
+            @"simtest_uif_i2c\wireplan",
+            @"simtest_uif_i2c\wireplan",
+            python.PipePath);
+
+        var i2cSteps = observer.Evaluations
+            .Where(item => item.StepName.StartsWith("UIF I2C", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.AreEqual(3, i2cSteps.Count, string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+        Assert.IsTrue(i2cSteps.All(item => item.Outcome == TestOutcome.Pass));
+        Assert.IsTrue(i2cSteps.All(item => item.Details?.Contains("0x93", StringComparison.OrdinalIgnoreCase) == true));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes uif i2c scenario should fail when the slave returns a mismatching readback byte.
+    /// </summary>
+    public void UifI2cScenario_ShouldFail_WhenSlaveReadbackDoesNotMatch()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\i2c_lm75_fail.yaml");
+
+        var observer = RunProgram(
+            @"testprogramme\UIF I2C Test\UIF I2C Test.ctxprg",
+            @"simtest_uif_i2c\wireplan",
+            @"simtest_uif_i2c\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Any(item => item.Outcome == TestOutcome.Fail && item.StepName.Contains("I2C", StringComparison.OrdinalIgnoreCase)),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes uif i2c scenario should error when no i2c slave acknowledges the bus.
+    /// </summary>
+    public void UifI2cScenario_ShouldError_WhenNoSlaveAcknowledges()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\i2c_lm75_error.yaml");
+
+        var observer = RunProgram(
+            @"testprogramme\UIF I2C Test\UIF I2C Test.ctxprg",
+            @"simtest_uif_i2c\wireplan",
+            @"simtest_uif_i2c\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Any(item => item.Outcome == TestOutcome.Error && item.StepName.Contains("I2C", StringComparison.OrdinalIgnoreCase)),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes ea3 i2c scenario should pass end to end.
+    /// </summary>
+    public void Ea3I2cScenario_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\i2c_lm75_good.yaml");
+
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"testprogramme\EA3 I2C Test\EA3 I2C Test.ctxprg"),
+            TestData.GetPath(@"simtest_ea3_i2c\wireplan"),
+            TestData.GetPath(@"simtest_ea3_i2c\wireplan"),
+            TestData.GetPath(@"simtest\device\devices\i2c_lm75_good.yaml"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+
+        var observer = RunProgram(
+            @"testprogramme\EA3 I2C Test\EA3 I2C Test.ctxprg",
+            @"simtest_ea3_i2c\wireplan",
+            @"simtest_ea3_i2c\wireplan",
+            python.PipePath);
+
+        var i2cSteps = observer.Evaluations
+            .Where(item => item.StepName.Contains("EA3 I2C", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.AreEqual(3, i2cSteps.Count);
+        Assert.IsTrue(i2cSteps.All(item => item.Outcome == TestOutcome.Pass),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+        Assert.IsTrue(observer.Evaluations.Any(item => item.StepName == "EA3 Init" && item.Outcome == TestOutcome.Pass));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes ea3-r i2c scenario should pass end to end.
+    /// </summary>
+    public void Ea3rI2cScenario_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\i2c_lm75_good.yaml");
+
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"testprogramme\EA3-R I2C Test\EA3-R I2C Test.ctxprg"),
+            TestData.GetPath(@"simtest_ea3r_i2c\wireplan"),
+            TestData.GetPath(@"simtest_ea3r_i2c\wireplan"),
+            TestData.GetPath(@"simtest\device\devices\i2c_lm75_good.yaml"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+
+        var observer = RunProgram(
+            @"testprogramme\EA3-R I2C Test\EA3-R I2C Test.ctxprg",
+            @"simtest_ea3r_i2c\wireplan",
+            @"simtest_ea3r_i2c\wireplan",
+            python.PipePath);
+
+        var i2cSteps = observer.Evaluations
+            .Where(item => item.StepName.Contains("EA3-R I2C", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.AreEqual(3, i2cSteps.Count);
+        Assert.IsTrue(i2cSteps.All(item => item.Outcome == TestOutcome.Pass),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+        Assert.IsTrue(observer.Evaluations.Any(item => item.StepName == "EA3-R Init" && item.Outcome == TestOutcome.Pass));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes spi cat25128 scenario should pass end to end.
+    /// </summary>
+    public void SpiCat25128Scenario_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\spi_cat25128_good.yaml");
+
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"testprogramme\SPI CAT25128 EEPROM\SPI CAT25128 EEPROM.ctxprg"),
+            TestData.GetPath(@"simtest_spi_cat25128\wireplan"),
+            TestData.GetPath(@"simtest_spi_cat25128\wireplan"),
+            TestData.GetPath(@"simtest\device\devices\spi_cat25128_good.yaml"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+
+        var observer = RunProgram(
+            @"testprogramme\SPI CAT25128 EEPROM\SPI CAT25128 EEPROM.ctxprg",
+            @"simtest_spi_cat25128\wireplan",
+            @"simtest_spi_cat25128\wireplan",
+            python.PipePath);
+
+        Assert.AreEqual(1, observer.Evaluations.Count, string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+        var evaluation = observer.Evaluations[0];
+        Assert.AreEqual(TestOutcome.Pass, evaluation.Outcome);
+        Assert.AreEqual("SPI IO ON Semiconductor CAT25128 EEPROM", evaluation.StepName);
+        StringAssert.Contains(evaluation.Details ?? string.Empty, "RX=FF02");
+        StringAssert.Contains(evaluation.Details ?? string.Empty, "RX=FFFFFFAB");
+        Assert.IsTrue(evaluation.Traces.Any(trace => trace.Title.Contains("SPI SPI_interface1", StringComparison.OrdinalIgnoreCase)));
+        CollectionAssert.IsSubsetOf(
+            new[] { "SPI SPI_interface1 CS", "SPI SPI_interface1 CLK", "SPI SPI_interface1 MOSI", "SPI SPI_interface1 MISO" },
+            evaluation.CurvePoints.Select(point => point.Label).Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes spi cat25128 python module should pass end to end.
+    /// </summary>
+    public void SpiCat25128PythonModule_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartModule(
+            @"simtest\device\main.py",
+            "spi_cat25128_device");
+
+        var observer = RunProgram(
+            @"testprogramme\SPI CAT25128 EEPROM\SPI CAT25128 EEPROM.ctxprg",
+            @"simtest_spi_cat25128\wireplan",
+            @"simtest_spi_cat25128\wireplan",
+            python.PipePath);
+
+        Assert.AreEqual(1, observer.Evaluations.Count);
+        Assert.AreEqual(TestOutcome.Pass, observer.Evaluations[0].Outcome);
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes spi cat25128 scenario should fail when readback does not match the expected status byte.
+    /// </summary>
+    public void SpiCat25128Scenario_ShouldFail_WhenReadbackDoesNotMatch()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\spi_cat25128_fail.yaml");
+
+        var observer = RunProgram(
+            @"testprogramme\SPI CAT25128 EEPROM\SPI CAT25128 EEPROM.ctxprg",
+            @"simtest_spi_cat25128\wireplan",
+            @"simtest_spi_cat25128\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Any(item => item.Outcome == TestOutcome.Fail),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes spi cat25128 scenario should error when the configured timing does not match.
+    /// </summary>
+    public void SpiCat25128Scenario_ShouldError_WhenTimingDoesNotMatch()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\spi_cat25128_error.yaml");
+
+        var observer = RunProgram(
+            @"testprogramme\SPI CAT25128 EEPROM\SPI CAT25128 EEPROM.ctxprg",
+            @"simtest_spi_cat25128\wireplan",
+            @"simtest_spi_cat25128\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Any(item => item.Outcome == TestOutcome.Error),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes dm30 spi eeprom scenario should pass end to end.
+    /// </summary>
+    public void Spi93c46bScenario_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\spi_93c46b_good.yaml");
+
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"testprogramme\SPI-EEPROM\SPI-EEPROM-93C46B\SPI-EEPROM-93C46B.ctxprg"),
+            TestData.GetPath(@"simtest_spi_93c46b\wireplan"),
+            TestData.GetPath(@"simtest_spi_93c46b\wireplan"),
+            TestData.GetPath(@"simtest\device\devices\spi_93c46b_good.yaml"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+
+        var observer = RunProgram(
+            @"testprogramme\SPI-EEPROM\SPI-EEPROM-93C46B\SPI-EEPROM-93C46B.ctxprg",
+            @"simtest_spi_93c46b\wireplan",
+            @"simtest_spi_93c46b\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Any(item => item.StepName == "DM300 Write EEPROM" && item.Outcome == TestOutcome.Pass),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+        var readStep = observer.Evaluations.FirstOrDefault(item => item.StepName == "DM300 Read Complete EEPROM");
+        Assert.IsNotNull(readStep, "DM300 Read Complete EEPROM fehlt.");
+        Assert.AreEqual(TestOutcome.Pass, readStep.Outcome);
+        StringAssert.Contains(readStep.Details ?? string.Empty, "57472D5445535421");
+        CollectionAssert.IsSubsetOf(
+            new[] { "SPI DM30 CS", "SPI DM30 CLK", "SPI DM30 MISO" },
+            readStep.CurvePoints.Select(point => point.Label).Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes validation should accept smud boundary scan scenario.
+    /// </summary>
+    public void Validation_ShouldAccept_SmudBoundaryScanScenario()
+    {
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"testprogramme\CT3xx Testadapter2 - Boundary Scan Test 1\CT3xx Testadapter2 - Boundary Scan Test 1.ctxprg"),
+            TestData.GetPath(@"simtest_smud_boundary_scan\wireplan"),
+            TestData.GetPath(@"simtest_smud_boundary_scan\wireplan"),
+            TestData.GetPath(@"simtest\device\devices\smud_boundary_scan_good.yaml"));
+
+        Assert.AreEqual(0, issues.Count, string.Join(Environment.NewLine, issues));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes validation should require a device model.
+    /// </summary>
+    public void Validation_ShouldRequire_DeviceModel()
+    {
+        var issues = SimulationConfigurationValidator.Validate(
+            TestData.GetPath(@"simtest_ctct_contact\ct3xx\CTCT_Contact_Test.ctxprg"),
+            TestData.GetPath(@"simtest_ctct_contact\wireplan"),
+            TestData.GetPath(@"simtest_ctct_contact\wireplan"),
+            string.Empty);
+
+        CollectionAssert.Contains(issues.ToArray(), "Das Geraetemodell wurde nicht gefunden.");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes smud boundary scan yaml profile should pass for all three boundary scan reference programs.
+    /// </summary>
+    public void SmudBoundaryScanYaml_ShouldPass_ForAllReferencePrograms()
+    {
+        using (var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\smud_boundary_scan_good.yaml"))
+        {
+            AssertSmudPass(
+                RunProgram(
+                    @"testprogramme\CT3xx Testadapter2 - Boundary Scan Test 1\CT3xx Testadapter2 - Boundary Scan Test 1.ctxprg",
+                    @"simtest_smud_boundary_scan\wireplan",
+                    @"simtest_smud_boundary_scan\wireplan",
+                    python.PipePath),
+                "SM2 DUT Power Supply Test",
+                "SM2 DUT Power Supply Test");
+        }
+
+        using (var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\smud_boundary_scan_good.yaml"))
+        {
+            AssertSmudPass(
+                RunProgram(
+                    @"testprogramme\CT3xx Testadapter2 - Boundary Scan Test 2\CT3xx Testadapter2 - Boundary Scan Test 2.ctxprg",
+                    @"simtest_smud_boundary_scan\wireplan",
+                    @"simtest_smud_boundary_scan\wireplan",
+                    python.PipePath),
+                "SM2 DUT Power Supply Test",
+                "SM2 DUT Power Supply Test");
+        }
+
+        using (var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\smud_boundary_scan_good.yaml"))
+        {
+            AssertSmudPass(
+                RunProgram(
+                    @"testprogramme\CT3xx Testadapter2 - Boundary Scan Test 3\CT3xx Testadapter2 - Boundary Scan Test 3.ctxprg",
+                    @"simtest_smud_boundary_scan\wireplan",
+                    @"simtest_smud_boundary_scan\wireplan",
+                    python.PipePath),
+                "Power on");
+        }
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes smud boundary scan yaml profile should fail when the measured current is below the configured minimum.
+    /// </summary>
+    public void SmudBoundaryScanYaml_ShouldFail_WhenCurrentIsTooLow()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\smud_boundary_scan_fail.yaml");
+
+        var observer = RunProgram(
+            @"testprogramme\CT3xx Testadapter2 - Boundary Scan Test 1\CT3xx Testadapter2 - Boundary Scan Test 1.ctxprg",
+            @"simtest_smud_boundary_scan\wireplan",
+            @"simtest_smud_boundary_scan\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Any(item =>
+                item.StepName == "SM2 DUT Power Supply Test" &&
+                item.Outcome == TestOutcome.Fail),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes smud boundary scan yaml profile should error when the fuse current is exceeded.
+    /// </summary>
+    public void SmudBoundaryScanYaml_ShouldError_WhenFuseTrips()
+    {
+        using var python = PythonDeviceProcessFixture.StartProfile(@"simtest\device\devices\smud_boundary_scan_error.yaml");
+
+        var observer = RunProgram(
+            @"testprogramme\CT3xx Testadapter2 - Boundary Scan Test 1\CT3xx Testadapter2 - Boundary Scan Test 1.ctxprg",
+            @"simtest_smud_boundary_scan\wireplan",
+            @"simtest_smud_boundary_scan\wireplan",
+            python.PipePath);
+
+        Assert.IsTrue(observer.Evaluations.Any(item =>
+                item.StepName == "SM2 DUT Power Supply Test" &&
+                item.Outcome == TestOutcome.Error &&
+                (item.Details?.Contains("Sicherung", StringComparison.OrdinalIgnoreCase) ?? false)),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes smud boundary scan python module should pass end to end.
+    /// </summary>
+    public void SmudBoundaryScanPythonModule_ShouldPass_EndToEnd()
+    {
+        using var python = PythonDeviceProcessFixture.StartModule(
+            @"simtest\device\main.py",
+            "smud_boundary_scan_adapter");
+
+        var observer = RunProgram(
+            @"testprogramme\CT3xx Testadapter2 - Boundary Scan Test 1\CT3xx Testadapter2 - Boundary Scan Test 1.ctxprg",
+            @"simtest_smud_boundary_scan\wireplan",
+            @"simtest_smud_boundary_scan\wireplan",
+            python.PipePath);
+
+        AssertSmudPass(observer, "SM2 DUT Power Supply Test", "SM2 DUT Power Supply Test");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes ctct scenario should pass with active relay path and resistance evaluation.
+    /// </summary>
+    public void CtctScenario_ShouldPass_WithActiveRelayPath_AndResistanceEvaluation()
+    {
+        var parser = new Ct3xxProgramFileParser();
+        var fileSet = parser.Load(TestData.GetPath(@"simtest_ctct_contact\ct3xx\CTCT_Contact_Test.ctxprg"));
+        var previousWire = Environment.GetEnvironmentVariable("CT3XX_WIREVIZ_ROOT");
+        var previousSimulation = Environment.GetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT");
+        try
+        {
+            Environment.SetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", TestData.GetPath(@"simtest_ctct_contact_open\wireplan"));
+            Environment.SetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", TestData.GetPath(@"simtest_ctct_contact_open\wireplan"));
+            var resolver = WireVizHarnessResolver.Create(fileSet);
+            var directMeasurement = resolver.MeasureResistance(
+                "TP1",
+                "TP2",
+                new Dictionary<string, object?> { ["RELAY_CTRL"] = 24d },
+                new Dictionary<string, long> { ["RELAY_CTRL"] = 0L },
+                1000L,
+                Simulation.FaultInjection.SimulationFaultSet.Empty);
+            Assert.IsTrue(directMeasurement.PathFound,
+                directMeasurement.FailureReason ?? "Kein aktiver CTCT-Pfad gefunden.");
+            Assert.AreEqual(100d, directMeasurement.ResistanceOhms!.Value, 0.0001d);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", previousWire);
+            Environment.SetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", previousSimulation);
+        }
+
+        var observer = RunProgram(
+            @"simtest_ctct_contact\ct3xx\CTCT_Contact_Test.ctxprg",
+            @"simtest_ctct_contact\wireplan",
+            @"simtest_ctct_contact\wireplan",
+            string.Empty);
+
+        var ctctEvaluations = observer.Evaluations
+            .Where(item => item.StepName is "TP1" or "TP2" or "TP3")
+            .ToList();
+        Assert.AreEqual(3, ctctEvaluations.Count,
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+        Assert.IsTrue(ctctEvaluations.All(item => item.Outcome == TestOutcome.Pass),
+            string.Join(Environment.NewLine, ctctEvaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+
+        var tp1 = ctctEvaluations.Single(item => item.StepName == "TP1");
+        Assert.AreEqual(100d, tp1.MeasuredValue!.Value, 0.0001d);
+        Assert.IsTrue(tp1.Traces.Any(trace => trace.Title.Contains("TP1 -> TP2", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsTrue(tp1.Traces.SelectMany(trace => trace.Nodes).Any(node => node.Contains("REL1.COM1", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsTrue(tp1.Traces.SelectMany(trace => trace.Nodes).Any(node => node.Contains("REL1.NO1", StringComparison.OrdinalIgnoreCase)));
+
+        var tp3 = ctctEvaluations.Single(item => item.StepName == "TP3");
+        Assert.AreEqual(TestOutcome.Pass, tp3.Outcome);
+        Assert.IsNull(tp3.MeasuredValue);
+        StringAssert.Contains(tp3.Details!, "open");
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes ctct scenario should fail when the expected closed relay path is open.
+    /// </summary>
+    public void CtctScenario_ShouldFail_WhenExpectedClosedPath_IsOpen()
+    {
+        var observer = RunProgram(
+            @"simtest_ctct_contact\ct3xx\CTCT_Contact_Test_Fail.ctxprg",
+            @"simtest_ctct_contact_open\wireplan",
+            @"simtest_ctct_contact_open\wireplan",
+            string.Empty);
+
+        Assert.IsTrue(observer.Evaluations.Any(item =>
+                item.StepName == "TP1" &&
+                item.Outcome == TestOutcome.Fail &&
+                item.Details!.Contains("offene Leitung", StringComparison.OrdinalIgnoreCase)),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
+    [TestMethod]
+    /// <summary>
+    /// Executes ctct scenario should error when a configured test point cannot be resolved.
+    /// </summary>
+    public void CtctScenario_ShouldError_WhenTestPoint_IsMissingInWiring()
+    {
+        var observer = RunProgram(
+            @"simtest_ctct_contact\ct3xx\CTCT_Contact_Test_Error.ctxprg",
+            @"simtest_ctct_contact\wireplan",
+            @"simtest_ctct_contact\wireplan",
+            string.Empty);
+
+        Assert.IsTrue(observer.Evaluations.Any(item =>
+                item.Outcome == TestOutcome.Error &&
+                item.Details!.Contains("nicht aufgeloest", StringComparison.OrdinalIgnoreCase)),
+            string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
+    }
+
     private static SimulationObserverSpy RunProgram(string programRelativePath, string wireRootRelativePath, string simulationRootRelativePath, string pipePath)
     {
         var previousWire = Environment.GetEnvironmentVariable("CT3XX_WIREVIZ_ROOT");
@@ -372,6 +853,25 @@ public sealed class SimulatorIntegrationTests
             Environment.SetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", previousSimulation);
             Environment.SetEnvironmentVariable("CT3XX_PY_DEVICE_PIPE", previousPipe);
         }
+    }
+
+    private static void AssertSmudPass(SimulationObserverSpy observer, params string[] expectedStepNames)
+    {
+        var smudEvaluations = observer.Evaluations
+            .Where(item => expectedStepNames.Contains(item.StepName, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+        var diagnostics = string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")) +
+            Environment.NewLine +
+            string.Join(Environment.NewLine, observer.Messages);
+
+        Assert.AreEqual(expectedStepNames.Length, smudEvaluations.Count,
+            diagnostics);
+        Assert.IsTrue(smudEvaluations.All(item => item.Outcome == TestOutcome.Pass),
+            diagnostics);
+        Assert.IsTrue(smudEvaluations.All(item => item.Traces.Any(trace => trace.Title.Contains("SMUD", StringComparison.OrdinalIgnoreCase))),
+            diagnostics +
+            Environment.NewLine +
+            string.Join(Environment.NewLine, smudEvaluations.SelectMany(item => item.Traces.Select(trace => $"{item.StepName}: {trace.Title} => {string.Join(" -> ", trace.Nodes)}"))));
     }
 
     private static void AssertRuntimeTarget(

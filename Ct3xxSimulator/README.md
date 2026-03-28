@@ -44,7 +44,12 @@ Dadurch kann die weitere Testtypen-Abdeckung schrittweise aus dem monolithischen
 ## Unterstuetzte Schwerpunkte
 
 - `SC2C`
+- `CTCT`
+- `2C2I`
+- `SMUD`
+- `SPIX`
 - `CDMA`
+- `DM30` (referenzbezogene SPI-EEPROM-Teilunterstuetzung)
 - `IOXX`
 - `E488`
 - Datei-/Skriptausfuehrung aus Testprogrammen
@@ -55,6 +60,60 @@ Dadurch kann die weitere Testtypen-Abdeckung schrittweise aus dem monolithischen
 ## Schnittstellen-Tests
 
 `E488` wird als Kommunikations-Test fuer `RS232`, `IEEE-488` und `VISA` simuliert.
+
+`2C2I` wird jetzt als I2C-Bus-Test simuliert.
+
+`SPIX` wird jetzt als SPI-Bus-Test simuliert.
+`SMUD` wird jetzt als DUT-Versorgungs- und Strommess-Test simuliert.
+
+Wichtig:
+
+- das CT3xx-Testsystem agiert dabei als I2C-Master
+- externe DUT-Profile modellieren die angesprochenen I2C-Slaves
+- fuer die Referenzprogramme `UIF I2C Test`, `EA3 I2C Test` und `EA3-R I2C Test` ist das ein `LM75`-Slave auf dem externen Bus
+- I2C-Slaves behalten ihren Registerzustand jetzt ueber den kompletten Testlauf
+
+Aktuell unterstuetzt der Simulationskern dabei:
+
+- Laden der `EXT$`-Interface-Definitionen aus dem CT3xx-Programm
+- strukturierte Verarbeitung der `2C2I`-Record-Folge unter `Parameters`
+- `StartCond` / `EndCond`
+- `Ack='Read'`, `Ack='Write'`, `Ack='No Ack'`
+- `ToSend`, `Expected`, `Mask`, `Wait`
+- per-Testlauf persistenten Register- und Pointerzustand pro I2C-Slave
+- PASS bei erfolgreichem I2C-Ablauf
+- FAIL bei Byte-/Maskenabweichungen
+- ERROR bei Protokoll- oder Geraetefehlern wie fehlendem ACK
+- gemeinsame Nutzung desselben I2C-Stacks fuer `UIF`, `EA3` und `EA3-R`
+
+Fuer SPI gilt:
+
+- das CT3xx-Testsystem agiert immer als SPI-Master
+- externe DUT-Profile modellieren die angesprochenen SPI-Slaves
+- `EXT$`-Parameter wie `Frequency`, `CLKPhase`, `CLKPolarity`, `CSActive` und Versorgung werden ausgewertet
+- echte Leitungen `CS`, `CLK`, `MOSI`, `MISO` werden in Kurven und Verdrahtung sichtbar
+- `CAT25128` ist als referenzierter SPI-Slave in Python-/YAML-Profilen umgesetzt
+- PASS bei korrektem Readback, FAIL bei ungleichem Readback, ERROR bei Kommunikations-, Timing- oder Versorgungsfehlern
+- fuer das DM30-basierte Referenzprogramm `SPI-EEPROM-93C46B` gibt es eine gezielte Teilunterstuetzung fuer den EEPROM-Testlauf
+
+Fuer `SMUD` gilt:
+
+- es gibt genau einen Versorgungskanal pro Laufzeitinstanz
+- die Versorgungsspannung wird auf einen normalen DUT-Eingang geschrieben
+- die Strommessung wird ueber ein normales Ruecksignal gelesen
+- Spannung wird nicht rueckgemessen
+- `FAIL` entsteht bei Strom ausserhalb von `MinPermissibleCurrent .. MaxPermissibleCurrent`
+- `ERROR` entsteht bei Messfehlern oder wenn der gemessene Strom ueber dem `Fuse`-Strom liegt
+- die Umsetzung orientiert sich nur an den in den drei Boundary-Scan-Referenzen real vorhandenen `SMUD`-Feldern
+
+Fuer `CTCT` gilt:
+
+- bewertet wird der aktive DUT-Pfad zwischen den im Test gelisteten Testpunkten
+- Relais, Schalter, Widerstaende und Faults aus `simulation.yaml` wirken auf die Messung
+- `K='closed'` bewertet die kleinste gefundene Pfadresistenz gegen eine Maximalgrenze
+- `K='open'` bewertet Isolation bzw. fehlende Verbindung gegen eine Minimalgrenze
+- `FAIL` steht fuer Toleranzverletzung oder offene Leitung
+- `ERROR` steht fuer nicht aufloesbare oder nicht pruefbare Testpunkte
 
 Aktuell unterstuetzt der Simulationskern dabei:
 

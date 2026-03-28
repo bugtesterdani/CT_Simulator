@@ -240,8 +240,19 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
 
         var (serverName, pipeName) = SplitPipeName(_pipeName);
         var stream = new NamedPipeClientStream(serverName, pipeName, PipeDirection.InOut, PipeOptions.None);
-        stream.Connect(1000);
-        cancellationToken.ThrowIfCancellationRequested();
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                stream.Connect(250);
+                break;
+            }
+            catch (TimeoutException) when (DateTime.UtcNow < deadline)
+            {
+            }
+        }
 
         _stream = stream;
     }

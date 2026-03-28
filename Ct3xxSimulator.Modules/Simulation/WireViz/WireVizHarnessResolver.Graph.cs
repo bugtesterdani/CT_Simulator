@@ -250,6 +250,109 @@ public sealed partial class WireVizHarnessResolver
                 .ToList();
         }
 
+        /// <summary>
+        /// Measures the active resistance path between two resolved endpoints.
+        /// </summary>
+        public WireVizResistanceMeasurement MeasureResistance(
+            WireVizEndpoint source,
+            WireVizEndpoint target,
+            IReadOnlyDictionary<string, object?>? signalState,
+            IReadOnlyDictionary<string, long>? signalTimes,
+            long currentTimeMs,
+            SimulationFaultSet faults,
+            string sourceSignalName,
+            string targetSignalName)
+        {
+            if (string.Equals(source.Key, target.Key, StringComparison.OrdinalIgnoreCase))
+            {
+                return new WireVizResistanceMeasurement(
+                    sourceSignalName,
+                    targetSignalName,
+                    true,
+                    true,
+                    true,
+                    0d,
+                    new[] { FormatNode(source.Key) },
+                    Array.Empty<string>(),
+                    SourcePath);
+            }
+
+            var distances = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+            {
+                [source.Key] = 0d
+            };
+            var parents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var parentDescriptions = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            var queue = new PriorityQueue<string, double>();
+            queue.Enqueue(source.Key, 0d);
+
+            while (queue.Count > 0)
+            {
+                queue.TryDequeue(out var current, out var currentDistance);
+                if (current == null || currentDistance > distances[current] + 0.0000001d)
+                {
+                    continue;
+                }
+
+                if (string.Equals(current, target.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+
+                foreach (var edge in EnumerateAdjacentNodes(current, signalState, signalTimes, currentTimeMs, faults, forWrite: false))
+                {
+                    if (edge.IsSyntheticSignal)
+                    {
+                        continue;
+                    }
+
+                    var nextDistance = currentDistance + edge.ResistanceOhms;
+                    if (distances.TryGetValue(edge.Target, out var knownDistance) && knownDistance <= nextDistance)
+                    {
+                        continue;
+                    }
+
+                    distances[edge.Target] = nextDistance;
+                    parents[edge.Target] = current;
+                    parentDescriptions[edge.Target] = edge.Description;
+                    queue.Enqueue(edge.Target, nextDistance);
+                }
+            }
+
+            if (!distances.TryGetValue(target.Key, out var totalResistance) ||
+                !TryReconstructPath(source.Key, target.Key, parents, out var path))
+            {
+                return new WireVizResistanceMeasurement(
+                    sourceSignalName,
+                    targetSignalName,
+                    true,
+                    true,
+                    false,
+                    null,
+                    sourceDocumentPath: SourcePath,
+                    failureReason: $"Kein aktiver Pfad zwischen {source.DisplayName} und {target.DisplayName}.");
+            }
+
+            var nodes = path.Select(FormatNode).ToList();
+            var edgeDescriptions = path
+                .Skip(1)
+                .Select(node => parentDescriptions.TryGetValue(node, out var description) ? description : null)
+                .Where(description => !string.IsNullOrWhiteSpace(description))
+                .Select(description => description!)
+                .ToList();
+
+            return new WireVizResistanceMeasurement(
+                sourceSignalName,
+                targetSignalName,
+                true,
+                true,
+                true,
+                totalResistance,
+                nodes,
+                edgeDescriptions,
+                SourcePath);
+        }
+
         private TraversalResult Traverse(
             string sourceKey,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -550,10 +653,11 @@ public sealed partial class WireVizHarnessResolver
 
         private sealed class TraversalEdge
         {
-            private TraversalEdge(string target, double scale, string? description, bool isSyntheticSignal, bool writeOnly, bool readOnly)
+            private TraversalEdge(string target, double scale, double resistanceOhms, string? description, bool isSyntheticSignal, bool writeOnly, bool readOnly)
             {
                 Target = target;
                 Scale = scale;
+                ResistanceOhms = resistanceOhms;
                 Description = description;
                 IsSyntheticSignal = isSyntheticSignal;
                 WriteOnly = writeOnly;
@@ -568,6 +672,10 @@ public sealed partial class WireVizHarnessResolver
             /// Gets the scale.
             /// </summary>
             public double Scale { get; }
+            /// <summary>
+            /// Gets the resistance ohms.
+            /// </summary>
+            public double ResistanceOhms { get; }
             /// <summary>
             /// Gets the description.
             /// </summary>
@@ -588,14 +696,14 @@ public sealed partial class WireVizHarnessResolver
             /// <summary>
             /// Executes node.
             /// </summary>
-            public static TraversalEdge Node(string target, double scale = 1d, string? description = null) =>
-                new(target, scale, description, false, false, false);
+            public static TraversalEdge Node(string target, double scale = 1d, string? description = null, double resistanceOhms = 0d) =>
+                new(target, scale, resistanceOhms, description, false, false, false);
 
             /// <summary>
             /// Executes synthetic signal.
             /// </summary>
             public static TraversalEdge SyntheticSignal(string signalName, double scale, string? description, bool writeOnly = false, bool readOnly = false) =>
-                new($"@signal:{signalName}", scale, description, true, writeOnly, readOnly);
+                new($"@signal:{signalName}", scale, 0d, description, true, writeOnly, readOnly);
         }
 
         private sealed class SyntheticRuntimeTarget

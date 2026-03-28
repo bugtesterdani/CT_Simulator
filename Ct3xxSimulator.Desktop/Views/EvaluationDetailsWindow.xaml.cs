@@ -1,4 +1,4 @@
-﻿// Provides Evaluation Details Window for the desktop application window logic.
+// Provides Evaluation Details Window for the desktop application window logic.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -48,26 +48,43 @@ public partial class EvaluationDetailsWindow : Window
     {
         _result = result;
         TitleTextBlock.Text = result.StepName;
-        SubtitleTextBlock.Text = "Auswertung des ausgewaehlten Testschritts mit Soll-/Ist-Grenzen und verfuegbaren Kurven.";
-        OutcomeTextBlock.Text = result.Outcome;
-        MeasuredValueTextBlock.Text = AppendUnit(result.MeasuredValue, result.Unit);
-        LowerLimitTextBlock.Text = AppendUnit(result.LowerLimit, result.Unit);
-        UpperLimitTextBlock.Text = AppendUnit(result.UpperLimit, result.Unit);
-        DetailsTextBlock.Text = string.IsNullOrWhiteSpace(result.Details) ? "-" : result.Details;
+        SubtitleTextBlock.Text = BuildSubtitle(result);
+
+        ResultSourceTextBlock.Text = result.ResultSourceLabel;
+        OutcomeTextBlock.Text = result.DisplayOutcome;
+        MeasuredValueTextBlock.Text = AppendUnit(result.DisplayMeasuredValue, result.DisplayUnit);
+        RangeTextBlock.Text = BuildRangeText(result.DisplayLowerLimit, result.DisplayUpperLimit, result.DisplayUnit);
+        DetailsTextBlock.Text = string.IsNullOrWhiteSpace(result.DisplayDetails) ? "-" : result.DisplayDetails;
+        OutcomeTextBlock.Foreground = GetOutcomeBrush(result.DisplayOutcome);
+        ResultSourceTextBlock.Foreground = GetSourceBrush(result.ResultSourceLabel);
+
         SummaryOutcomeTextBlock.Text = result.Outcome;
         SummaryMeasuredValueTextBlock.Text = AppendUnit(result.MeasuredValue, result.Unit);
         SummaryLowerLimitTextBlock.Text = AppendUnit(result.LowerLimit, result.Unit);
         SummaryUpperLimitTextBlock.Text = AppendUnit(result.UpperLimit, result.Unit);
         SummaryDetailsTextBlock.Text = string.IsNullOrWhiteSpace(result.Details) ? "-" : result.Details;
         RawDetailsTextBlock.Text = string.IsNullOrWhiteSpace(result.Details) ? "-" : result.Details;
-        MetricsDataGrid.ItemsSource = BuildMetricRows(result).ToList();
-        OutcomeTextBlock.Foreground = result.Outcome.ToUpperInvariant() switch
-        {
-            "PASS" => Brush("#FF2D6A4F"),
-            "FAIL" => Brush("#FFB23A48"),
-            "ERROR" => Brush("#FF8B1E3F"),
-            _ => Brush("#FF293241")
-        };
+        MetricsDataGrid.ItemsSource = BuildMetricRows(result.Outcome, result.MeasuredValue, result.LowerLimit, result.UpperLimit, result.Unit, result.Details).ToList();
+
+        CsvRowTextBlock.Text = result.HasCsvReplayMatch ? result.CsvRowNumber?.ToString(CultureInfo.InvariantCulture) ?? "-" : "-";
+        CsvOutcomeTextBlock.Text = string.IsNullOrWhiteSpace(result.CsvOutcome) ? "-" : result.CsvOutcome;
+        CsvMeasuredValueTextBlock.Text = string.IsNullOrWhiteSpace(result.CsvMeasuredValue) ? "-" : result.CsvMeasuredValue;
+        CsvRangeTextBlock.Text = BuildRangeText(result.CsvLowerLimit, result.CsvUpperLimit, string.Empty);
+        CsvDescriptionTextBlock.Text = string.IsNullOrWhiteSpace(result.CsvDescription) ? "-" : result.CsvDescription;
+        CsvMessageTextBlock.Text = string.IsNullOrWhiteSpace(result.CsvMessage) ? "-" : result.CsvMessage;
+        CsvRawDetailsTextBlock.Text = BuildCsvRawText(result);
+        CsvMetricsDataGrid.ItemsSource = BuildMetricRows(result.CsvOutcome, result.CsvMeasuredValue, result.CsvLowerLimit, result.CsvUpperLimit, string.Empty, BuildCsvDetails(result), fallbackScope: "CSV").ToList();
+
+        CompareOutcomeSimTextBlock.Text = result.Outcome;
+        CompareOutcomeCsvTextBlock.Text = FormatFallback(result.CsvOutcome);
+        CompareMeasuredSimTextBlock.Text = AppendUnit(result.MeasuredValue, result.Unit);
+        CompareMeasuredCsvTextBlock.Text = FormatFallback(result.CsvMeasuredValue);
+        CompareRangeSimTextBlock.Text = BuildRangeText(result.LowerLimit, result.UpperLimit, result.Unit);
+        CompareRangeCsvTextBlock.Text = BuildRangeText(result.CsvLowerLimit, result.CsvUpperLimit, string.Empty);
+        CompareDetailsSimTextBlock.Text = string.IsNullOrWhiteSpace(result.Details) ? "-" : result.Details;
+        CompareDetailsCsvTextBlock.Text = BuildCsvDetails(result);
+        ComparisonSummaryTextBlock.Text = result.HasCsvReplayMatch ? result.ComparisonSummary : "Kein CSV-Match fuer diesen Schritt vorhanden.";
+        ComparisonModeTextBlock.Text = BuildComparisonModeText(result);
 
         var labels = result.CurvePoints
             .Select(point => point.Label)
@@ -85,35 +102,36 @@ public partial class EvaluationDetailsWindow : Window
         }
         _updatingSelection = false;
 
+        ReplayTabControl.SelectedIndex = result.HasCsvReplayMatch ? 2 : 0;
         RenderChart();
     }
 
-    private static IEnumerable<MetricDetailRow> BuildMetricRows(StepResultViewModel result)
+    private static IEnumerable<MetricDetailRow> BuildMetricRows(string outcome, string measuredValue, string lowerLimit, string upperLimit, string unit, string? details, string fallbackScope = "Schritt")
     {
-        var (summaryPrefix, metricDetails) = SplitDetailsSections(result.Details);
-        var primaryScope = GetPrimaryScope(metricDetails);
+        var (summaryPrefix, metricDetails) = SplitDetailsSections(details);
+        var primaryScope = GetPrimaryScope(metricDetails, fallbackScope);
         var rows = new List<MetricDetailRow>
         {
             new()
             {
                 Scope = "Gesamt",
                 Metric = "Ergebnis",
-                Actual = result.Outcome,
+                Actual = FormatFallback(outcome),
                 LowerLimit = "-",
                 UpperLimit = "-",
                 Unit = string.Empty,
-                Status = result.Outcome,
+                Status = FormatFallback(outcome),
                 Note = "Gesamtergebnis"
             },
             new()
             {
                 Scope = primaryScope,
                 Metric = "Ist",
-                Actual = result.MeasuredValue,
-                LowerLimit = result.LowerLimit,
-                UpperLimit = result.UpperLimit,
-                Unit = result.Unit,
-                Status = ComputeStatus(TryParseNumeric(result.MeasuredValue), TryParseNumeric(result.LowerLimit), TryParseNumeric(result.UpperLimit), result.Outcome),
+                Actual = FormatFallback(measuredValue),
+                LowerLimit = FormatLimitText(lowerLimit),
+                UpperLimit = FormatLimitText(upperLimit),
+                Unit = unit,
+                Status = ComputeStatus(TryParseNumeric(measuredValue), TryParseNumeric(lowerLimit), TryParseNumeric(upperLimit), outcome),
                 Note = "Hauptwert"
             }
         };
@@ -140,7 +158,7 @@ public partial class EvaluationDetailsWindow : Window
 
         foreach (var scopePart in metricDetails.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            var scope = "Details";
+            var scope = fallbackScope;
             var metricsText = scopePart;
             var separatorIndex = scopePart.IndexOf(':');
             if (separatorIndex >= 0)
@@ -189,6 +207,64 @@ public partial class EvaluationDetailsWindow : Window
         return rows;
     }
 
+    private static string BuildSubtitle(StepResultViewModel result)
+    {
+        if (!result.HasCsvReplayMatch)
+        {
+            return "Auswertung des ausgewaehlten Testschritts mit Soll-/Ist-Grenzen und verfuegbaren Kurven.";
+        }
+
+        return $"Auswertung des ausgewaehlten Testschritts. Anzeigequelle: {result.ResultSourceLabel}. CSV-Zeile {result.CsvRowNumber?.ToString(CultureInfo.InvariantCulture) ?? "-"}.";
+    }
+
+    private static string BuildComparisonModeText(StepResultViewModel result)
+    {
+        return result.CsvDisplayMode.ToUpperInvariant() switch
+        {
+            "COMPARE" => "Der Schritt wird simulatorseitig ausgewertet; CSV wird parallel zum Vergleich angezeigt.",
+            "CSVDRIVESRESULT" => "Die Hauptanzeige folgt CSV-Ergebniswerten; Pfade, Kurven und technische Zustandsdaten bleiben simulatorseitig.",
+            _ => "Es ist kein CSV-Vergleichsmodus aktiv."
+        };
+    }
+
+    private static string BuildCsvDetails(StepResultViewModel result)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(result.CsvDescription))
+        {
+            parts.Add(result.CsvDescription);
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.CsvMessage))
+        {
+            parts.Add(result.CsvMessage);
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.CsvMatchReason))
+        {
+            parts.Add($"Match: {result.CsvMatchReason}");
+        }
+
+        return parts.Count == 0 ? "-" : string.Join(" | ", parts);
+    }
+
+    private static string BuildCsvRawText(StepResultViewModel result)
+    {
+        if (!result.HasCsvReplayMatch)
+        {
+            return "-";
+        }
+
+        return $"CSV-Zeile: {result.CsvRowNumber?.ToString(CultureInfo.InvariantCulture) ?? "-"}\n" +
+               $"Beschreibung: {FormatFallback(result.CsvDescription)}\n" +
+               $"Message: {FormatFallback(result.CsvMessage)}\n" +
+               $"Ergebnis: {FormatFallback(result.CsvOutcome)}\n" +
+               $"Wert: {FormatFallback(result.CsvMeasuredValue)}\n" +
+               $"Soll Min: {FormatFallback(result.CsvLowerLimit)}\n" +
+               $"Soll Max: {FormatFallback(result.CsvUpperLimit)}\n" +
+               $"Match: {FormatFallback(result.CsvMatchReason)}";
+    }
+
     private static (string SummaryPrefix, string MetricDetails) SplitDetailsSections(string? details)
     {
         if (string.IsNullOrWhiteSpace(details))
@@ -205,11 +281,11 @@ public partial class EvaluationDetailsWindow : Window
         return (details[..separatorIndex].Trim(), details[(separatorIndex + 1)..].Trim());
     }
 
-    private static string GetPrimaryScope(string? details)
+    private static string GetPrimaryScope(string? details, string fallbackScope)
     {
         if (string.IsNullOrWhiteSpace(details))
         {
-            return "Schritt";
+            return fallbackScope;
         }
 
         foreach (var scopePart in details.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -227,7 +303,7 @@ public partial class EvaluationDetailsWindow : Window
             }
         }
 
-        return "Schritt";
+        return fallbackScope;
     }
 
     private void OnSeriesSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -456,6 +532,28 @@ public partial class EvaluationDetailsWindow : Window
         return string.IsNullOrWhiteSpace(unit) ? value : $"{value} {unit}";
     }
 
+    private static string BuildRangeText(string lowerLimit, string upperLimit, string unit)
+    {
+        if (string.IsNullOrWhiteSpace(lowerLimit) && string.IsNullOrWhiteSpace(upperLimit))
+        {
+            return "-";
+        }
+
+        var lower = FormatLimitText(lowerLimit);
+        var upper = FormatLimitText(upperLimit);
+        return string.IsNullOrWhiteSpace(unit) ? $"{lower} .. {upper}" : $"{lower} .. {upper} {unit}";
+    }
+
+    private static string FormatLimitText(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "-" : value;
+    }
+
+    private static string FormatFallback(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "-" : value;
+    }
+
     private static double? TryParseNumeric(string text)
     {
         if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
@@ -512,6 +610,27 @@ public partial class EvaluationDetailsWindow : Window
         }
 
         return string.IsNullOrWhiteSpace(fallbackOutcome) ? string.Empty : fallbackOutcome;
+    }
+
+    private static SolidColorBrush GetOutcomeBrush(string? outcome)
+    {
+        return (outcome ?? string.Empty).ToUpperInvariant() switch
+        {
+            "PASS" => Brush("#FF2D6A4F"),
+            "FAIL" => Brush("#FFB23A48"),
+            "ERROR" => Brush("#FF8B1E3F"),
+            _ => Brush("#FF293241")
+        };
+    }
+
+    private static SolidColorBrush GetSourceBrush(string? sourceLabel)
+    {
+        return (sourceLabel ?? string.Empty).ToUpperInvariant() switch
+        {
+            "CSV" => Brush("#FF7C5E10"),
+            "SIM/CSV" => Brush("#FF375A7F"),
+            _ => Brush("#FF2E5E86")
+        };
     }
 
     private void OnClose(object sender, RoutedEventArgs e)

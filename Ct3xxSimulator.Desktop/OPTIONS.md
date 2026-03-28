@@ -1,4 +1,4 @@
-# Ct3xxSimulator.Desktop Optionen
+﻿# Ct3xxSimulator.Desktop Optionen
 
 Diese Datei beschreibt die konfigurierbaren Teile der WPF-App.
 
@@ -8,7 +8,8 @@ Diese Datei beschreibt die konfigurierbaren Teile der WPF-App.
 - Testprogramm-Ordner
 - Verdrahtungs-Ordner
 - Simulationsmodell-Ordner
-- DUT-Datei
+- verpflichtende DUT-Datei
+- optionaler CSV-Testlauf (`*.csv`)
 
 Unterstuetzte DUT-Dateien:
 
@@ -16,6 +17,8 @@ Unterstuetzte DUT-Dateien:
 - `*.json`
 - `*.yaml`
 - `*.yml`
+
+Auch rein tester-/verdrahtungsseitige Szenarien benoetigen in der Desktop-App ein Geraetemodell. Dafuer kann ein neutrales Dummy-Profil wie [noop_device.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/noop_device.yaml) verwendet werden.
 
 ## Verhalten der Programmauswahl
 
@@ -28,8 +31,22 @@ Unterstuetzte DUT-Dateien:
 - Breakpoints halten direkt nach dem jeweiligen Schritt oder der jeweiligen Gruppe an und warten dann auf `Weiter`, `Auto` oder eine andere Nutzeraktion
 - gespeicherte Szenario-Presets enthalten auch die gesetzten Breakpoints fuer die Programmstruktur
 - gespeicherte Szenario-Presets enthalten zusaetzlich Dateiname und SHA-256 der gewaehlten `.ctxprg`
+- gespeicherte Szenario-Presets enthalten ausserdem den optionalen CSV-Dateipfad und den gewaehlten CSV-Modus
 - ueber `Upgrade` kann ein vorhandenes Preset auf das neue Format angehoben werden
 - nicht mehr eindeutig zuordenbare Breakpoints koennen dabei manuell auf aktuelle Testschritte oder Gruppen gemappt werden
+- der CSV-Modus ist umschaltbar:
+  - `Aus`
+  - `Vergleich`
+  - `CSV fuehrt Ergebnis`
+- bei aktivem CSV-Modus prueft die App bereits beim Laden, ob die CSV gelesen werden kann und wie zuverlaessig das Matching zum aktuell geladenen Testprogramm ist
+- CSV fuehrt Ergebnis ist nur zulaessig, wenn das Matching als ausreichend zuverlaessig eingestuft wird
+- waehrend der Simulation bleibt der technische Ablauf unveraendert; CSV-Metadaten werden nur an die Schrittergebnisse und Snapshot-Sessions angeheftet
+- in der Testschrittliste wird die Ergebnisquelle sichtbar als `SIM`, `CSV` oder `SIM/CSV` angezeigt
+- im Modus `CSV fuehrt Ergebnis` folgt die sichtbare Hauptbewertung der CSV, waehrend Pfade, Kurven und Zustandsdaten weiterhin aus der Simulation kommen
+- Schritte ohne passenden CSV-Eintrag bleiben trotzdem sichtbar; dabei wird jetzt das simulierte Ergebnis gegen die CT3xx-`LogFlags` des Programms geprueft
+- fehlt ein CSV-Eintrag fuer ein Ergebnis, das laut `LogFlags` nicht geloggt werden musste, bleibt der Schritt dunkelgrau mit dem Hinweis `Kein CSV-Eintrag fuer diesen Schritt`
+- fehlt ein CSV-Eintrag, obwohl die `LogFlags` fuer das aktuelle Ergebnis einen Logeintrag verlangen, wird der Schritt als CSV-Abweichung hervorgehoben
+- fehlende CSV-Zeilen fuer einzelne Schritte machen das Matching deshalb nicht automatisch unzuverlaessig; kritisch bleiben vor allem falsche oder unplausible CSV-Zuordnungen der vorhandenen Logzeilen
 
 ## Presets
 
@@ -49,7 +66,8 @@ Sinnvoll fuer:
 
 ## Verfuegbare Aktionen
 
-- `Validieren`
+- Validieren
+- CSV-Datei fuer Replay-/Vergleichsmodus auswaehlen
 - komplette Simulation starten
 - Schrittmodus mit `Weiter`, `Zurueck`, `Auto`, `Pause`
 - Laufstatus `Bereit`, `Laeuft`, `Pausiert` im Hauptfenster sehen
@@ -92,6 +110,18 @@ Aktuelles Bedienverhalten:
 - die Detailtabelle bleibt in der gelieferten Reihenfolge und ist nicht interaktiv sortierbar
 - Grenzverletzungen und Fail-/Error-Zeilen werden dort dezent farblich hervorgehoben
 - bei AM2-/Waveform-Tests koennen so sowohl Eingangs- als auch Rueckgabekurven eines Schritts sichtbar werden
+- bei aktivem CSV-Match stehen zusaetzlich die Reiter `CSV` und `Vergleich` zur Verfuegung
+
+## CSV-Beispielablauf
+
+- Konfiguration wie fuer eine normale Simulation laden
+- zusaetzlich optionale CSV-Datei auswaehlen
+- Modus `Vergleich` oder `CSV fuehrt Ergebnis` setzen
+- CSV-Zusammenfassung auf Warnungen oder Blockierung pruefen
+- Simulation normal starten
+- Ergebnisse ueber Hauptliste, Auswertungsansicht und Snapshot-Timeline analysieren
+- dunkelgrau markierte `SIM`-Schritte bedeuten dabei typischerweise, dass der Schritt im historischen CSV-Lauf fuer dieses Ergebnis laut `LogFlags` nicht geloggt werden musste
+- rot hervorgehobene `SIM`-Schritte ohne CSV-Treffer bedeuten dagegen, dass der CSV-Eintrag laut `LogFlags` haette vorhanden sein muessen
 
 ## Testschritt-Ansicht
 
@@ -149,8 +179,11 @@ Zusatzlich steht im Hauptfenster eine Snapshot-Timeline zur Verfuegung:
 - Auswahl eines Timeline-Eintrags setzt die Anzeige auf genau diesen Snapshot
 - der Verlauf im Live-Zustandsfenster wird dabei nur bis zu diesem Snapshot aufgebaut
 - die Testschritt-Anzeige wird fuer diesen Snapshot-Zeitpunkt neu rekonstruiert statt den Endstand beizubehalten
+- der passendste sichtbare Testschritt wird dabei wieder ausgewaehlt
+- eine offene Auswertungsansicht folgt diesem Snapshot-Schritt automatisch
 - `Weiter` und `Zurueck` navigieren ueber diese Snapshot-Folge
 - im Schrittmodus wird an Snapshot-Punkten pausiert, nicht nur an Testenden
+- bei CSV-gestuetzten Laeufen koennen Timeline-Eintraege zusaetzlich eine kurze CSV-/SIM-Vergleichsinformation anzeigen
 
 Ansichtsmodi im Live-Zustandsfenster:
 
@@ -181,3 +214,5 @@ Snapshot-Sessions:
 - DUT-Modellnamen muessen zu den vom Simulator aufgeloesten Signalnamen passen
 - bei YAML-DUT-Profilen muss `PyYAML` installiert sein
 - fuer Python-Pipes wird `pywin32` benoetigt
+
+

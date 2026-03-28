@@ -46,6 +46,7 @@ powershell -ExecutionPolicy Bypass -File scripts\security-scan.ps1
 - [Ct3xxSimulationModelParser/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulationModelParser/OPTIONS.md)
 - [Ct3xxSimulator.Export/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Export/OPTIONS.md)
 - [Ct3xxSimulator.Validation/README.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Validation/README.md)
+- [Ct3xxTestRunLogParser/README.md](C:/Users/hello/Desktop/CT3xx/Ct3xxTestRunLogParser/README.md)
 - [Ct3xxAltiumWireVizExporter/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxAltiumWireVizExporter/OPTIONS.md)
 - [examples/PythonDeviceSimulator/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/examples/PythonDeviceSimulator/OPTIONS.md)
 - [simtest/ct3xx/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/simtest/ct3xx/OPTIONS.md)

@@ -1,0 +1,26 @@
+name: smud_boundary_scan_fail
+
+signals:
+  inputs:
+    - DUT_SUPPLY
+    - DUT_GND
+  outputs:
+    - DUT_CURRENT
+
+aliases:
+  signals:
+    DUT_SUPPLY:
+      - SM2_VOUT
+    DUT_CURRENT:
+      - SM2_ISENSE
+    DUT_GND:
+      - SM2_GND
+
+outputs:
+  DUT_CURRENT:
+    default: 0.0
+    rules:
+      - when:
+          signal: DUT_SUPPLY
+          gte: 8.5
+        value: 0.005

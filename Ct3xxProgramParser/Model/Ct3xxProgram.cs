@@ -180,6 +180,7 @@ public class TestParameters
     [XmlAttribute("NumberOfResults")] public string? NumberOfResults { get; set; }
 
     [XmlElement("Table")] public List<Table> Tables { get; set; } = new();
+    [XmlElement("Record")] public List<Record> Records { get; set; } = new();
     [XmlElement("AcqChannel1")] public AcquisitionChannel? AcquisitionChannel1 { get; set; }
     [XmlElement("AcqChannel2")] public AcquisitionChannel? AcquisitionChannel2 { get; set; }
     [XmlElement("AcqChannel3")] public AcquisitionChannel? AcquisitionChannel3 { get; set; }
@@ -234,7 +235,49 @@ public class Table : SequenceNode
     [XmlElement("Variable")] public List<VariableDefinition> Variables { get; set; } = new();
     [XmlElement("Record")] public List<Record> Records { get; set; } = new();
     [XmlElement("File")] public List<TableFile> Files { get; set; } = new();
+    [XmlElement("Interface")] public List<InterfaceDefinition> Interfaces { get; set; } = new();
     [XmlElement("Library")] public List<LibraryDefinition> Libraries { get; set; } = new();
+}
+
+/// <summary>
+/// Represents one external interface definition from the EXT$ table.
+/// </summary>
+public class InterfaceDefinition
+{
+    [XmlAttribute("Id")] public string? Id { get; set; }
+    [XmlAttribute("Rev")] public string? Revision { get; set; }
+    [XmlAttribute("Name")] public string? Name { get; set; }
+    [XmlAttribute("Function")] public string? Function { get; set; }
+    [XmlAttribute("Frequency")] public string? Frequency { get; set; }
+    [XmlAttribute("CLKPhase")] public string? ClockPhase { get; set; }
+    [XmlAttribute("CLKPolarity")] public string? ClockPolarity { get; set; }
+    [XmlAttribute("CSActive")] public string? ChipSelectActive { get; set; }
+    [XmlAttribute("CSST")] public string? ChipSelectSignal { get; set; }
+    [XmlAttribute("PowerSource")] public string? PowerSource { get; set; }
+    [XmlAttribute("UIFSignal")] public string? UifSignal { get; set; }
+    [XmlAttribute("Route")] public string? Route { get; set; }
+    [XmlAttribute("SDA")] public string? Sda { get; set; }
+    [XmlAttribute("SCL")] public string? Scl { get; set; }
+    [XmlAttribute("GND")] public string? Ground { get; set; }
+    [XmlAttribute("MB_Release")] public string? MeasurementBusRelease { get; set; }
+    [XmlAttribute("PullUp")] public string? PullUp { get; set; }
+    [XmlAttribute("VOUT")] public string? Supply { get; set; }
+    [XmlAttribute("VOUT_Chan")] public string? SupplyChannel { get; set; }
+    [XmlAttribute("Module")] public string? Module { get; set; }
+    [XmlAttribute("UIF_Chan")] public string? UifChannel { get; set; }
+    [XmlAttribute("SDA_ST")] public string? SdaStimulus { get; set; }
+    [XmlAttribute("SDA_AQ")] public string? SdaAcquire { get; set; }
+    [XmlAttribute("SCL_ST")] public string? SclStimulus { get; set; }
+    [XmlAttribute("SCL_AQ")] public string? SclAcquire { get; set; }
+    [XmlAttribute("CLk")] public string? Clock { get; set; }
+    [XmlAttribute("Setup")] public string? Setup { get; set; }
+    [XmlAttribute("Pulse")] public string? Pulse { get; set; }
+    [XmlAttribute("Hold")] public string? Hold { get; set; }
+    [XmlAttribute("Repeats")] public string? Repeats { get; set; }
+    [XmlAttribute("Interval")] public string? Interval { get; set; }
+    [XmlAttribute("ClockHold")] public string? ClockHold { get; set; }
+    [XmlAttribute("ClockHoldTimeout")] public string? ClockHoldTimeout { get; set; }
+    [XmlAnyAttribute] public XmlAttribute[]? AdditionalAttributes { get; set; }
 }
 
 /// <summary>

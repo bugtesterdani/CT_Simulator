@@ -29,6 +29,7 @@ public partial class Ct3xxProgramSimulator
     private ExternalDeviceSession? _externalDeviceSession;
     private WireVizHarnessResolver? _wireVizResolver;
     private Ct3xxProgramFileSet? _fileSet;
+    private Ct3xxProgram? _program;
     private SimulationFaultSet _faults = SimulationFaultSet.Empty;
     private bool _testerConfigurationAsked;
     private CancellationToken _cancellationToken;
@@ -75,6 +76,7 @@ public partial class Ct3xxProgramSimulator
         _externalDeviceSession = null;
         _wireVizResolver = null;
         _fileSet = null;
+        _program = program;
         _faults = SimulationFaultSet.Empty;
         _context.SetProgramContext(null);
         ResetSimulationState();
@@ -99,6 +101,7 @@ public partial class Ct3xxProgramSimulator
         _externalDeviceSession = CreateExternalDeviceSession();
         _wireVizResolver = WireVizHarnessResolver.Create(fileSet);
         _fileSet = fileSet;
+        _program = fileSet.Program;
         _faults = SimulationFaultSet.Load(Environment.GetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT") ?? fileSet.ProgramDirectory);
         _context.SetProgramContext(fileSet.ProgramPath);
         ResetSimulationState();
@@ -300,6 +303,10 @@ public partial class Ct3xxProgramSimulator
         {
             "GSD^" => RunAssignmentTest(test),
             "IOXX" => RunDigitalIoControlTest(test),
+            "2C2I" => RunI2cInterfaceTest(test),
+            "SPIX" => RunSpiIoControlTest(test),
+            "SMUD" => RunSmudPowerSupplyTest(test),
+            "CTCT" => RunConnectionContactTest(test),
             "E488" => RunInterfaceTest(test),
             "PET$" => RunEvaluationTest(test),
             "PRT^" => RunOperatorTest(test),
@@ -307,6 +314,7 @@ public partial class Ct3xxProgramSimulator
             "PWT$" => RunWaitTest(test),
             "SC2C" => RunScannerConnectTest(test),
             "CDMA" => RunCdmaTest(test),
+            "DM30" => RunDm30Test(test),
             "2ARB" => RunWaveformTest(test),
             "SA1T" => RunWaveformTest(test),
             "TRGA" => RunWaveformTest(test),
@@ -356,10 +364,17 @@ public partial class Ct3xxProgramSimulator
                 var assignmentText = $"{address} := {_evaluator.ToText(value)}";
                 assignments.Add(assignmentText);
                 _observer.OnMessage(assignmentText);
-                TryWriteExternalSignal(record.Destination, value);
                 var signalName = ExtractSignalName(record.Destination);
                 if (!string.IsNullOrWhiteSpace(signalName))
                 {
+                    if (_wireVizResolver == null ||
+                        _wireVizResolver.TryResolve(signalName!, out _) ||
+                        _wireVizResolver.TryResolveRuntimeTargets(signalName!, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, true, out _))
+                    {
+                        RememberSignal(signalName!, value);
+                    }
+
+                    TryWriteExternalSignal(record.Destination, value);
                     traces.AddRange(CollectSignalTraces(signalName!, "Ansteuerung"));
                 }
             }

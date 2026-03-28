@@ -25,6 +25,8 @@ from .profile_helpers import (
     normalize_mapping,
     read_signal_value,
 )
+from .profile_i2c import handle_i2c_transaction, initialize_i2c_interfaces
+from .profile_spi import handle_spi_transaction, initialize_spi_interfaces
 from .profile_state import (
     apply_state_actions,
     set_state_flags,
@@ -93,6 +95,9 @@ class DeclarativeDeviceModel(BaseDeviceModel):
 
         for name in self.interfaces:
             self.interface_state[name] = {"last_request": None, "last_response": None, "history": []}
+
+        initialize_i2c_interfaces(self)
+        initialize_spi_interfaces(self)
 
         # Timers and state machines publish internal helper signals during rule evaluation.
         for name in self.timer_definitions:
@@ -186,7 +191,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
             "timers": self.timer_state,
             "state_machines": self.state_machine_state,
             "waveforms": self.waveform_captures,
-            "interfaces": self.interface_state,
+            "interfaces": {name: self._describe_interface_state(name, state) for name, state in sorted(self.interface_state.items())},
         }
 
     def state_marker(self) -> dict[str, Any]:
@@ -227,6 +232,18 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         requests = definition.get("requests") or []
         state = self.interface_state.setdefault(interface_name, {"last_request": None, "last_response": None, "history": []})
         state["last_request"] = payload
+
+        if str(definition.get("protocol") or "").strip().lower() == "i2c":
+            response = handle_i2c_transaction(self, interface_name, definition, payload)
+            state["last_response"] = response
+            state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+            return response
+
+        if str(definition.get("protocol") or "").strip().lower() == "spi":
+            response = handle_spi_transaction(self, interface_name, definition, payload)
+            state["last_response"] = response
+            state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+            return response
 
         for request in requests:
             if (
@@ -343,6 +360,79 @@ class DeclarativeDeviceModel(BaseDeviceModel):
     def _resolve_interface_name(self, name: str) -> str:
         interface_name = str(name).strip().upper()
         return self.interface_aliases.get(interface_name, interface_name)
+
+    def _describe_interface_state(self, interface_name: str, state: dict[str, Any]) -> dict[str, Any]:
+        """Project one protocol state down to a JSON-safe summary for UI and exports."""
+        summary: dict[str, Any] = {
+            "last_request": state.get("last_request"),
+            "last_response": state.get("last_response"),
+            "history_count": len(state.get("history") or []),
+        }
+
+        i2c_state = state.get("i2c")
+        if isinstance(i2c_state, dict):
+            summary["i2c"] = {
+                "selected_device": i2c_state.get("selected_device_name"),
+                "read_mode": bool(i2c_state.get("read_mode", False)),
+                "pointer_register": i2c_state.get("pointer_register"),
+                "expect_pointer": bool(i2c_state.get("expect_pointer", False)),
+                "devices": {
+                    name: self._describe_i2c_device_state(device_state)
+                    for name, device_state in (i2c_state.get("devices") or {}).items()
+                    if isinstance(device_state, dict)
+                },
+            }
+
+        spi_state = state.get("spi")
+        if isinstance(spi_state, dict):
+            devices = spi_state.get("devices") or {}
+            summary["spi"] = {
+                "devices": {
+                    name: self._describe_spi_device_state(device_state)
+                    for name, device_state in devices.items()
+                    if isinstance(device_state, dict)
+                }
+            }
+
+        return summary
+
+    @staticmethod
+    def _describe_i2c_device_state(device_state: dict[str, Any]) -> dict[str, Any]:
+        """Render one I2C slave state with a compact register preview."""
+        registers = device_state.get("registers") or {}
+        preview_items = sorted(
+            (
+                int(address) & 0xFF,
+                int(value) & 0xFF,
+            )
+            for address, value in registers.items()
+            if isinstance(address, int)
+        )[:16]
+        preview = {f"0x{address:02X}": f"0x{value:02X}" for address, value in preview_items}
+
+        return {
+            "kind": device_state.get("kind"),
+            "pointer_register": device_state.get("pointer_register"),
+            "temperature_c": device_state.get("temperature_c"),
+            "register_count": len(registers),
+            "register_preview": preview,
+        }
+
+    @staticmethod
+    def _describe_spi_device_state(device_state: dict[str, Any]) -> dict[str, Any]:
+        """Render one SPI slave state without exposing raw bytearrays to JSON serialization."""
+        memory = device_state.get("memory")
+        preview = ""
+        if isinstance(memory, (bytes, bytearray)):
+            preview = "".join(f"{value:02X}" for value in memory[:16])
+
+        return {
+            "busy_until_ms": device_state.get("busy_until_ms"),
+            "status_register": device_state.get("status_register"),
+            "write_protect": device_state.get("write_protect"),
+            "memory_preview_hex": preview,
+            "memory_size": len(memory) if isinstance(memory, (bytes, bytearray)) else 0,
+        }
 
     @staticmethod
     def _normalize_mapping(raw: Any) -> dict[str, Any]:

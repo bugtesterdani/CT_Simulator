@@ -21,7 +21,7 @@ public sealed class SnapshotSessionPersistenceTests
         {
             var steps = new List<SimulationExportStep>
             {
-                new("ON", "PASS", "3.3", "3.2", "3.5", "V", "ok", Array.Empty<StepConnectionTrace>(), Array.Empty<MeasurementCurvePoint>(), 0)
+                new("ON", "PASS", "3.3", "3.2", "3.5", "V", "ok", Array.Empty<StepConnectionTrace>(), Array.Empty<MeasurementCurvePoint>(), 0, 12, "ON", "CSV says fail", "FAIL", "1.5", "3.2", "3.5", "Name+Reihenfolge", "CsvDrivesResult")
             };
             var logs = new List<SimulationExportLogEntry>
             {
@@ -78,6 +78,9 @@ public sealed class SnapshotSessionPersistenceTests
             Assert.AreEqual(1, loaded.SignalHistory.Count);
             Assert.AreEqual(0, loaded.SelectedTimelineIndex);
             Assert.AreEqual(0, loaded.Steps[0].TimelineIndex);
+            Assert.AreEqual(12, loaded.Steps[0].CsvRowNumber);
+            Assert.AreEqual("FAIL", loaded.Steps[0].CsvOutcome);
+            Assert.AreEqual("CsvDrivesResult", loaded.Steps[0].CsvDisplayMode);
 
             var restored = SimulationSnapshotSessionSerializer.ToSnapshot(loaded.Timeline[0]);
             Assert.AreEqual("Parallel checking", restored.ActiveConcurrentGroup);

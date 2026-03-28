@@ -1,0 +1,21 @@
+name: spi_93c46b_good
+
+signals:
+  inputs:
+    - MOSI
+    - MISO
+    - CLK
+    - CS
+    - VCC
+
+interfaces:
+  DM30_SPI_EEPROM:
+    protocol: spi
+    required_supply_v: 5.0
+    chip_select_active: Low
+    devices:
+      CAT93C46B:
+        kind: generic
+        size_bytes: 4096
+        default_read_byte: 0xFF
+        write_delay_ms: 1

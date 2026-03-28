@@ -1,0 +1,10 @@
+name: noop_device
+
+signals:
+  inputs: []
+  outputs: []
+  sources: []
+  internal: []
+
+outputs: {}
+interfaces: {}

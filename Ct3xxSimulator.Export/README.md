@@ -17,6 +17,7 @@ Snapshot-Sessions enthalten:
 - Timeline-Snapshots
 - Logs
 - Schrittergebnisse
+- inklusive optionaler CSV-Zuordnungen pro Schritt
 - Signalhistorie
 - Concurrent-Metadaten
 - Restore-Index fuer den zuletzt gewaehlten Snapshot

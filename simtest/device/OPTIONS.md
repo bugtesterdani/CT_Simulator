@@ -232,6 +232,50 @@ Unterstuetzt:
 - `state_when`
 - `response`
 
+Zusaetzlich unterstuetzt:
+
+- `protocol: i2c`
+- `protocol: spi`
+- `required_supply_v`
+- `master_readback: echo`
+- `master_readback: fixed`
+- `master_readback_byte`
+- `devices`
+
+Fuer I2C-Geraete aktuell wichtig:
+
+- `kind: lm75`
+- `address`
+- `temperature_c`
+- `initial_pointer`
+- `initial_registers`
+
+Wichtig:
+
+- das Testsystem ist in diesem Modell immer der I2C-Master
+- das Profil beschreibt das externe I2C-Slave-Geraet
+- der I2C-Slave-Zustand bleibt ueber den aktuellen Testlauf erhalten
+- Registerwerte werden erst bei `reset()` oder in einem neuen Testlauf auf ihre Initialwerte gesetzt
+- die bisherigen Felder `write_response` und `write_response_byte` bleiben aus Kompatibilitaetsgruenden weiter lesbar, sollen aber nicht mehr neu verwendet werden
+
+Fuer SPI zusaetzlich aktuell wichtig:
+
+- das Testsystem ist immer der SPI-Master
+- das Profil beschreibt das externe SPI-Slave-Geraet
+
+Fuer einfache `SMUD`-Lastprofile aktuell wichtig:
+
+- Versorgung wird ueber einen normalen Eingang wie `DUT_SUPPLY` modelliert
+- Strommessung wird ueber einen normalen Ausgang wie `DUT_CURRENT` modelliert
+- dadurch sind keine separaten Spezialhooks im Python-Host noetig
+- PASS-/FAIL-/ERROR-Varianten lassen sich ueber unterschiedliche Profile oder Python-Module abbilden
+- `clock_phase`
+- `clock_polarity`
+- `chip_select_active`
+- `frequency_hz`
+- per-Testlauf persistenter Speicher ueber `initial_memory`, `initial_memory_hex` oder Byte-Initialwerte
+- Sonderfaelle wie `WREN`, Status-Register, Busy-/Write-Delay, Page-Boundaries und Write-Protect
+
 ### `timers`
 
 Gedacht fuer:

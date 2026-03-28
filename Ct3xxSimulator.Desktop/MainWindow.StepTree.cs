@@ -86,6 +86,54 @@ public partial class MainWindow
         RebuildFlatStepTreeFromResults(timelineIndex);
     }
 
+    private void SelectBestStepNodeForTimelineIndex(int timelineIndex, string? currentStep)
+    {
+        var candidates = EnumerateVisibleNodes(StepTreeRootNodes)
+            .Where(node => node.Result != null)
+            .Select(node => new
+            {
+                Node = node,
+                LatestIndex = GetLatestTimelineIndexForNode(node)
+            })
+            .Where(item => item.LatestIndex.HasValue && item.LatestIndex.Value <= timelineIndex)
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            SelectedStepTreeNode = null;
+            return;
+        }
+
+        var exactNameMatch = candidates
+            .Where(item => !string.IsNullOrWhiteSpace(currentStep) &&
+                           string.Equals(item.Node.Title, currentStep, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(item => item.LatestIndex!.Value)
+            .FirstOrDefault();
+        if (exactNameMatch != null)
+        {
+            SelectedStepTreeNode = exactNameMatch.Node;
+            return;
+        }
+
+        var latest = candidates
+            .OrderByDescending(item => item.LatestIndex!.Value)
+            .First();
+        SelectedStepTreeNode = latest.Node;
+    }
+
+    private static IEnumerable<StepTreeNodeViewModel> EnumerateVisibleNodes(IEnumerable<StepTreeNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            yield return node;
+
+            foreach (var child in EnumerateVisibleNodes(node.Children))
+            {
+                yield return child;
+            }
+        }
+    }
+
     private int? GetLatestTimelineIndexForSelectedNode()
     {
         return GetLatestTimelineIndexForNode(SelectedStepTreeNode);

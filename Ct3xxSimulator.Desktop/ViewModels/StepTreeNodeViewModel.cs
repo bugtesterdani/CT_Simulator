@@ -104,31 +104,47 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
     /// Gets the breakpoint text.
     /// </summary>
     public string BreakpointText => HasBreakpoint ? "BP" : string.Empty;
+    /// <summary>
+    /// Gets the result source label.
+    /// </summary>
+    public string ResultSourceLabel => Result?.ResultSourceLabel ?? string.Empty;
+    /// <summary>
+    /// Gets a value indicating whether the result source label should be shown.
+    /// </summary>
+    public bool HasResultSourceLabel => !string.IsNullOrWhiteSpace(ResultSourceLabel);
+    /// <summary>
+    /// Gets the status badge background color.
+    /// </summary>
+    public string OutcomeBadgeBackground => Result?.OutcomeBadgeBackground ?? "#FFEAF1F7";
+    /// <summary>
+    /// Gets the status badge foreground color.
+    /// </summary>
+    public string OutcomeBadgeForeground => Result?.OutcomeBadgeForeground ?? "#FF2E5E86";
 
     /// <summary>
     /// Executes compute aggregate outcome.
     /// </summary>
-    public string Outcome => Result?.Outcome ?? ComputeAggregateOutcome();
+    public string Outcome => Result?.DisplayOutcome ?? ComputeAggregateOutcome();
     /// <summary>
     /// Gets the measured value.
     /// </summary>
-    public string MeasuredValue => Result?.MeasuredValue ?? string.Empty;
+    public string MeasuredValue => Result?.DisplayMeasuredValue ?? string.Empty;
     /// <summary>
     /// Gets the lower limit.
     /// </summary>
-    public string LowerLimit => Result?.LowerLimit ?? string.Empty;
+    public string LowerLimit => Result?.DisplayLowerLimit ?? string.Empty;
     /// <summary>
     /// Gets the upper limit.
     /// </summary>
-    public string UpperLimit => Result?.UpperLimit ?? string.Empty;
+    public string UpperLimit => Result?.DisplayUpperLimit ?? string.Empty;
     /// <summary>
     /// Gets the unit.
     /// </summary>
-    public string Unit => Result?.Unit ?? string.Empty;
+    public string Unit => Result?.DisplayUnit ?? string.Empty;
     /// <summary>
     /// Gets the details.
     /// </summary>
-    public string Details => Result?.Details ?? string.Empty;
+    public string Details => Result?.DisplayDetails ?? string.Empty;
     /// <summary>
     /// Gets a value indicating whether the trace view condition is met.
     /// </summary>
@@ -156,7 +172,7 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
     /// <summary>
     /// Gets the detail line.
     /// </summary>
-    public string DetailLine => IsGroup ? (GroupHint ?? string.Empty) : Details;
+    public string DetailLine => IsGroup ? (GroupHint ?? string.Empty) : BuildDetailLine();
 
     /// <summary>
     /// Executes apply result.
@@ -181,6 +197,10 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasTraceView));
         OnPropertyChanged(nameof(HasBreakpoint));
         OnPropertyChanged(nameof(BreakpointText));
+        OnPropertyChanged(nameof(ResultSourceLabel));
+        OnPropertyChanged(nameof(HasResultSourceLabel));
+        OnPropertyChanged(nameof(OutcomeBadgeBackground));
+        OnPropertyChanged(nameof(OutcomeBadgeForeground));
         OnPropertyChanged(nameof(NodeTypeLabel));
         OnPropertyChanged(nameof(SummaryLine));
         OnPropertyChanged(nameof(ValueSummary));
@@ -240,6 +260,16 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         }
 
         return string.Join("   |   ", parts);
+    }
+
+    private string BuildDetailLine()
+    {
+        if (Result?.HasComparisonSummary == true)
+        {
+            return Result.ComparisonSummary;
+        }
+
+        return Details;
     }
 
     private string BuildTestSummary()

@@ -14,6 +14,7 @@ using Ct3xxSimulator.Desktop.Configuration;
 using Ct3xxSimulator.Desktop.ViewModels;
 using Ct3xxSimulator.Desktop.Views;
 using Ct3xxSimulator.Simulation;
+using Ct3xxTestRunLogParser.Model;
 
 namespace Ct3xxSimulator.Desktop;
 
@@ -40,12 +41,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     private string? _wiringFolderPath;
     private string? _simulationModelFolderPath;
     private string? _pythonScriptPath;
+    private string? _csvReplayFilePath;
     private string? _scenarioPresetFilePath = ScenarioPresetStore.GetDefaultPath();
     private bool _isSimulationRunning;
     private string? _currentStep;
     private string? _configurationSummary;
     private string? _validationSummary;
+    private string? _csvReplaySummary = "CSV-Modus: Aus";
     private ScenarioPreset? _selectedScenarioPreset;
+    private CsvReplayMode _selectedCsvReplayMode;
+    private ImportedTestRun? _loadedCsvReplayRun;
+    private ImportedTestRunMatchReport? _csvReplayMatchReport;
+    private string? _csvReplayError;
+    private readonly List<ImportedTestRunStepMatch> _activeCsvReplayMatches = new();
+    private int _csvReplayMatchCursor;
     private bool _isStepModeEnabled;
     private bool _pauseAtNextStep;
     private int _executedTestCount;
@@ -197,6 +206,42 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         }
     }
 
+    public string? CsvReplayFilePath
+    {
+        get => _csvReplayFilePath;
+        set
+        {
+            if (SetField(ref _csvReplayFilePath, value))
+            {
+                UpdateConfigurationSummary();
+                RefreshCsvReplayState(false);
+                ValidateCurrentConfiguration(false);
+            }
+        }
+    }
+
+    public IReadOnlyList<KeyValuePair<CsvReplayMode, string>> CsvReplayModeOptions { get; } =
+        new[]
+        {
+            new KeyValuePair<CsvReplayMode, string>(CsvReplayMode.Off, "Aus"),
+            new KeyValuePair<CsvReplayMode, string>(CsvReplayMode.Compare, "Vergleich"),
+            new KeyValuePair<CsvReplayMode, string>(CsvReplayMode.CsvDrivesResult, "CSV fuehrt Ergebnis")
+        };
+
+    public CsvReplayMode SelectedCsvReplayMode
+    {
+        get => _selectedCsvReplayMode;
+        set
+        {
+            if (SetField(ref _selectedCsvReplayMode, value))
+            {
+                UpdateConfigurationSummary();
+                RefreshCsvReplayState(false);
+                ValidateCurrentConfiguration(false);
+            }
+        }
+    }
+
     public string SimulationRunStateText
     {
         get => _simulationRunStateText;
@@ -235,6 +280,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     {
         get => _validationSummary;
         private set => SetField(ref _validationSummary, value);
+    }
+
+    public string? CsvReplaySummary
+    {
+        get => _csvReplaySummary;
+        private set => SetField(ref _csvReplaySummary, value);
     }
 
     public ScenarioPreset? SelectedScenarioPreset

@@ -9,6 +9,8 @@ using Ct3xxSimulator.Desktop.Configuration;
 using Ct3xxSimulator.Desktop.ViewModels;
 using Ct3xxSimulator.Desktop.Views;
 using Ct3xxSimulator.Validation;
+using Ct3xxTestRunLogParser.Matching;
+using Ct3xxTestRunLogParser.Parsing;
 
 namespace Ct3xxSimulator.Desktop;
 
@@ -37,6 +39,7 @@ public partial class MainWindow
         WiringFolderPath = Path.Combine(simtestRoot, "wireplan");
         SimulationModelFolderPath = Path.Combine(simtestRoot, "wireplan");
         PythonScriptPath = Path.Combine(simtestRoot, "device", "devices", "IKI_good.json");
+        SelectedCsvReplayMode = CsvReplayMode.Off;
 
         if (!string.IsNullOrWhiteSpace(SelectedFilePath))
         {
@@ -113,6 +116,22 @@ public partial class MainWindow
         }
     }
 
+    private void OnBrowseCsvReplayFile(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "CSV-Testlauf waehlen",
+            Filter = "CSV (*.csv)|*.csv|Alle Dateien (*.*)|*.*",
+            FileName = Path.GetFileName(CsvReplayFilePath ?? "Testlauf.csv"),
+            InitialDirectory = GetInitialDirectory(CsvReplayFilePath)
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            CsvReplayFilePath = dialog.FileName;
+        }
+    }
+
     private void OnLoadProgramFromResolvedSelection(object sender, RoutedEventArgs e)
     {
         ResolveProgramFromCurrentFolder(true);
@@ -171,6 +190,7 @@ public partial class MainWindow
             BuildStepTree(_program);
             AddLog($"Programm geladen: {Path.GetFileName(fullPath)}");
             AddLog($"Externe Dateien: {_fileSet.ExternalFiles.Count}");
+            RefreshCsvReplayState(false);
             UpdateConfigurationSummary();
             return true;
         }
@@ -182,6 +202,7 @@ public partial class MainWindow
             }
 
             AddLog($"Fehler beim Laden: {ex.Message}");
+            RefreshCsvReplayState(false);
             return false;
         }
     }
@@ -193,6 +214,7 @@ public partial class MainWindow
             $"Verdrahtung: {Path.GetFileName(WiringFolderPath ?? string.Empty)} | " +
             $"Simulation: {Path.GetFileName(SimulationModelFolderPath ?? string.Empty)} | " +
             $"Geraetemodell: {Path.GetFileName(PythonScriptPath ?? string.Empty)} | " +
+            $"CSV: {Path.GetFileName(CsvReplayFilePath ?? string.Empty)} ({GetCsvReplayModeLabel(SelectedCsvReplayMode)}) | " +
             $"Szenario-Datei: {Path.GetFileName(ScenarioPresetFilePath ?? string.Empty)}";
     }
 
@@ -262,6 +284,8 @@ public partial class MainWindow
         WiringFolderPath = SelectedScenarioPreset.WiringFolderPath;
         SimulationModelFolderPath = SelectedScenarioPreset.SimulationModelFolderPath;
         PythonScriptPath = SelectedScenarioPreset.PythonScriptPath;
+        CsvReplayFilePath = SelectedScenarioPreset.CsvReplayFilePath;
+        SelectedCsvReplayMode = SelectedScenarioPreset.CsvReplayMode;
         _breakpointNodeKeys.Clear();
         foreach (var key in SelectedScenarioPreset.BreakpointKeys)
         {
@@ -311,6 +335,8 @@ public partial class MainWindow
             WiringFolderPath = WiringFolderPath,
             SimulationModelFolderPath = SimulationModelFolderPath,
             PythonScriptPath = PythonScriptPath,
+            CsvReplayFilePath = CsvReplayFilePath,
+            CsvReplayMode = SelectedCsvReplayMode,
             BreakpointKeys = _breakpointNodeKeys.OrderBy(item => item, StringComparer.OrdinalIgnoreCase).ToList()
         };
 
@@ -412,7 +438,8 @@ public partial class MainWindow
 
     private IReadOnlyList<string> ValidateCurrentConfiguration(bool showSuccessMessage)
     {
-        var issues = SimulationConfigurationValidator.Validate(SelectedFilePath, WiringFolderPath, SimulationModelFolderPath, PythonScriptPath);
+        var issues = SimulationConfigurationValidator.Validate(SelectedFilePath, WiringFolderPath, SimulationModelFolderPath, PythonScriptPath).ToList();
+        issues.AddRange(ValidateCsvReplayConfiguration());
         ValidationSummary = issues.Count == 0 ? "Validierung: OK" : $"Validierung: {issues.Count} Problem(e)";
         if (showSuccessMessage && issues.Count == 0)
         {
@@ -490,6 +517,136 @@ public partial class MainWindow
         using var sha256 = SHA256.Create();
         var hash = sha256.ComputeHash(stream);
         return Convert.ToHexString(hash);
+    }
+
+    private void RefreshCsvReplayState(bool showErrors)
+    {
+        _loadedCsvReplayRun = null;
+        _csvReplayMatchReport = null;
+        _csvReplayError = null;
+        _activeCsvReplayMatches.Clear();
+        _csvReplayMatchCursor = 0;
+
+        if (SelectedCsvReplayMode == CsvReplayMode.Off)
+        {
+            CsvReplaySummary = "CSV-Modus: Aus";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CsvReplayFilePath))
+        {
+            CsvReplaySummary = $"CSV-Modus: {GetCsvReplayModeLabel(SelectedCsvReplayMode)} | Keine Datei ausgewaehlt";
+            return;
+        }
+
+        try
+        {
+            var parser = new TestRunLogCsvParser();
+            _loadedCsvReplayRun = parser.ParseFile(CsvReplayFilePath);
+
+            if (_program == null)
+            {
+                CsvReplaySummary = $"CSV geladen: {_loadedCsvReplayRun.Steps.Count} Zeilen | Programm-Matching ausstehend";
+                return;
+            }
+
+            var matcher = new ImportedTestRunMatcher();
+            _csvReplayMatchReport = matcher.Match(_program, _loadedCsvReplayRun);
+            CsvReplaySummary =
+                $"CSV geladen: {_loadedCsvReplayRun.Steps.Count} Zeilen | " +
+                $"Modus: {GetCsvReplayModeLabel(SelectedCsvReplayMode)} | " +
+                $"Matching: {_csvReplayMatchReport.Summary}{BuildCsvReplayReliabilitySuffix(_csvReplayMatchReport)}";
+        }
+        catch (Exception ex)
+        {
+            _csvReplayError = ex.Message;
+            CsvReplaySummary = $"CSV-Fehler: {ex.Message}";
+            if (showErrors)
+            {
+                MessageBox.Show(this, ex.Message, "CSV-Testlauf konnte nicht geladen werden", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+
+    private IReadOnlyList<string> ValidateCsvReplayConfiguration()
+    {
+        var issues = new System.Collections.Generic.List<string>();
+        if (SelectedCsvReplayMode == CsvReplayMode.Off)
+        {
+            return issues;
+        }
+
+        if (string.IsNullOrWhiteSpace(CsvReplayFilePath) || !File.Exists(CsvReplayFilePath))
+        {
+            issues.Add("Der CSV-Testlauf wurde nicht gefunden.");
+            return issues;
+        }
+
+        if (!string.Equals(Path.GetExtension(CsvReplayFilePath), ".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            issues.Add("Der CSV-Testlauf muss als .csv-Datei vorliegen.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_csvReplayError))
+        {
+            issues.Add($"Der CSV-Testlauf konnte nicht gelesen werden: {_csvReplayError}");
+            return issues;
+        }
+
+        if (_program != null && _csvReplayMatchReport != null && _csvReplayMatchReport.Matches.Count == 0)
+        {
+            issues.Add("Der CSV-Testlauf konnte keinem sichtbaren Programmschritt zugeordnet werden.");
+            return issues;
+        }
+
+        if (_program != null && _csvReplayMatchReport != null && SelectedCsvReplayMode == CsvReplayMode.CsvDrivesResult && !_csvReplayMatchReport.IsReliable)
+        {
+            issues.Add("CSV fuehrt Ergebnis ist aktuell nicht zulaessig, weil das Matching zwischen Programm und CSV nicht zuverlaessig genug ist.");
+        }
+
+        return issues;
+    }
+
+    private static string GetCsvReplayModeLabel(CsvReplayMode mode)
+    {
+        return mode switch
+        {
+            CsvReplayMode.Compare => "Vergleich",
+            CsvReplayMode.CsvDrivesResult => "CSV fuehrt Ergebnis",
+            _ => "Aus"
+        };
+    }
+
+    private void PrepareCsvReplayExecutionState()
+    {
+        _activeCsvReplayMatches.Clear();
+        _csvReplayMatchCursor = 0;
+
+        if (SelectedCsvReplayMode == CsvReplayMode.Off || _csvReplayMatchReport == null)
+        {
+            return;
+        }
+
+        foreach (var match in _csvReplayMatchReport.Matches.OrderBy(item => item.ProgramStep.SequenceIndex))
+        {
+            _activeCsvReplayMatches.Add(match);
+        }
+
+        AddLog($"CSV-Replay vorbereitet: {_activeCsvReplayMatches.Count} gematchte Schritte im Modus {GetCsvReplayModeLabel(SelectedCsvReplayMode)}.");
+        if (!_csvReplayMatchReport.IsReliable)
+        {
+            AddLog($"Warnung: CSV-Matching ist nicht voll zuverlaessig. {_csvReplayMatchReport.Summary}");
+        }
+    }
+
+    private static string BuildCsvReplayReliabilitySuffix(Ct3xxTestRunLogParser.Model.ImportedTestRunMatchReport report)
+    {
+        if (report.IsReliable)
+        {
+            return string.Empty;
+        }
+
+        return $" | Warnung: Unzuverlaessiges Matching ({report.Matches.Count} Treffer, {report.UnmatchedProgramSteps.Count} Programmschritte offen, {report.UnmatchedCsvSteps.Count} CSV-Zeilen offen)";
     }
 
     private IReadOnlyList<BreakpointUpgradeTarget> BuildBreakpointUpgradeTargets()

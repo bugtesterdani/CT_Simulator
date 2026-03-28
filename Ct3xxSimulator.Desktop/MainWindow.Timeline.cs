@@ -58,6 +58,7 @@ public partial class MainWindow
         var entry = new SimulationTimelineEntry(_timeline.Count, snapshot);
         _timeline.Add(entry);
         TimelineEntries.Add(entry);
+        RefreshTimelineAnnotations();
         _timelineIndex = _timeline.Count - 1;
         _selectedTimelineEntry = entry;
         OnPropertyChanged(nameof(SelectedTimelineEntry));
@@ -205,7 +206,41 @@ public partial class MainWindow
 
         CurrentStep = selected.Snapshot.CurrentStep;
         RebuildStepTreeForTimelineIndex(index);
+        SelectBestStepNodeForTimelineIndex(index, selected.Snapshot.CurrentStep);
+        if (_evaluationDetailsWindow != null && SelectedStepTreeNode?.Result != null)
+        {
+            _evaluationDetailsWindow.UpdateResult(SelectedStepTreeNode.Result);
+        }
         RaiseTimelineNavigationChanged();
         UpdateLiveStateWindow();
+    }
+
+    private void RefreshTimelineAnnotations()
+    {
+        foreach (var entry in _timeline)
+        {
+            entry.ResultSourceLabel = string.Empty;
+            entry.ComparisonLabel = string.Empty;
+        }
+
+        foreach (var result in StepResults)
+        {
+            if (!result.TimelineIndex.HasValue)
+            {
+                continue;
+            }
+
+            var index = result.TimelineIndex.Value;
+            if (index < 0 || index >= _timeline.Count)
+            {
+                continue;
+            }
+
+            _timeline[index].ResultSourceLabel = result.ResultSourceLabel;
+            if (result.HasComparisonSummary)
+            {
+                _timeline[index].ComparisonLabel = result.ComparisonSummary;
+            }
+        }
     }
 }

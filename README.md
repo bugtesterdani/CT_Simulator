@@ -1,4 +1,4 @@
-CT3xx Visual Simulator & Parser Toolkit
+﻿CT3xx Visual Simulator & Parser Toolkit
 ======================================
 
 Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fuer CT3xx-Testprogramme, Verdrahtung und DUT-Simulation.
@@ -78,6 +78,8 @@ Die Projektmappe liegt in [CT3xx.sln](C:/Users/hello/Desktop/CT3xx/CT3xx.sln).
 Die priorisierte Weiterentwicklungsplanung liegt in [ROADMAP.md](C:/Users/hello/Desktop/CT3xx/ROADMAP.md).
 Format- und Konfigurationshinweise liegen gesammelt in [OPTIONS.md](C:/Users/hello/Desktop/CT3xx/OPTIONS.md).
 Die testtypspezifische Referenz- und Priorisierungsmatrix liegt in [SUPPORT_MATRIX.md](C:/Users/hello/Desktop/CT3xx/testprogramme/documentation/SUPPORT_MATRIX.md).
+Der Umsetzungsplan fuer den optionalen CSV-gestuetzten Desktop-Replay-Modus liegt in [CSV_REPLAY_PLAN.md](C:/Users/hello/Desktop/CT3xx/CSV_REPLAY_PLAN.md).
+Der Plan ist aktuell vollstaendig umgesetzt; die Datei dient jetzt als Referenz fuer Architektur, Randbedingungen und weiteren Ausbau.
 
 ## Paketverwaltung und Security
 
@@ -101,6 +103,13 @@ dotnet run --project Ct3xxSimulator.Desktop
 Die App unterstuetzt aktuell:
 
 - Auswahl von Szenario-Datei, Testprogramm-Ordner, Verdrahtungs-Ordner, Simulationsmodell-Ordner und DUT-Modell
+- optionalen CSV-Konfigurationsmodus fuer historische Testlaeufe in derselben Desktop-App
+- parallele CSV-Metadatenfuehrung pro Schritt, ohne den technischen Simulationslauf zu ersetzen
+- sichtbare Ergebnisquellen `SIM`, `CSV`, `SIM/CSV` in der Desktop-Testschrittansicht
+- CSV-/Vergleichsreiter in der Auswertungsanalyse, waehrend Verdrahtung und Signalpfade simulatorseitig bleiben
+- Snapshot-Timeline und Schrittselektion bleiben auch im CSV-Modus simulatorseitig konsistent
+- unzuverlaessiges CSV-Matching wird als Warnung markiert; CSV-gefuehrte Ergebnisanzeige bleibt dabei gesperrt
+- Schritte ohne CSV-Logeintrag bleiben trotzdem in der Analyse sichtbar; anhand der CT3xx-`LogFlags` wird dabei unterschieden, ob der fehlende Eintrag erwartbar ist oder als CSV-Abweichung markiert werden muss
 - DUT-Modelle als `.py`, `.json`, `.yaml` oder `.yml`
 - Szenario-Presets
 - Validierung der Konfiguration
@@ -150,6 +159,26 @@ Die Simulation trennt sauber zwischen:
    - `tester_output`
    - weitere Laufzeittypen wie `switch`, `fuse`, `diode`, `load`, `voltage_divider`, `sensor`, `opto`, `transistor`
 
+Explizit simulierte Testtypen im Simulatorkern umfassen inzwischen unter anderem:
+
+- `2C2I`
+- `2ARB`
+- `CDMA`
+- `DM30` (referenzbezogene SPI-EEPROM-Teilunterstuetzung)
+- `E488`
+- `ECLL`
+- `GSD^`
+- `IOXX`
+- `PET$`
+- `PRT^`
+- `PWT$`
+- `SC2C`
+- `CTCT`
+- `SA1T`
+- `SMUD`
+- `SPIX`
+- `TRGA`
+
 `assembly` erlaubt verschachtelte Unterverdrahtungen und Untermodelle, z. B. fuer Platinen oder Baugruppen.
 
 ## DUT-Modelle
@@ -164,7 +193,7 @@ Unter `simtest/device` gibt es zwei Wege fuer DUT-Simulationen:
 - ein neues Python-Modul unter `simtest/device/devices/*.py`
 - oder ein neues JSON-/YAML-Profil unter `simtest/device/devices/*`
 
-ergänzen und weiter dieselbe `simtest/device/main.py`- und `simtest/device/core`-Basis verwenden.
+ergÃ¤nzen und weiter dieselbe `simtest/device/main.py`- und `simtest/device/core`-Basis verwenden.
 
 Deklarative Profile unterstuetzen unter anderem:
 
@@ -173,7 +202,12 @@ Deklarative Profile unterstuetzen unter anderem:
 - zeitliches Verhalten
 - Timer und einfache Zustandsautomaten
 - Schnittstellenantworten
+- deklarative I2C-Busse und I2C-Slave-Geraeteprofile
+- deklarative SPI-Busse und SPI-Slave-Geraeteprofile
 - Waveform-Stimuli und Response-Captures
+
+Bei den I2C-Referenzprogrammen bleibt das CT3xx-Testsystem der Bus-Master; die deklarativen Profile unter `simtest/device/devices` modellieren die externen I2C-Slaves und behalten deren Registerzustand ueber den aktuellen Testlauf.
+Dasselbe gilt fuer SPI: Das CT3xx-Testsystem bleibt Bus-Master, deklarative DUT-Profile modellieren die externen SPI-Slaves.
 
 ## Waveform- und AM2-Unterstuetzung
 
@@ -210,6 +244,20 @@ Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
   End-to-End-Beispiel fuer das reale Testprogramm `template_splitted_am2` mit `2ARB` und Split-Unterablaeufen innerhalb des Tests
 - `simtest_transformer/`
   End-to-End-Beispiel fuer Transformator und Stromwandler
+- `simtest_uif_i2c/`
+  End-to-End-Beispiel fuer `UIF I2C Test`
+- `simtest_ea3_i2c/`
+  End-to-End-Beispiel fuer `EA3 I2C Test`
+- `simtest_ea3r_i2c/`
+  End-to-End-Beispiel fuer `EA3-R I2C Test`
+- `simtest_spi_cat25128/`
+  End-to-End-Beispiel fuer `SPI CAT25128 EEPROM`
+- `simtest_spi_93c46b/`
+  End-to-End-Beispiel fuer das DM30-basierte `SPI-EEPROM-93C46B`
+- `simtest_smud_boundary_scan/`
+  Referenzszenario fuer `SMUD` in den drei Boundary-Scan-Testadapter-Programmen
+- `simtest_ctct_contact/`
+  synthetisches Referenzszenario fuer `CTCT` mit aktivem Pfad, offener Leitung und nicht aufloesbarem Testpunkt
 - `examples/PythonDeviceSimulator/`
   einfaches Python-Pipe-Beispiel
 - `examples/altium-wireviz/`
@@ -260,3 +308,4 @@ Details:
 
 - [Ct3xxSimulator.Cli/README.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Cli/README.md)
 - [Ct3xxSimulator.Cli/OPTIONS.md](C:/Users/hello/Desktop/CT3xx/Ct3xxSimulator.Cli/OPTIONS.md)
+

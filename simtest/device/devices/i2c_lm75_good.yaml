@@ -1,0 +1,152 @@
+name: i2c_lm75_good
+
+signals:
+  inputs:
+    - I2C_SCL_CON11
+    - I2C_SDA_CON11
+    - I2C_GND_CON11
+    - I2C_VDD_CON11
+    - MBUS1
+    - MBUS2
+    - MBUS3
+    - MBUS4
+    - SCL_STI
+    - SDA_STI
+    - SCL_AQ
+    - SDA_AQ
+    - SCL_R_STI
+    - SDA_R_STI
+    - SCL_R_AQ
+    - SDA_R_AQ
+    - SCL_SCANNER
+    - SDA_SCANNER
+    - GND
+  internal:
+    - LM75_TEMP_C
+
+initial_internal:
+  LM75_TEMP_C: 25.0
+
+interfaces:
+  UIF1_FRONT_CONNECTOR:
+    protocol: i2c
+    required_supply_v: 5.0
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  UIF1_MEASUREMENT_BUS:
+    protocol: i2c
+    required_supply_v: 5.0
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  UIF1_SCANNER:
+    protocol: i2c
+    required_supply_v: 5.0
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  EA3 I2C FRONT SIDE CONNECTOR INTERFACE:
+    protocol: i2c
+    required_supply_v: 3.3
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  EA3 I2C SCANNERS INTERFACE:
+    protocol: i2c
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  EA3 I2C MEASUREMENT BUS_INTERFACE:
+    protocol: i2c
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  EA3-R I2C FRONT SIDE CONNECTOR INTERFACE:
+    protocol: i2c
+    required_supply_v: 3.3
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  EA3-R I2C SCANNERS INTERFACE:
+    protocol: i2c
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50
+  EA3-R I2C MEASUREMENT BUS_INTERFACE:
+    protocol: i2c
+    master_readback: echo
+    devices:
+      LM75:
+        kind: lm75
+        address: 0x49
+        initial_pointer: 0x00
+        temperature_c: 25.0
+        initial_registers:
+          0x01: 0x00
+          0x02: 0x4B
+          0x03: 0x50

@@ -308,7 +308,7 @@ public sealed partial class WireVizHarnessResolver
 
             foreach (var edge in YieldBidirectional(current, a, b, currentTimeMs, faults))
             {
-                yield return TraversalEdge.Node(edge.Target, edge.Scale, $"{elementId}: {resistanceOhms.ToString("0.###", CultureInfo.InvariantCulture)} Ohm");
+                yield return TraversalEdge.Node(edge.Target, edge.Scale, $"{elementId}: {resistanceOhms.ToString("0.###", CultureInfo.InvariantCulture)} Ohm", resistanceOhms);
             }
         }
 

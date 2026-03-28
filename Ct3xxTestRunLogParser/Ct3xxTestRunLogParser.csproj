@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Description>Parser library for optional imported CT3xx test run log CSV files.</Description>
+    <PackageId>Ct3xxTestRunLogParser</PackageId>
+    <AssemblyName>Ct3xxTestRunLogParser</AssemblyName>
+    <RootNamespace>Ct3xxTestRunLogParser</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ct3xxProgramParser\Ct3xxProgramParser.csproj" />
+  </ItemGroup>
+
+</Project>
