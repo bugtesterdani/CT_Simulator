@@ -1,0 +1,9 @@
+name: dm30_generic_good
+signals:
+  inputs: []
+  outputs: []
+interfaces:
+  DM30:
+    protocol: dm30
+    mode: pass
+    details: "DM30: nominal acquisition."

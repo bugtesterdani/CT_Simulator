@@ -8,7 +8,7 @@ import win32pipe
 import win32file
 import pywintypes
 
- Konstanten
+# Konstanten
 DEFAULT_PIPE_NAME = r"\\.\pipe\simtest_device"
 BUFFER_SIZE = 4096
 PIPE_TIMEOUT = 5000

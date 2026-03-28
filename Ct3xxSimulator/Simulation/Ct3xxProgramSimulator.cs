@@ -7,8 +7,10 @@ using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using Ct3xxProgramParser.Model;
 using Ct3xxProgramParser.Programs;
+using Ct3xxSimulationModelParser.Model;
 using Ct3xxSimulator.Simulation.Devices;
 using Ct3xxSimulator.Simulation.FaultInjection;
 using Ct3xxSimulator.Simulation.WireViz;
@@ -31,6 +33,7 @@ public partial class Ct3xxProgramSimulator
     private Ct3xxProgramFileSet? _fileSet;
     private Ct3xxProgram? _program;
     private SimulationFaultSet _faults = SimulationFaultSet.Empty;
+    private IReadOnlyList<ResistorElementDefinition> _deviceCtctResistors = Array.Empty<ResistorElementDefinition>();
     private bool _testerConfigurationAsked;
     private CancellationToken _cancellationToken;
     private readonly Dictionary<string, string> _measurementBusSignals = new(StringComparer.OrdinalIgnoreCase);
@@ -78,6 +81,7 @@ public partial class Ct3xxProgramSimulator
         _fileSet = null;
         _program = program;
         _faults = SimulationFaultSet.Empty;
+        _deviceCtctResistors = Array.Empty<ResistorElementDefinition>();
         _context.SetProgramContext(null);
         ResetSimulationState();
         RunCore(program, dutLoopIterations, cancellationToken);
@@ -99,7 +103,8 @@ public partial class Ct3xxProgramSimulator
 
         _externalDeviceSession?.Dispose();
         _externalDeviceSession = CreateExternalDeviceSession();
-        _wireVizResolver = WireVizHarnessResolver.Create(fileSet);
+        _deviceCtctResistors = Array.Empty<ResistorElementDefinition>();
+        _wireVizResolver = WireVizHarnessResolver.Create(fileSet, _deviceCtctResistors);
         _fileSet = fileSet;
         _program = fileSet.Program;
         _faults = SimulationFaultSet.Load(Environment.GetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT") ?? fileSet.ProgramDirectory);
@@ -1427,7 +1432,13 @@ public partial class Ct3xxProgramSimulator
     private void PublishStepEvaluation(Test test, TestOutcome outcome, double? measured = null, double? lower = null, double? upper = null, string? unit = null, string? details = null, IReadOnlyList<StepConnectionTrace>? traces = null, IReadOnlyList<MeasurementCurvePoint>? curvePoints = null, string? stepNameOverride = null)
     {
         var stepName = stepNameOverride ?? test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
-        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details, traces, curvePoints ?? CaptureCurvePoints()));
+        var resolvedTraces = traces;
+        if (resolvedTraces == null || resolvedTraces.Count == 0)
+        {
+            resolvedTraces = CollectTestTraces(test);
+        }
+
+        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details, resolvedTraces, curvePoints ?? CaptureCurvePoints()));
         PublishStateSnapshot(force: true);
     }
 
@@ -1704,7 +1715,8 @@ public partial class Ct3xxProgramSimulator
             record.DrawingReference,
             record.TestPoint,
             record.Text,
-            record.Expression
+            record.Expression,
+            record.Destination
         };
 
         foreach (var candidate in candidates)
@@ -1715,6 +1727,133 @@ public partial class Ct3xxProgramSimulator
                 yield return normalized;
             }
         }
+
+        foreach (var candidate in EnumerateRecordAttributeSignals(record))
+        {
+            var normalized = ExtractSignalName(candidate);
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                yield return normalized;
+            }
+        }
+    }
+
+    private IEnumerable<string> EnumerateRecordAttributeSignals(Record record)
+    {
+        if (record.AdditionalAttributes == null || record.AdditionalAttributes.Length == 0)
+        {
+            yield break;
+        }
+
+        var attributeNames = new[]
+        {
+            "ChannelName",
+            "Signal",
+            "Source",
+            "Target",
+            "SCL",
+            "SDA",
+            "MOSI",
+            "MISO",
+            "CLK",
+            "CS",
+            "CSST",
+            "UIFSignal"
+        };
+
+        foreach (var name in attributeNames)
+        {
+            var raw = ReadAttributeValue(record.AdditionalAttributes, name);
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                yield return raw!;
+            }
+        }
+    }
+
+    private static string? ReadAttributeValue(XmlAttribute[] attributes, string name)
+    {
+        foreach (var attribute in attributes)
+        {
+            if (string.Equals(attribute.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return attribute.Value;
+            }
+        }
+
+        return null;
+    }
+
+    private IReadOnlyList<StepConnectionTrace> CollectTestTraces(Test test)
+    {
+        var result = new List<StepConnectionTrace>();
+        if (_wireVizResolver == null || test.Parameters == null)
+        {
+            return result;
+        }
+
+        var parameters = test.Parameters;
+        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddCandidate(string? raw)
+        {
+            var normalized = ExtractSignalName(raw);
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                candidates.Add(normalized!);
+            }
+        }
+
+        AddCandidate(parameters.DrawingReference);
+        AddCandidate(parameters.Message);
+
+        foreach (var record in parameters.Records)
+        {
+            foreach (var candidate in EnumerateSignalCandidates(record))
+            {
+                candidates.Add(candidate);
+            }
+        }
+
+        foreach (var table in parameters.Tables)
+        {
+            foreach (var record in table.Records)
+            {
+                foreach (var candidate in EnumerateSignalCandidates(record))
+                {
+                    candidates.Add(candidate);
+                }
+            }
+        }
+
+        if (parameters.ExtraElements != null)
+        {
+            foreach (var element in parameters.ExtraElements)
+            {
+                var channelName = element.GetAttribute("ChannelName");
+                AddCandidate(channelName);
+                AddCandidate(element.GetAttribute("Signal"));
+                AddCandidate(element.GetAttribute("Source"));
+                AddCandidate(element.GetAttribute("Target"));
+                AddCandidate(element.GetAttribute("SCL"));
+                AddCandidate(element.GetAttribute("SDA"));
+                AddCandidate(element.GetAttribute("MOSI"));
+                AddCandidate(element.GetAttribute("MISO"));
+                AddCandidate(element.GetAttribute("CLK"));
+                AddCandidate(element.GetAttribute("CS"));
+                AddCandidate(element.GetAttribute("CSST"));
+                AddCandidate(element.GetAttribute("UIFSignal"));
+            }
+        }
+
+        foreach (var candidate in candidates)
+        {
+            result.AddRange(CollectSignalTraces(candidate, "Messpfad"));
+        }
+
+        return result
+            .DistinctBy(trace => $"{trace.Title}|{string.Join(">", trace.Nodes)}", StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static string? ExtractSignalName(string? raw)
@@ -1865,6 +2004,16 @@ public partial class Ct3xxProgramSimulator
             var response = _externalDeviceSession!.Hello(_cancellationToken, _simulatedTimeMs);
             if (response.Ok)
             {
+                var deviceResistors = ParseDeviceCtctResistors(response.Result);
+                if (deviceResistors.Count > 0)
+                {
+                    _deviceCtctResistors = deviceResistors;
+                    if (_fileSet != null)
+                    {
+                        _wireVizResolver = WireVizHarnessResolver.Create(_fileSet, _deviceCtctResistors);
+                    }
+                }
+
                 RefreshExternalDeviceState();
                 _observer.OnMessage($"Python device connected @ {response.SimTimeMs ?? 0} ms");
             }
@@ -1879,6 +2028,69 @@ public partial class Ct3xxProgramSimulator
             _externalDeviceSession?.Dispose();
             _externalDeviceSession = null;
         }
+    }
+
+    private static IReadOnlyList<ResistorElementDefinition> ParseDeviceCtctResistors(JsonNode? payload)
+    {
+        if (payload is not JsonObject payloadObject)
+        {
+            return Array.Empty<ResistorElementDefinition>();
+        }
+
+        if (payloadObject["ctct"] is not JsonObject ctctObject)
+        {
+            return Array.Empty<ResistorElementDefinition>();
+        }
+
+        if (ctctObject["resistances"] is not JsonArray resistanceArray)
+        {
+            return Array.Empty<ResistorElementDefinition>();
+        }
+
+        var results = new List<ResistorElementDefinition>();
+        var index = 0;
+        foreach (var entry in resistanceArray)
+        {
+            if (entry is not JsonObject item)
+            {
+                continue;
+            }
+
+            var a = item["a"]?.GetValue<string>()?.Trim();
+            var b = item["b"]?.GetValue<string>()?.Trim();
+            if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b))
+            {
+                continue;
+            }
+
+            double? ohmsRaw = null;
+            if (item["ohms"] is JsonValue ohmsValue && ohmsValue.TryGetValue<double>(out var numeric))
+            {
+                ohmsRaw = numeric;
+            }
+            else if (double.TryParse(item["ohms"]?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+            {
+                ohmsRaw = parsed;
+            }
+            if (!ohmsRaw.HasValue)
+            {
+                continue;
+            }
+
+            var id = item["id"]?.GetValue<string>()?.Trim();
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                id = $"DUT_CTCT_R{++index}";
+            }
+
+            var metadata = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["source"] = "device_profile"
+            };
+            results.Add(new ResistorElementDefinition(id, a!, b!, Math.Max(0d, ohmsRaw.Value), metadata));
+        }
+
+        return results;
     }
 
     private void TrySetExternalSignal(string signalName, object? value)

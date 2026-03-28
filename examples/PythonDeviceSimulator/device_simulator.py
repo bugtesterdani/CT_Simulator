@@ -21,6 +21,7 @@ from pipe_protocol import (
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the CLI argument parser for the example simulator."""
     parser = argparse.ArgumentParser(description="Example CT3xx Python DUT simulator")
     parser.add_argument("--pipe", default=DEFAULT_PIPE_NAME, help="Windows named pipe path")
     parser.add_argument(
@@ -32,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Run the example device simulator main loop."""
     args = build_parser().parse_args()
     model = DeviceModel()
     print(f"[device-sim] starting server on {args.pipe}")
@@ -78,6 +80,7 @@ def main() -> int:
 
 
 def handle_request(model: DeviceModel, request: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Dispatch one protocol request to the example device model."""
     request_id = request.get("id")
     action = str(request.get("action", "")).strip()
     sync_to_simulator_time(model, request)
@@ -140,6 +143,7 @@ def handle_request(model: DeviceModel, request: dict[str, Any]) -> tuple[dict[st
 
 
 def sync_to_simulator_time(model: DeviceModel, request: dict[str, Any]) -> None:
+    """Advance the model to the simulator time if provided."""
     sim_time_ms = request.get("sim_time_ms")
     if sim_time_ms is None:
         return
@@ -148,6 +152,7 @@ def sync_to_simulator_time(model: DeviceModel, request: dict[str, Any]) -> None:
 
 
 def ok_response(request_id: Any, model: DeviceModel, state_at_request: dict[str, Any], result: Any) -> dict[str, Any]:
+    """Build a successful protocol response payload."""
     return {
         "id": request_id,
         "ok": True,
@@ -164,6 +169,7 @@ def error_response(
     code: str,
     message: str,
 ) -> dict[str, Any]:
+    """Build an error protocol response payload."""
     return {
         "id": request_id,
         "ok": False,

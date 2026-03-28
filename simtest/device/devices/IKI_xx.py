@@ -9,14 +9,16 @@ signal_source = {"VCC_PLUS"}
 signals = list(signal_inputs | signal_outputs | signal_source)
 
 class Device39Model(BaseDeviceModel):
-    """Device39 - Komplette Implementierung in einer Datei"""
+    """Simple single-file DUT model used for basic digital threshold behavior."""
 
     def reset(self) -> None:
+        """Reset the model to its power-up defaults."""
         self.now_ms = 0
         self.vccplus_source_voltage = False
         self.adc_in_1 = 0.0
 
     def set_input(self, name: str, value: Any) -> None:
+        """Apply a tester-driven input or supply signal to the model."""
         signal = name.strip().upper()
         if signal in signal_inputs:
             if signal == "ADC_IN":
@@ -30,6 +32,7 @@ class Device39Model(BaseDeviceModel):
         raise KeyError(f"Unknown input '{name}'.")
 
     def get_signal(self, name: str) -> float:
+        """Return one DUT output signal based on the current inputs/supply."""
         signal = name.strip().upper()
         if signal not in signal_outputs:
             raise KeyError(f"Unknown signal '{name}'.")
@@ -41,6 +44,7 @@ class Device39Model(BaseDeviceModel):
         raise KeyError(f"Not implemented signal '{name}'.")
 
     def read_state(self) -> dict[str, Any]:
+        """Return a full diagnostic snapshot for UI display."""
         return {
             "time_ms": self.now_ms,
             "hilfsversorgung": self.vccplus_source_voltage,
@@ -49,6 +53,7 @@ class Device39Model(BaseDeviceModel):
         }
 
     def state_marker(self) -> dict[str, Any]:
+        """Return a minimal state marker stored with protocol responses."""
         return {
             "time_ms": self.now_ms,
             "ADC1_IN": self.adc_in_1,
@@ -56,7 +61,11 @@ class Device39Model(BaseDeviceModel):
         }
 
     def get_device_info(self) -> dict[str, Any]:
+        """Describe the device capabilities for the simulator handshake."""
         return {
             "name": "simtest-device-39",
             "signals": signals,
+            "ctct": {
+                "resistances": self.get_ctct_resistances(),
+            },
         }

@@ -216,6 +216,44 @@ aliases:
       - AM2/1 BNC + A-IO 8
 ```
 
+## CTCT Widerstandsnetz (DUT)
+
+Fuer CTCT-Kontakt-/Durchgangstests kann das DUT im Profil eigene Widerstaende zwischen
+Pins beschreiben. Diese werden zur Laufzeit als zusaetzliche Widerstandselemente in
+das WireViz-Simulationsmodell eingespeist.
+
+Wichtig:
+
+- Namen muessen zu WireViz/SigTab passen (Pin-Labels oder Signalnamen).
+- Widerstaende werden wie echte Leitungen in den CTCT-Pfaden gewertet.
+- Das ist DUT-seitig. Tester-Relais und WireViz-Verkabelung bleiben weiterhin aktiv.
+
+Beispiel:
+
+```yaml
+ctct:
+  resistances:
+    - id: DUT_R1
+      a: DUT_P1
+      b: DUT_P2
+      ohms: 120
+    - id: DUT_R2
+      a: DUT_P1
+      b: DUT_P3
+      ohms: 330
+```
+
+Gruppenvariante (gleiches Ohm zu mehreren Pins):
+
+```yaml
+ctct:
+  groups:
+    - id: DUT_BUNDLE
+      a: DUT_P1
+      ohms: 120
+      pins: [DUT_P2, DUT_P3, DUT_P4]
+```
+
 ## Deklarative I2C-Busse
 
 Wenn unter `interfaces` ein Eintrag `protocol: i2c` setzt, behandelt die Runtime `send_interface(...)` als I2C-Transaktion statt als einfache Textantwort.

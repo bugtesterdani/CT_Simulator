@@ -180,6 +180,10 @@ public partial class MainWindow
             var fullPath = Path.GetFullPath(filePath);
             _fileSet = _fileParser.Load(fullPath);
             _program = _fileSet.Program;
+            _wireVizResolver = null;
+            _wireVizResolverProgramPath = null;
+            _wireVizResolverWireVizRoot = null;
+            _wireVizResolverSimulationRoot = null;
             SelectedFilePath = fullPath;
             StepResults.Clear();
             StepTreeRootNodes.Clear();

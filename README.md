@@ -181,6 +181,8 @@ Explizit simulierte Testtypen im Simulatorkern umfassen inzwischen unter anderem
 
 `assembly` erlaubt verschachtelte Unterverdrahtungen und Untermodelle, z. B. fuer Platinen oder Baugruppen.
 
+Fuer `CTCT` koennen DUT-seitige Widerstaende ueber `ctct.resistances` / `ctct.groups` im Geraeteprofil ergaenzt werden.
+
 ## DUT-Modelle
 
 Unter `simtest/device` gibt es zwei Wege fuer DUT-Simulationen:

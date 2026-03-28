@@ -105,6 +105,46 @@ Wichtig:
 - Alias-Namen werden vor der eigentlichen Signal- oder Interface-Aufloesung auf einen kanonischen Namen gemappt
 - das eigentliche Profil soll trotzdem nur einen fachlich sauberen Kernnamen pro Signal fuehren
 
+### `ctct`
+
+Gedacht fuer:
+
+- DUT-seitige Widerstandsnetze, die in CTCT-Durchgangstests mitberuecksichtigt werden sollen
+
+Unterstuetzt:
+
+- `ctct.resistances[]`
+- `ctct.groups[]`
+
+Jeder Eintrag:
+
+- `id` (optional, sonst auto)
+- `a` (Pin/Signalname)
+- `b` (Pin/Signalname)
+- `ohms` (Widerstandswert)
+
+Beispiel:
+
+```yaml
+ctct:
+  resistances:
+    - id: DUT_R1
+      a: DUT_P1
+      b: DUT_P2
+      ohms: 120
+```
+
+Gruppenvariante:
+
+```yaml
+ctct:
+  groups:
+    - id: DUT_BUNDLE
+      a: DUT_P1
+      ohms: 120
+      pins: [DUT_P2, DUT_P3, DUT_P4]
+```
+
 ### `derived_signals`
 
 Gedacht fuer:

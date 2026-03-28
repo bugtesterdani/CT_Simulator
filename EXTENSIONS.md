@@ -10,3 +10,4 @@ Noch nicht in `Welle 1D` umgesetzt, aber als naechste Ausbaupunkte vorgesehen:
 - offene Sicherung im Testsystem als eigener CTCT-Diagnosepfad
 - zusaetzliche Parallelverbindungen mit gesonderter Bewertung
 - mehrere konkurrierende aktive Pfade mit Priorisierung und UI-Vergleich
+- gruppierte DUT-Widerstandsnetze mit expliziten Bundle-Diagnosen

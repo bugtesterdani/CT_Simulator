@@ -7,18 +7,21 @@ from pipe_protocol import DEFAULT_PIPE_NAME, close_pipe, open_pipe_client, read_
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the CLI argument parser for the mock client."""
     parser = argparse.ArgumentParser(description="Mock CT3xx client for the Python DUT simulator")
     parser.add_argument("--pipe", default=DEFAULT_PIPE_NAME, help="Windows named pipe path")
     return parser
 
 
 def main() -> int:
+    """Run a scripted sequence of requests against the example simulator."""
     args = build_parser().parse_args()
     request_counter = itertools.count(1)
     buffer = bytearray()
     pipe = open_pipe_client(args.pipe)
     try:
         def send(action: str, **payload):
+            """Send one protocol request and print the response."""
             message = {"id": f"req-{next(request_counter)}", "action": action, **payload}
             print(f">>> {message}")
             write_message(pipe, message)

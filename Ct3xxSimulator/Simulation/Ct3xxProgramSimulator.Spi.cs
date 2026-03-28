@@ -103,12 +103,7 @@ public partial class Ct3xxProgramSimulator
     private TestOutcome RunDm30Test(Test test)
     {
         var stepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "DM30";
-
-        if (_externalDeviceSession == null)
-        {
-            PublishStepEvaluation(test, TestOutcome.Error, details: "Python-Geraetesimulation ist nicht verbunden.");
-            return TestOutcome.Error;
-        }
+        var digitalPatternPath = ResolveTestFilePath(test);
 
         if (stepName.Equals("VCC ON", StringComparison.OrdinalIgnoreCase))
         {
@@ -126,6 +121,12 @@ public partial class Ct3xxProgramSimulator
 
         if (stepName.Equals("DM300 Write EEPROM", StringComparison.OrdinalIgnoreCase))
         {
+            if (_externalDeviceSession == null)
+            {
+                PublishStepEvaluation(test, TestOutcome.Error, details: "Python-Geraetesimulation ist nicht verbunden.");
+                return TestOutcome.Error;
+            }
+
             var serial = _evaluator.ToText(_context.GetValue(VariableAddress.From("Seriennummer")));
             if (string.IsNullOrWhiteSpace(serial))
             {
@@ -163,6 +164,12 @@ public partial class Ct3xxProgramSimulator
 
         if (stepName.Equals("DM300 Read Complete EEPROM", StringComparison.OrdinalIgnoreCase))
         {
+            if (_externalDeviceSession == null)
+            {
+                PublishStepEvaluation(test, TestOutcome.Error, details: "Python-Geraetesimulation ist nicht verbunden.");
+                return TestOutcome.Error;
+            }
+
             var readSupplyVoltage = _signalState.TryGetValue("VCC", out var readSupplyValue)
                 ? _evaluator.ToDouble(readSupplyValue)
                 : 0d;
@@ -199,6 +206,11 @@ public partial class Ct3xxProgramSimulator
             var curvePoints = BuildSyntheticDm30SpiCurve(readHex, writeOperation: false);
             PublishStepEvaluation(test, TestOutcome.Pass, details: $"DM30 EEPROM read: {readHex}", traces: traces, curvePoints: curvePoints);
             return TestOutcome.Pass;
+        }
+
+        if (!string.IsNullOrWhiteSpace(digitalPatternPath))
+        {
+            return RunDm30DigitalPatternTest(test, digitalPatternPath);
         }
 
         return RunGenericTest(test);

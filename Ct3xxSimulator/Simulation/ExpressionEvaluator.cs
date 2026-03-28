@@ -270,6 +270,9 @@ public class ExpressionEvaluator
         _ => value?.ToString() ?? string.Empty
     };
 
+    /// <summary>
+    /// Remove matching single or double quotes from a token.
+    /// </summary>
     private static string TrimQuotes(string value)
     {
         if (value.Length >= 2 && ((value.StartsWith("'", StringComparison.Ordinal) && value.EndsWith("'", StringComparison.Ordinal)) ||
@@ -281,6 +284,9 @@ public class ExpressionEvaluator
         return value;
     }
 
+    /// <summary>
+    /// Evaluate one supported CT3xx function call expression.
+    /// </summary>
     private bool TryEvaluateFunction(string expression, out object? result)
     {
         result = null;
@@ -322,6 +328,9 @@ public class ExpressionEvaluator
         }
     }
 
+    /// <summary>
+    /// Execute the WRITEFILE(...) function and return the written byte count.
+    /// </summary>
     private object ExecuteWriteFile(IReadOnlyList<string> arguments)
     {
         if (arguments.Count < 2)
@@ -356,11 +365,17 @@ public class ExpressionEvaluator
         return new FileInfo(fullPath).Length;
     }
 
+    /// <summary>
+    /// Split a function argument list by commas while respecting nested content.
+    /// </summary>
     private static List<string> SplitArguments(string text)
     {
         return SplitTopLevel(text, ',');
     }
 
+    /// <summary>
+    /// Split a string by the separator while skipping nested parentheses and quotes.
+    /// </summary>
     private static List<string> SplitTopLevel(string text, char separator)
     {
         var result = new List<string>();

@@ -1,0 +1,9 @@
+name: dm30_generic_error
+signals:
+  inputs: []
+  outputs: []
+interfaces:
+  DM30:
+    protocol: dm30
+    mode: error
+    error_message: "DM30: device not responding."

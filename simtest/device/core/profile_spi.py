@@ -59,11 +59,13 @@ def handle_spi_transaction(model: Any, interface_name: str, definition: dict[str
 
 
 def _resolve_spi_config(definition: dict[str, Any]) -> dict[str, Any]:
+    """Return the SPI configuration block from an interface definition."""
     spi_config = definition.get("spi")
     return spi_config if isinstance(spi_config, dict) else definition
 
 
 def _create_device_state_map(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Create runtime state containers for all declarative SPI devices."""
     devices = config.get("devices") or {}
     state_map: dict[str, dict[str, Any]] = {}
     iterator = devices.items() if isinstance(devices, dict) else enumerate(devices) if isinstance(devices, list) else []
@@ -75,6 +77,7 @@ def _create_device_state_map(config: dict[str, Any]) -> dict[str, dict[str, Any]
 
 
 def _create_device_state(candidate: dict[str, Any]) -> dict[str, Any]:
+    """Initialize one SPI device runtime state with memory and defaults."""
     size_bytes = max(1, _int_with_default(candidate.get("size_bytes"), 256))
     memory = bytearray(size_bytes)
     _apply_initial_memory(memory, candidate)
@@ -97,6 +100,7 @@ def _create_device_state(candidate: dict[str, Any]) -> dict[str, Any]:
 
 
 def _apply_initial_memory(memory: bytearray, config: dict[str, Any]) -> None:
+    """Seed the EEPROM memory from dict/list/hex configuration."""
     initial_memory = config.get("initial_memory")
     if isinstance(initial_memory, dict):
         for raw_address, raw_value in initial_memory.items():
@@ -126,6 +130,7 @@ def _apply_initial_memory(memory: bytearray, config: dict[str, Any]) -> None:
 
 
 def _select_device(model: Any, config: dict[str, Any], devices: dict[str, dict[str, Any]]) -> tuple[str | None, dict[str, Any] | None]:
+    """Choose the active SPI device based on enabled conditions."""
     for name, device in devices.items():
         device_config = device.get("config") or {}
         if not condition_matches(model, device_config.get("enabled_when")):
@@ -135,6 +140,7 @@ def _select_device(model: Any, config: dict[str, Any], devices: dict[str, dict[s
 
 
 def _validate_bus(config: dict[str, Any], payload: dict[str, Any], operation: str) -> str | None:
+    """Validate power and bus-parameter expectations for one SPI transfer."""
     required_supply = float(config.get("required_supply_v", 0.0) or 0.0)
     supply_voltage = float(payload.get("power_source_voltage", 0.0) or 0.0)
     if required_supply > 0.0 and supply_voltage < required_supply:
@@ -174,6 +180,7 @@ def _validate_bus(config: dict[str, Any], payload: dict[str, Any], operation: st
 
 
 def _handle_spi_transaction(config: dict[str, Any], payload: dict[str, Any], device_name: str, device: dict[str, Any], now_ms: int) -> dict[str, Any]:
+    """Execute a full SPI transaction against the selected device."""
     tx_hex = _normalize_hex(payload.get("tx_hex"))
     if not tx_hex:
         return _error("Missing SPI TX data.")
@@ -191,6 +198,7 @@ def _handle_spi_transaction(config: dict[str, Any], payload: dict[str, Any], dev
 
 
 def _handle_cat25128_transaction(config: dict[str, Any], payload: dict[str, Any], device_name: str, device: dict[str, Any], now_ms: int, tx_bytes: list[int]) -> dict[str, Any]:
+    """Handle CAT25128 EEPROM command semantics."""
     rx_bytes = [int(device.get("default_read_byte", 0xFF)) & 0xFF for _ in tx_bytes]
     status_register = _effective_status_register(device, now_ms)
     command = tx_bytes[0]
@@ -243,6 +251,7 @@ def _handle_cat25128_transaction(config: dict[str, Any], payload: dict[str, Any]
 
 
 def _handle_dm30_write_serial(payload: dict[str, Any], device_name: str, device: dict[str, Any], now_ms: int) -> dict[str, Any]:
+    """Write a DM30 serial string into EEPROM memory."""
     serial_text = str(payload.get("serial_text") or "")
     if not serial_text:
         return _error(f"{device_name}: missing serial text.")
@@ -266,6 +275,7 @@ def _handle_dm30_write_serial(payload: dict[str, Any], device_name: str, device:
 
 
 def _handle_dm30_dump_hex(device_name: str, device: dict[str, Any]) -> dict[str, Any]:
+    """Dump the full EEPROM memory as a hex string."""
     memory = device["memory"]
     read_hex = "".join(f"{value:02X}" for value in memory)
     return {
@@ -277,6 +287,7 @@ def _handle_dm30_dump_hex(device_name: str, device: dict[str, Any]) -> dict[str,
 
 
 def _effective_status_register(device: dict[str, Any], now_ms: int) -> int:
+    """Compute the current status register, respecting busy timing."""
     status = int(device.get("status_register", 0x00) or 0x00) & 0xFF
     if now_ms >= int(device.get("busy_until_ms", 0) or 0):
         status &= ~0x01
@@ -287,6 +298,7 @@ def _effective_status_register(device: dict[str, Any], now_ms: int) -> int:
 
 
 def _parse_address(tx_bytes: list[int], address_width: int) -> int:
+    """Parse a big-endian address from the command byte stream."""
     address = 0
     for index in range(address_width):
         value = tx_bytes[index + 1] if index + 1 < len(tx_bytes) else 0
@@ -295,6 +307,7 @@ def _parse_address(tx_bytes: list[int], address_width: int) -> int:
 
 
 def _ok(read_hex: str | None, details: str, tx_bytes: list[int]) -> dict[str, Any]:
+    """Build an ok response with decoded readback bytes."""
     read_bytes = _hex_to_bytes(read_hex) if read_hex else []
     return {
         "status": "ok",
@@ -307,6 +320,7 @@ def _ok(read_hex: str | None, details: str, tx_bytes: list[int]) -> dict[str, An
 
 
 def _error(details: str) -> dict[str, Any]:
+    """Build a standardized error response for SPI operations."""
     return {
         "status": "error",
         "details": details,
@@ -317,6 +331,7 @@ def _error(details: str) -> dict[str, Any]:
 
 
 def _normalize_hex(value: Any) -> str:
+    """Normalize free-form hex strings into an even-length uppercase buffer."""
     text = "".join(ch for ch in str(value or "").strip().strip("'\"") if ch.upper() in "0123456789ABCDEF")
     if len(text) % 2 != 0:
         text = "0" + text
@@ -324,19 +339,23 @@ def _normalize_hex(value: Any) -> str:
 
 
 def _hex_to_bytes(value: str | None) -> list[int]:
+    """Convert a hex string into a list of byte values."""
     hex_text = _normalize_hex(value)
     return [int(hex_text[index:index + 2], 16) for index in range(0, len(hex_text), 2)]
 
 
 def _bytes_to_hex(values: list[int]) -> str:
+    """Convert a list of byte values into a hex string."""
     return "".join(f"{value & 0xFF:02X}" for value in values)
 
 
 def _normalize_text(value: Any) -> str:
+    """Normalize free-form text to lowercase for comparisons."""
     return str(value or "").strip().lower()
 
 
 def _parse_int(value: Any) -> int | None:
+    """Parse a hex/decimal integer value from profile data."""
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, (int, float)):
@@ -354,5 +373,6 @@ def _parse_int(value: Any) -> int | None:
 
 
 def _int_with_default(value: Any, default: int) -> int:
+    """Return a parsed integer or the specified default."""
     parsed = _parse_int(value)
     return default if parsed is None else parsed

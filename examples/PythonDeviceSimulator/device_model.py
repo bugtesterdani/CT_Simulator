@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class DeviceModel:
+    """Simple example DUT state machine for the Python simulator demo."""
     vin: float = 0.0
     en: bool = False
     mode: int = 0
@@ -16,6 +17,7 @@ class DeviceModel:
     last_outputs: dict[str, float | int] = field(default_factory=dict)
 
     def reset(self) -> None:
+        """Reset the model to its power-up defaults."""
         self.vin = 0.0
         self.en = False
         self.mode = 0
@@ -27,12 +29,14 @@ class DeviceModel:
         self.last_outputs.clear()
 
     def tick(self, delta_ms: int) -> None:
+        """Advance the model time by a delta and update faults."""
         if delta_ms < 0:
             raise ValueError("delta_ms must be >= 0")
         self.now_ms += delta_ms
         self._update_faults()
 
     def move_to_time(self, target_time_ms: int) -> None:
+        """Jump the model forward to an absolute time, keeping monotonic time."""
         if target_time_ms < self.now_ms:
             raise ValueError(
                 f"target_time_ms ({target_time_ms}) must be >= current model time ({self.now_ms})"
@@ -41,6 +45,7 @@ class DeviceModel:
         self.tick(target_time_ms - self.now_ms)
 
     def set_input(self, name: str, value) -> None:
+        """Apply one tester-driven input to the model."""
         signal = name.strip().upper()
         if signal == "VIN":
             self.vin = float(value)
@@ -62,6 +67,7 @@ class DeviceModel:
         self._update_faults()
 
     def get_signal(self, name: str):
+        """Return one computed output signal."""
         outputs = self._compute_outputs()
         key = name.strip().upper()
         if key not in outputs:
@@ -69,6 +75,7 @@ class DeviceModel:
         return outputs[key]
 
     def read_state(self) -> dict:
+        """Return a full diagnostic snapshot for UI display."""
         outputs = self._compute_outputs()
         return {
             "time_ms": self.now_ms,
@@ -84,6 +91,7 @@ class DeviceModel:
         }
 
     def state_marker(self) -> dict:
+        """Return a minimal state marker stored with protocol responses."""
         return {
             "fault_code": self.fault_code,
             "startup_begin_ms": self.startup_begin_ms,
@@ -91,6 +99,7 @@ class DeviceModel:
         }
 
     def _compute_outputs(self) -> dict[str, float | int]:
+        """Compute the current output signals from the active state."""
         self._update_faults()
 
         if self.fault_code is not None:
@@ -134,16 +143,20 @@ class DeviceModel:
         return outputs
 
     def _can_start(self) -> bool:
+        """Return true when startup is allowed for the current state."""
         return self.fault_code is None and self._input_in_range()
 
     def _input_in_range(self) -> bool:
+        """Validate that VIN is within the allowed operating range."""
         return 6.5 <= self.vin <= 15.0
 
     def _ensure_startup(self) -> None:
+        """Record the startup timestamp if it is not yet set."""
         if self.startup_begin_ms is None:
             self.startup_begin_ms = self.now_ms
 
     def _update_faults(self) -> None:
+        """Update the fault flags based on VIN, EN, and load conditions."""
         if self.vin > 16.0:
             self.fault_code = "OVERVOLTAGE"
             return
@@ -163,6 +176,7 @@ class DeviceModel:
 
 
 def _to_bool(value) -> bool:
+    """Convert loose inputs into a strict boolean."""
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):

@@ -101,11 +101,13 @@ def handle_i2c_transaction(model: Any, interface_name: str, definition: dict[str
 
 
 def _resolve_i2c_config(definition: dict[str, Any]) -> dict[str, Any]:
+    """Return the I2C configuration block from an interface definition."""
     i2c_config = definition.get("i2c")
     return i2c_config if isinstance(i2c_config, dict) else definition
 
 
 def _create_device_state_map(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Create runtime state containers for all declarative I2C devices."""
     devices = config.get("devices") or {}
     state_map: dict[str, dict[str, Any]] = {}
     iterator = devices.items() if isinstance(devices, dict) else enumerate(devices) if isinstance(devices, list) else []
@@ -117,6 +119,7 @@ def _create_device_state_map(config: dict[str, Any]) -> dict[str, dict[str, Any]
 
 
 def _create_device_state(candidate: dict[str, Any], fallback_name: Any) -> dict[str, Any]:
+    """Initialize one I2C device runtime state with registers and defaults."""
     registers = _create_register_map(candidate)
     return {
         "config": copy.deepcopy(candidate),
@@ -130,6 +133,7 @@ def _create_device_state(candidate: dict[str, Any], fallback_name: Any) -> dict[
 
 
 def _create_register_map(candidate: dict[str, Any]) -> dict[int, int]:
+    """Build the initial register map from device configuration."""
     registers: dict[int, int] = {}
     _apply_initial_registers(registers, candidate.get("registers"))
     _apply_initial_registers(registers, candidate.get("initial_registers"))
@@ -137,6 +141,7 @@ def _create_register_map(candidate: dict[str, Any]) -> dict[int, int]:
 
 
 def _apply_initial_registers(registers: dict[int, int], raw_registers: Any) -> None:
+    """Populate register defaults from dict or list definitions."""
     if isinstance(raw_registers, dict):
         for raw_address, raw_value in raw_registers.items():
             address = _parse_int(raw_address)
@@ -155,6 +160,7 @@ def _apply_initial_registers(registers: dict[int, int], raw_registers: Any) -> N
 
 
 def _select_device(model: Any, config: dict[str, Any], devices: dict[str, dict[str, Any]], address_byte: int) -> tuple[str | None, dict[str, Any] | None]:
+    """Choose the active device based on address and enable conditions."""
     address = (address_byte >> 1) & 0x7F
     for name, device in devices.items():
         device_config = device.get("config") or {}
@@ -167,6 +173,7 @@ def _select_device(model: Any, config: dict[str, Any], devices: dict[str, dict[s
 
 
 def _get_selected_device(i2c_state: dict[str, Any], devices: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
+    """Return the currently selected I2C device state if available."""
     selected_device_name = str(i2c_state.get("selected_device_name") or "").strip()
     if not selected_device_name:
         return None
@@ -175,6 +182,7 @@ def _get_selected_device(i2c_state: dict[str, Any], devices: dict[str, dict[str,
 
 
 def _write_device_byte(device: dict[str, Any], i2c_state: dict[str, Any], value: int) -> None:
+    """Write a byte either to the pointer register or the data register map."""
     if bool(i2c_state.get("expect_pointer", False)):
         pointer = value & 0xFF
         i2c_state["pointer_register"] = pointer
@@ -193,6 +201,7 @@ def _write_device_byte(device: dict[str, Any], i2c_state: dict[str, Any], value:
 
 
 def _read_device_byte(device: dict[str, Any], i2c_state: dict[str, Any]) -> int:
+    """Read a byte from the selected device, including special device kinds."""
     kind = str(device.get("kind") or "generic").strip().lower()
     if kind == "lm75":
         return _read_lm75_byte(device, i2c_state)
@@ -200,6 +209,7 @@ def _read_device_byte(device: dict[str, Any], i2c_state: dict[str, Any]) -> int:
 
 
 def _read_lm75_byte(device: dict[str, Any], i2c_state: dict[str, Any]) -> int:
+    """Emit LM75 temperature register bytes based on the configured temperature."""
     pointer = int(i2c_state.get("pointer_register", device.get("pointer_register", 0)) or 0) & 0xFF
     read_index = int(i2c_state.get("pending_read_index", 0) or 0)
 
@@ -214,6 +224,7 @@ def _read_lm75_byte(device: dict[str, Any], i2c_state: dict[str, Any]) -> int:
 
 
 def _read_generic_register_byte(device: dict[str, Any], i2c_state: dict[str, Any]) -> int:
+    """Read one byte from the device register map and advance the pointer."""
     pointer = int(i2c_state.get("pointer_register", device.get("pointer_register", 0)) or 0) & 0xFF
     registers = device.get("registers") or {}
     value = int(registers.get(pointer, device.get("default_read_byte", 0)) or 0) & 0xFF
@@ -225,6 +236,7 @@ def _read_generic_register_byte(device: dict[str, Any], i2c_state: dict[str, Any
 
 
 def _master_readback_byte(config: dict[str, Any], written_byte: int) -> int:
+    """Return the byte echoed back to the tester during writes."""
     mode = str(config.get("master_readback", config.get("write_response", "echo")) or "echo").strip().lower()
     if mode == "fixed":
         return _parse_byte(config.get("master_readback_byte", config.get("write_response_byte"))) or 0
@@ -232,6 +244,7 @@ def _master_readback_byte(config: dict[str, Any], written_byte: int) -> int:
 
 
 def _parse_byte(value: Any) -> int | None:
+    """Parse a hex/decimal byte value from profile data."""
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, (int, float)):
@@ -249,6 +262,7 @@ def _parse_byte(value: Any) -> int | None:
 
 
 def _parse_int(value: Any) -> int | None:
+    """Parse a hex/decimal integer value from profile data."""
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, (int, float)):
@@ -266,6 +280,7 @@ def _parse_int(value: Any) -> int | None:
 
 
 def _int_with_default(value: Any, default: int) -> int:
+    """Return a parsed integer or the specified default."""
     parsed = _parse_int(value)
     return default if parsed is None else parsed
 

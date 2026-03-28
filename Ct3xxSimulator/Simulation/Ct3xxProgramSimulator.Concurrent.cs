@@ -12,6 +12,9 @@ public partial class Ct3xxProgramSimulator
 {
     private const long ConcurrentProcessPollIntervalMs = 50L;
 
+    /// <summary>
+    /// Drive the concurrent group scheduler loop for all branch items.
+    /// </summary>
     private void RunConcurrentGroupScheduler(IReadOnlyList<SequenceNode> items)
     {
         var branches = CreateConcurrentBranches(items);
@@ -59,6 +62,9 @@ public partial class Ct3xxProgramSimulator
         _concurrentBranchStates.Clear();
     }
 
+    /// <summary>
+    /// Build the execution state containers for each concurrent branch.
+    /// </summary>
     private List<ConcurrentBranchExecutionState> CreateConcurrentBranches(IReadOnlyList<SequenceNode> items)
     {
         var result = new List<ConcurrentBranchExecutionState>(items.Count);
@@ -76,6 +82,9 @@ public partial class Ct3xxProgramSimulator
         return result;
     }
 
+    /// <summary>
+    /// Flatten a branch node into a linear list of executable steps.
+    /// </summary>
     private static void FlattenConcurrentBranchSteps(SequenceNode node, List<SequenceNode> steps)
     {
         switch (node)
@@ -94,6 +103,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Resume any branch waits that have reached their target time.
+    /// </summary>
     private bool ResumeReadyConcurrentWaits(IEnumerable<ConcurrentBranchExecutionState> branches)
     {
         var progressed = false;
@@ -126,6 +138,9 @@ public partial class Ct3xxProgramSimulator
         return progressed;
     }
 
+    /// <summary>
+    /// Complete concurrent branches whose external processes have exited.
+    /// </summary>
     private bool CompleteFinishedConcurrentProcesses(IEnumerable<ConcurrentBranchExecutionState> branches)
     {
         var progressed = false;
@@ -153,6 +168,9 @@ public partial class Ct3xxProgramSimulator
         return progressed;
     }
 
+    /// <summary>
+    /// Advance branches that are ready to execute their next step.
+    /// </summary>
     private bool AdvanceReadyConcurrentBranches(IEnumerable<ConcurrentBranchExecutionState> branches)
     {
         var progressed = false;
@@ -180,6 +198,9 @@ public partial class Ct3xxProgramSimulator
         return progressed;
     }
 
+    /// <summary>
+    /// Execute the next step for one branch and update its runtime state.
+    /// </summary>
     private bool ExecuteNextConcurrentBranchStep(ConcurrentBranchExecutionState branch)
     {
         if (branch.StepIndex >= branch.Steps.Count)
@@ -258,6 +279,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Schedule a concurrent wait step and publish its state to the observer.
+    /// </summary>
     private void StartConcurrentWait(ConcurrentBranchExecutionState branch, Test test)
     {
         var delayMs = ParseDurationMilliseconds(GetParameterAttribute(test.Parameters, "WaitTime"));
@@ -277,6 +301,9 @@ public partial class Ct3xxProgramSimulator
         _currentConcurrentEvent = null;
     }
 
+    /// <summary>
+    /// Determine the next simulated time that may trigger concurrent progress.
+    /// </summary>
     private long? GetNextConcurrentEventTime(IEnumerable<ConcurrentBranchExecutionState> branches)
     {
         long? nextEventTimeMs = null;
@@ -302,6 +329,9 @@ public partial class Ct3xxProgramSimulator
         return nextEventTimeMs;
     }
 
+    /// <summary>
+    /// Mark a branch as completed and publish its completion snapshot.
+    /// </summary>
     private void MarkConcurrentBranchCompleted(ConcurrentBranchExecutionState branch)
     {
         if (branch.IsCompleted)
@@ -316,6 +346,9 @@ public partial class Ct3xxProgramSimulator
         _currentConcurrentEvent = null;
     }
 
+    /// <summary>
+    /// Holds the runtime execution state for one concurrent branch.
+    /// </summary>
     private sealed class ConcurrentBranchExecutionState
     {
         /// <summary>
@@ -391,6 +424,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Describes a pending wait scheduled inside a concurrent branch.
+    /// </summary>
     private sealed class ConcurrentPendingWait
     {
         /// <summary>

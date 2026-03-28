@@ -5,12 +5,14 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Xml;
 using Microsoft.Win32;
 using Ct3xxProgramParser.Model;
 using Ct3xxSimulator.Desktop.ViewModels;
 using Ct3xxSimulator.Desktop.Views;
 using Ct3xxSimulator.Export;
 using Ct3xxSimulator.Simulation;
+using Ct3xxSimulator.Simulation.WireViz;
 using Ct3xxTestRunLogParser.Model;
 
 namespace Ct3xxSimulator.Desktop;
@@ -132,20 +134,454 @@ public partial class MainWindow
 
     private void OnStepTreeDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (SelectedStepTreeNode is not StepTreeNodeViewModel node || node.Result == null)
+        if (e.Handled)
         {
             return;
         }
 
-        var stepResult = node.Result;
-        if (stepResult.Traces.Count == 0)
+        var sourceItem = FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject);
+        if (sourceItem == null || !ReferenceEquals(sender, sourceItem))
         {
-            AddLog($"Keine Verbindungsansicht fuer '{stepResult.StepName}' verfuegbar.");
             return;
         }
 
-        var window = new ConnectionGraphWindow(stepResult.StepName, stepResult.Traces, stepResult.CurvePoints) { Owner = this };
+        var node = sourceItem?.DataContext as StepTreeNodeViewModel ?? SelectedStepTreeNode;
+        if (node is null)
+        {
+            return;
+        }
+
+        var stepResult = ResolveTraceResultForNode(node);
+        var traces = stepResult?.Traces;
+        string? failureReason = null;
+        if (traces == null || traces.Count == 0)
+        {
+            traces = BuildFallbackTracesForNode(node, out failureReason);
+        }
+
+        if (traces == null || traces.Count == 0)
+        {
+            var reasonText = string.IsNullOrWhiteSpace(failureReason)
+                ? $"Keine Verbindungsansicht fuer '{node.Title}' verfuegbar."
+                : $"Keine Verbindungsansicht fuer '{node.Title}' verfuegbar. Grund: {failureReason}";
+            AddLog(reasonText);
+            MessageBox.Show(this, reasonText, "Verdrahtung nicht verfuegbar", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var window = new ConnectionGraphWindow(
+            stepResult?.StepName ?? node.Title,
+            traces,
+            stepResult?.CurvePoints) { Owner = this };
         window.ShowDialog();
+        e.Handled = true;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? source) where T : DependencyObject
+    {
+        var current = source;
+        while (current != null)
+        {
+            if (current is T match)
+            {
+                return match;
+            }
+
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
+    private StepResultViewModel? ResolveTraceResultForNode(StepTreeNodeViewModel node)
+    {
+        if (node.Result != null && node.Result.Traces.Count > 0)
+        {
+            return node.Result;
+        }
+
+        if (_treeNodeTests.TryGetValue(node, out var test))
+        {
+            var match = _stepEvaluationHistory
+                .Where(item => ReferenceEquals(item.Test, test) && item.Result.Traces.Count > 0)
+                .Select(item => item.Result)
+                .LastOrDefault();
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        var childWithTrace = node.Children
+            .Select(child => ResolveTraceResultForNode(child))
+            .FirstOrDefault(result => result != null && result.Traces.Count > 0);
+        return childWithTrace;
+    }
+
+    private IReadOnlyList<StepConnectionTrace>? BuildFallbackTracesForNode(StepTreeNodeViewModel node, out string? reason)
+    {
+        reason = null;
+        if (!_treeNodeTests.TryGetValue(node, out var test))
+        {
+            reason = "Kein zugehoeriger Testschritt gefunden.";
+            return null;
+        }
+
+        var resolver = GetWireVizResolver();
+        if (resolver == null)
+        {
+            reason = BuildResolverFailureReason();
+            return null;
+        }
+
+        var signalState = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        var candidates = CollectSignalCandidates(test, signalState);
+        if (candidates.Count == 0)
+        {
+            reason = "Im Testschritt wurden keine Signal-/Verdrahtungsreferenzen gefunden.";
+            return null;
+        }
+
+        foreach (var candidate in candidates)
+        {
+            if (resolver.TryTrace(candidate, signalState, out var traces) && traces.Count > 0)
+            {
+                return traces
+                    .Select(trace => new StepConnectionTrace($"Verdrahtung: {trace.SignalName}", trace.Nodes))
+                    .ToList();
+            }
+        }
+
+        var fallback = new List<StepConnectionTrace>();
+        foreach (var candidate in candidates)
+        {
+            if (!resolver.TryResolve(candidate, out var resolutions))
+            {
+                continue;
+            }
+
+            foreach (var resolution in resolutions)
+            {
+                if (resolution.Targets.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (var target in resolution.Targets)
+                {
+                    fallback.Add(new StepConnectionTrace(
+                        $"Verdrahtung: {resolution.Assignment.Name}",
+                        new[]
+                        {
+                            resolution.Source.DisplayName,
+                            target.DisplayName
+                        }));
+                }
+            }
+        }
+
+        if (fallback.Count == 0)
+        {
+            reason = resolver.SignalCount == 0
+                ? "WireViz wurde geladen, enthaelt aber keine Signale."
+                : "Kein aktiver Pfad gefunden (Signal nicht im WireViz oder Relais offen).";
+        }
+
+        return fallback;
+    }
+
+    private string BuildResolverFailureReason()
+    {
+        if (_fileSet == null)
+        {
+            return "Programm ist nicht geladen.";
+        }
+
+        if (string.IsNullOrWhiteSpace(WiringFolderPath))
+        {
+            return "Verdrahtungsordner ist nicht gesetzt.";
+        }
+
+        if (!Directory.Exists(WiringFolderPath))
+        {
+            return $"Verdrahtungsordner nicht gefunden: {WiringFolderPath}";
+        }
+
+        var yamlFiles = Directory.EnumerateFiles(WiringFolderPath, "*.yml", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.EnumerateFiles(WiringFolderPath, "*.yaml", SearchOption.TopDirectoryOnly))
+            .ToList();
+
+        if (yamlFiles.Count == 0)
+        {
+            return "Keine WireViz-Dateien (*.yml/*.yaml) im Verdrahtungsordner gefunden.";
+        }
+
+        return "WireViz konnte nicht geladen werden.";
+    }
+
+    private WireVizHarnessResolver? GetWireVizResolver()
+    {
+        if (_fileSet == null)
+        {
+            return null;
+        }
+
+        var programPath = _fileSet.ProgramDirectory ?? string.Empty;
+        var wireVizRoot = string.IsNullOrWhiteSpace(WiringFolderPath) ? null : Path.GetFullPath(WiringFolderPath);
+        var simulationRoot = string.IsNullOrWhiteSpace(SimulationModelFolderPath) ? null : Path.GetFullPath(SimulationModelFolderPath);
+
+        if (_wireVizResolver != null &&
+            string.Equals(_wireVizResolverProgramPath, programPath, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(_wireVizResolverWireVizRoot, wireVizRoot, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(_wireVizResolverSimulationRoot, simulationRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            return _wireVizResolver;
+        }
+
+        var previousWireVizRoot = Environment.GetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", EnvironmentVariableTarget.Process);
+        var previousSimulationRoot = Environment.GetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(wireVizRoot))
+            {
+                Environment.SetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", wireVizRoot, EnvironmentVariableTarget.Process);
+            }
+
+            if (!string.IsNullOrWhiteSpace(simulationRoot))
+            {
+                Environment.SetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", simulationRoot, EnvironmentVariableTarget.Process);
+            }
+
+            _wireVizResolver = WireVizHarnessResolver.Create(_fileSet);
+            _wireVizResolverProgramPath = programPath;
+            _wireVizResolverWireVizRoot = wireVizRoot;
+            _wireVizResolverSimulationRoot = simulationRoot;
+            return _wireVizResolver;
+        }
+        catch
+        {
+            _wireVizResolver = null;
+            _wireVizResolverProgramPath = null;
+            _wireVizResolverWireVizRoot = null;
+            _wireVizResolverSimulationRoot = null;
+            return null;
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", previousWireVizRoot, EnvironmentVariableTarget.Process);
+            Environment.SetEnvironmentVariable("CT3XX_SIMULATION_MODEL_ROOT", previousSimulationRoot, EnvironmentVariableTarget.Process);
+        }
+    }
+
+    private static IReadOnlyList<string> CollectSignalCandidates(Test test, IDictionary<string, object?> signalState)
+    {
+        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var parameters = test.Parameters;
+
+        void AddCandidate(string? raw)
+        {
+            var normalized = ExtractSignalName(raw);
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                candidates.Add(normalized);
+            }
+        }
+
+        if (parameters != null)
+        {
+            AddCandidate(parameters.DrawingReference);
+            AddCandidate(parameters.Message);
+
+            foreach (var record in parameters.Records)
+            {
+                AddCandidate(record.DrawingReference);
+                AddCandidate(record.TestPoint);
+                AddCandidate(record.Text);
+                AddCandidate(record.Expression);
+                AddCandidate(record.Destination);
+                AddRecordAttributes(record, candidates, signalState);
+            }
+
+            foreach (var table in parameters.Tables)
+            {
+                foreach (var record in table.Records)
+                {
+                    AddCandidate(record.DrawingReference);
+                    AddCandidate(record.TestPoint);
+                    AddCandidate(record.Text);
+                    AddCandidate(record.Expression);
+                    AddCandidate(record.Destination);
+                    AddRecordAttributes(record, candidates, signalState);
+                }
+            }
+
+            if (parameters.ExtraElements != null)
+            {
+                foreach (var element in parameters.ExtraElements)
+                {
+                    AddSignalFromXmlElement(element, candidates, signalState);
+                }
+            }
+        }
+
+        return candidates.ToList();
+    }
+
+    private static void AddSignalFromXmlElement(XmlElement element, ISet<string> candidates, IDictionary<string, object?> signalState)
+    {
+        if (element == null)
+        {
+            return;
+        }
+
+        var channelName = element.GetAttribute("ChannelName");
+        var normalized = ExtractSignalName(channelName);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            candidates.Add(normalized);
+
+            var relayState = element.GetAttribute("RelayState");
+            var outState = element.GetAttribute("Out");
+            var value = ResolvePreviewSignalValue(relayState, outState);
+            if (value != null)
+            {
+                signalState[normalized] = value;
+            }
+        }
+
+        AddOptionalSignalAttribute(element, candidates, "Signal");
+        AddOptionalSignalAttribute(element, candidates, "Source");
+        AddOptionalSignalAttribute(element, candidates, "Target");
+        AddOptionalSignalAttribute(element, candidates, "SCL");
+        AddOptionalSignalAttribute(element, candidates, "SDA");
+        AddOptionalSignalAttribute(element, candidates, "MOSI");
+        AddOptionalSignalAttribute(element, candidates, "MISO");
+        AddOptionalSignalAttribute(element, candidates, "CLK");
+        AddOptionalSignalAttribute(element, candidates, "CS");
+        AddOptionalSignalAttribute(element, candidates, "CSST");
+        AddOptionalSignalAttribute(element, candidates, "UIFSignal");
+    }
+
+    private static void AddRecordAttributes(Record record, ISet<string> candidates, IDictionary<string, object?> signalState)
+    {
+        if (record.AdditionalAttributes == null || record.AdditionalAttributes.Length == 0)
+        {
+            return;
+        }
+
+        var channelName = ReadAttributeValue(record.AdditionalAttributes, "ChannelName");
+        var normalized = ExtractSignalName(channelName);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            candidates.Add(normalized);
+
+            var relayState = ReadAttributeValue(record.AdditionalAttributes, "RelayState");
+            var outState = ReadAttributeValue(record.AdditionalAttributes, "Out");
+            var value = ResolvePreviewSignalValue(relayState, outState);
+            if (value != null)
+            {
+                signalState[normalized] = value;
+            }
+        }
+
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "Signal");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "Source");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "Target");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "SCL");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "SDA");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "MOSI");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "MISO");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "CLK");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "CS");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "CSST");
+        AddOptionalSignalAttribute(record.AdditionalAttributes, candidates, "UIFSignal");
+    }
+
+    private static void AddOptionalSignalAttribute(XmlAttribute[] attributes, ISet<string> candidates, string attributeName)
+    {
+        var raw = ReadAttributeValue(attributes, attributeName);
+        var normalized = ExtractSignalName(raw);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            candidates.Add(normalized);
+        }
+    }
+
+    private static string? ReadAttributeValue(XmlAttribute[] attributes, string name)
+    {
+        foreach (var attribute in attributes)
+        {
+            if (string.Equals(attribute.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return attribute.Value;
+            }
+        }
+
+        return null;
+    }
+
+    private static void AddOptionalSignalAttribute(XmlElement element, ISet<string> candidates, string attributeName)
+    {
+        var raw = element.GetAttribute(attributeName);
+        var normalized = ExtractSignalName(raw);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            candidates.Add(normalized);
+        }
+    }
+
+    private static object? ResolvePreviewSignalValue(string? relayState, string? outState)
+    {
+        var relay = relayState?.Trim().Trim('\'', '"');
+        if (!string.IsNullOrWhiteSpace(relay))
+        {
+            if (relay.Equals("On", StringComparison.OrdinalIgnoreCase) ||
+                relay.Equals("UnverifiedOn", StringComparison.OrdinalIgnoreCase))
+            {
+                return 24d;
+            }
+
+            if (relay.Equals("Off", StringComparison.OrdinalIgnoreCase) ||
+                relay.Equals("UnverifiedOff", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0d;
+            }
+        }
+
+        var outValue = outState?.Trim().Trim('\'', '"');
+        if (string.IsNullOrWhiteSpace(outValue))
+        {
+            return null;
+        }
+
+        return outValue.ToUpperInvariant() switch
+        {
+            "H" => 24d,
+            "L" => 0d,
+            "1" => 24d,
+            "0" => 0d,
+            "TRUE" => true,
+            "FALSE" => false,
+            _ => null
+        };
+    }
+
+    private static string? ExtractSignalName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var trimmed = raw.Trim().Trim('\'', '"');
+        const string prefix = "SIG:";
+        if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed[prefix.Length..].Trim();
+        }
+
+        return trimmed;
     }
 
     private void ShowEvaluationDetails(StepResultViewModel result)

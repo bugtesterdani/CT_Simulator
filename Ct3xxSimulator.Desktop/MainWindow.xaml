@@ -19,6 +19,7 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="#FF293241"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <EventSetter Event="MouseDoubleClick" Handler="OnStepTreeDoubleClick"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TreeViewItem}">
@@ -413,7 +414,6 @@
                         <TreeView Grid.Row="1"
                                   ItemsSource="{Binding StepTreeRootNodes}"
                                   SelectedItemChanged="OnStepTreeSelected"
-                                  MouseDoubleClick="OnStepTreeDoubleClick"
                                   Background="Transparent"
                                   BorderThickness="0"
                                   VirtualizingStackPanel.IsVirtualizing="True"

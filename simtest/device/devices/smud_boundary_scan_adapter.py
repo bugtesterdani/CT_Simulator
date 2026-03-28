@@ -6,12 +6,15 @@ from core import BaseDeviceModel
 
 
 class SmudBoundaryScanAdapterModel(BaseDeviceModel):
+    """Simple SMUD DUT adapter that reports a fixed current based on supply."""
     def reset(self) -> None:
+        """Reset the model to its power-up defaults."""
         self.now_ms = 0
         self.supply_voltage = 0.0
         self.ground_voltage = 0.0
 
     def set_input(self, name: str, value: Any) -> None:
+        """Apply a tester-driven supply or ground input."""
         signal = name.strip().upper()
         numeric = float(value)
         if signal in {"DUT_SUPPLY", "SM2_VOUT"}:
@@ -23,12 +26,14 @@ class SmudBoundaryScanAdapterModel(BaseDeviceModel):
         raise KeyError(f"Unknown input '{name}'.")
 
     def get_signal(self, name: str) -> float:
+        """Return the simulated current feedback signal."""
         signal = name.strip().upper()
         if signal in {"DUT_CURRENT", "SM2_ISENSE"}:
             return 0.12 if self.supply_voltage >= 8.5 else 0.0
         raise KeyError(f"Unknown signal '{name}'.")
 
     def read_state(self) -> dict[str, Any]:
+        """Return a full diagnostic snapshot for UI display."""
         return {
             "time_ms": self.now_ms,
             "inputs": {
@@ -44,6 +49,7 @@ class SmudBoundaryScanAdapterModel(BaseDeviceModel):
         }
 
     def state_marker(self) -> dict[str, Any]:
+        """Return a minimal state marker stored with protocol responses."""
         return {
             "time_ms": self.now_ms,
             "inputs": {
@@ -53,9 +59,13 @@ class SmudBoundaryScanAdapterModel(BaseDeviceModel):
         }
 
     def get_device_info(self) -> dict[str, Any]:
+        """Describe the device capabilities for the simulator handshake."""
         return {
             "name": "smud-boundary-scan-adapter",
             "signals": ["DUT_SUPPLY", "DUT_GND", "DUT_CURRENT"],
             "interfaces": [],
             "kind": "python",
+            "ctct": {
+                "resistances": self.get_ctct_resistances(),
+            },
         }

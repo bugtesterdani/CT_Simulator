@@ -25,6 +25,7 @@ from .profile_helpers import (
     normalize_mapping,
     read_signal_value,
 )
+from .profile_dm30 import handle_dm30_request, initialize_dm30_interfaces
 from .profile_i2c import handle_i2c_transaction, initialize_i2c_interfaces
 from .profile_spi import handle_spi_transaction, initialize_spi_interfaces
 from .profile_state import (
@@ -67,6 +68,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         self.interfaces = self._normalize_mapping(self.profile.get("interfaces") or {})
         self.timer_definitions = self._normalize_mapping(self.profile.get("timers") or {})
         self.state_machine_definitions = self._normalize_mapping(self.profile.get("state_machines") or {})
+        self.ctct_resistances = self._normalize_ctct_resistances(self.profile.get("ctct") or {})
 
         super().__init__()
 
@@ -98,6 +100,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
 
         initialize_i2c_interfaces(self)
         initialize_spi_interfaces(self)
+        initialize_dm30_interfaces(self)
 
         # Timers and state machines publish internal helper signals during rule evaluation.
         for name in self.timer_definitions:
@@ -212,6 +215,9 @@ class DeclarativeDeviceModel(BaseDeviceModel):
             "kind": "declarative",
             "supports_waveforms": True,
             "interfaces": sorted(self.interfaces.keys()),
+            "ctct": {
+                "resistances": self.ctct_resistances,
+            },
         }
 
     def set_waveform(self, name: str, waveform: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -241,6 +247,12 @@ class DeclarativeDeviceModel(BaseDeviceModel):
 
         if str(definition.get("protocol") or "").strip().lower() == "spi":
             response = handle_spi_transaction(self, interface_name, definition, payload)
+            state["last_response"] = response
+            state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+            return response
+
+        if str(definition.get("protocol") or "").strip().lower() == "dm30":
+            response = handle_dm30_request(self, interface_name, definition, payload)
             state["last_response"] = response
             state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
             return response
@@ -436,10 +448,12 @@ class DeclarativeDeviceModel(BaseDeviceModel):
 
     @staticmethod
     def _normalize_mapping(raw: Any) -> dict[str, Any]:
+        """Normalize YAML/JSON mappings into a plain dict."""
         return normalize_mapping(raw)
 
     @staticmethod
     def _normalize_aliases(raw: Any) -> dict[str, str]:
+        """Normalize aliases into an uppercase lookup map."""
         aliases: dict[str, str] = {}
         if not isinstance(raw, dict):
             return aliases
@@ -456,6 +470,91 @@ class DeclarativeDeviceModel(BaseDeviceModel):
                     aliases[alias] = canonical
 
         return aliases
+
+    @staticmethod
+    def _normalize_ctct_resistances(raw: Any) -> list[dict[str, Any]]:
+        """Normalize CTCT resistance/group definitions into a flat list."""
+        if not isinstance(raw, dict):
+            raw = {}
+
+        entries = raw.get("resistances") or raw.get("resistance") or raw.get("ctct_resistances") or []
+        if not isinstance(entries, list):
+            entries = [entries]
+
+        groups = raw.get("groups") or raw.get("group") or raw.get("bundles") or []
+        if not isinstance(groups, list):
+            groups = [groups]
+
+        normalized: list[dict[str, Any]] = []
+        index = 0
+
+        def append_entry(a: str, b: str, ohms_value: float, identifier: str | None = None) -> None:
+            nonlocal index
+            index += 1
+            normalized.append(
+                {
+                    "id": identifier or f"DUT_CTCT_R{index}",
+                    "a": a,
+                    "b": b,
+                    "ohms": max(0.0, ohms_value),
+                }
+            )
+
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            a = str(entry.get("a") or entry.get("from") or entry.get("src") or "").strip()
+            b = str(entry.get("b") or entry.get("to") or entry.get("dst") or "").strip()
+            if not a or not b:
+                continue
+            ohms_raw = entry.get("ohms") or entry.get("resistance") or entry.get("value")
+            try:
+                ohms = float(ohms_raw)
+            except (TypeError, ValueError):
+                continue
+            identifier = str(entry.get("id") or entry.get("name") or "").strip() or None
+            append_entry(a, b, ohms, identifier)
+
+        for group in groups:
+            if not isinstance(group, dict):
+                continue
+            ohms_raw = group.get("ohms") or group.get("resistance") or group.get("value")
+            try:
+                ohms = float(ohms_raw)
+            except (TypeError, ValueError):
+                continue
+            anchor = str(group.get("a") or group.get("from") or group.get("src") or group.get("anchor") or "").strip()
+            pins = group.get("pins") or group.get("targets") or group.get("nodes") or []
+            if not isinstance(pins, list):
+                pins = [pins]
+            pins = [str(item).strip() for item in pins if str(item).strip()]
+            base_id = str(group.get("id") or group.get("name") or "").strip()
+
+            if anchor and pins:
+                for offset, pin in enumerate(pins, start=1):
+                    if pin == anchor:
+                        continue
+                    identifier = f"{base_id}_{offset}" if base_id else None
+                    append_entry(anchor, pin, ohms, identifier)
+
+            pairs = group.get("pairs") or []
+            if not isinstance(pairs, list):
+                pairs = [pairs]
+            for offset, pair in enumerate(pairs, start=1):
+                if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+                    a = str(pair[0]).strip()
+                    b = str(pair[1]).strip()
+                elif isinstance(pair, dict):
+                    a = str(pair.get("a") or pair.get("from") or "").strip()
+                    b = str(pair.get("b") or pair.get("to") or "").strip()
+                else:
+                    continue
+                if not a or not b:
+                    continue
+                identifier = f"{base_id}_{offset}" if base_id else None
+                append_entry(a, b, ohms, identifier)
+
+        return normalized
 
     @staticmethod
     def _lookup_numeric(values: dict[str, Any], key: str, default: float) -> float:

@@ -2,6 +2,7 @@ from core import DeviceServer, create_argument_parser, load_device_model
 
 
 def main() -> int:
+    """Start the device server with either a Python module or declarative profile."""
     parser = create_argument_parser()
     args = parser.parse_args()
 

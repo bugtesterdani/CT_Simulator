@@ -42,8 +42,9 @@ public sealed partial class WireVizHarnessResolver
     /// Creates a resolver from the program directory referenced by a loaded file set.
     /// </summary>
     /// <param name="fileSet">The loaded CT3xx program file set.</param>
+    /// <param name="extraElements">Optional additional simulation elements to merge.</param>
     /// <returns>The created resolver.</returns>
-    public static WireVizHarnessResolver Create(Ct3xxProgramFileSet fileSet)
+    public static WireVizHarnessResolver Create(Ct3xxProgramFileSet fileSet, IEnumerable<SimulationElementDefinition>? extraElements = null)
     {
         if (fileSet == null)
         {
@@ -59,6 +60,7 @@ public sealed partial class WireVizHarnessResolver
         }
 
         var simulationModel = LoadSimulationModel(fileSet.ProgramDirectory);
+        simulationModel = MergeSimulationModel(simulationModel, extraElements);
         return Create(fileSet, wireVizFiles, simulationModel);
     }
 
@@ -690,6 +692,31 @@ public sealed partial class WireVizHarnessResolver
 
         var parser = new SimulationModelParser();
         return parser.ParseFile(path);
+    }
+
+    private static SimulationModelDocument? MergeSimulationModel(
+        SimulationModelDocument? baseModel,
+        IEnumerable<SimulationElementDefinition>? extraElements)
+    {
+        if (extraElements == null)
+        {
+            return baseModel;
+        }
+
+        var additional = extraElements.Where(item => item != null).ToList();
+        if (additional.Count == 0)
+        {
+            return baseModel;
+        }
+
+        var combined = new List<SimulationElementDefinition>();
+        if (baseModel?.Elements != null)
+        {
+            combined.AddRange(baseModel.Elements);
+        }
+
+        combined.AddRange(additional);
+        return new SimulationModelDocument(baseModel?.SourcePath, combined);
     }
 
     private sealed class ResolutionSeed

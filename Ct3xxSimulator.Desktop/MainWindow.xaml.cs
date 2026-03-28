@@ -14,6 +14,7 @@ using Ct3xxSimulator.Desktop.Configuration;
 using Ct3xxSimulator.Desktop.ViewModels;
 using Ct3xxSimulator.Desktop.Views;
 using Ct3xxSimulator.Simulation;
+using Ct3xxSimulator.Simulation.WireViz;
 using Ct3xxTestRunLogParser.Model;
 
 namespace Ct3xxSimulator.Desktop;
@@ -73,6 +74,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
     private StepTreeNodeViewModel? _selectedStepTreeNode;
     private string _simulationRunStateText = "Bereit";
     private Brush _simulationRunStateBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF5A6470"));
+    private WireVizHarnessResolver? _wireVizResolver;
+    private string? _wireVizResolverProgramPath;
+    private string? _wireVizResolverWireVizRoot;
+    private string? _wireVizResolverSimulationRoot;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
@@ -140,6 +145,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         {
             if (SetField(ref _wiringFolderPath, value))
             {
+                _wireVizResolver = null;
                 OnPropertyChanged(nameof(CanStartSimulation));
                 UpdateConfigurationSummary();
                 ValidateCurrentConfiguration(false);
@@ -154,6 +160,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         {
             if (SetField(ref _simulationModelFolderPath, value))
             {
+                _wireVizResolver = null;
                 OnPropertyChanged(nameof(CanStartSimulation));
                 UpdateConfigurationSummary();
                 ValidateCurrentConfiguration(false);

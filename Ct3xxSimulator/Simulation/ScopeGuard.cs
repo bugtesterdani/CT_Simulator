@@ -3,6 +3,9 @@ using System;
 
 namespace Ct3xxSimulator.Simulation;
 
+/// <summary>
+/// Executes a configured cleanup action once when disposed.
+/// </summary>
 internal sealed class ScopeGuard : IDisposable
 {
     private readonly Action _onDispose;

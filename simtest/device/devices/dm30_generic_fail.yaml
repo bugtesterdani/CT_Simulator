@@ -1,0 +1,10 @@
+name: dm30_generic_fail
+signals:
+  inputs: []
+  outputs: []
+interfaces:
+  DM30:
+    protocol: dm30
+    mode: fail
+    fail_step: 5
+    details: "DM30: forced mismatch."

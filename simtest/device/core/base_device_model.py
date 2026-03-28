@@ -91,6 +91,10 @@ class BaseDeviceModel(ABC):
     def get_device_info(self) -> dict[str, Any]:
         pass
 
+    def get_ctct_resistances(self) -> list[dict[str, Any]]:
+        """Return optional CTCT resistance definitions for DUT-side contact tests."""
+        return []
+
     def _normalize_waveform(self, signal: str, waveform: dict[str, Any]) -> dict[str, Any]:
         """Normalize incoming waveform payloads to one internal representation."""
         points = []

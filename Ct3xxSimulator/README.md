@@ -110,6 +110,7 @@ Fuer `CTCT` gilt:
 
 - bewertet wird der aktive DUT-Pfad zwischen den im Test gelisteten Testpunkten
 - Relais, Schalter, Widerstaende und Faults aus `simulation.yaml` wirken auf die Messung
+- optional zusaetzliche DUT-Widerstaende aus dem Geraetemodell (`ctct.resistances`)
 - `K='closed'` bewertet die kleinste gefundene Pfadresistenz gegen eine Maximalgrenze
 - `K='open'` bewertet Isolation bzw. fehlende Verbindung gegen eine Minimalgrenze
 - `FAIL` steht fuer Toleranzverletzung oder offene Leitung
