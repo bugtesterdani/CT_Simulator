@@ -14,6 +14,9 @@ namespace Ct3xxSimulator.Simulation;
 /// </summary>
 public partial class Ct3xxProgramSimulator
 {
+    /// <summary>
+    /// Executes RunSpiIoControlTest.
+    /// </summary>
     private TestOutcome RunSpiIoControlTest(Test test)
     {
         var parameters = test.Parameters;
@@ -100,6 +103,9 @@ public partial class Ct3xxProgramSimulator
         return overall;
     }
 
+    /// <summary>
+    /// Executes RunDm30Test.
+    /// </summary>
     private TestOutcome RunDm30Test(Test test)
     {
         var stepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "DM30";
@@ -216,6 +222,9 @@ public partial class Ct3xxProgramSimulator
         return RunGenericTest(test);
     }
 
+    /// <summary>
+    /// Executes ExecuteSpiTransaction.
+    /// </summary>
     private SpiTransactionResult ExecuteSpiTransaction(SpiInterfaceRuntime runtime, SpiRecordDefinition record, SpiTransaction transaction)
     {
         var payload = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
@@ -286,6 +295,9 @@ public partial class Ct3xxProgramSimulator
         return new SpiTransactionResult(TestOutcome.Pass, summary, readHex);
     }
 
+    /// <summary>
+    /// Executes EnumerateSpiRecords.
+    /// </summary>
     private IEnumerable<SpiRecordDefinition> EnumerateSpiRecords(TestParameters parameters)
     {
         foreach (var record in parameters.Records)
@@ -314,6 +326,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes EvaluateText.
+    /// </summary>
     private string? EvaluateText(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -337,6 +352,9 @@ public partial class Ct3xxProgramSimulator
         return EvaluateTextPart(decoded);
     }
 
+    /// <summary>
+    /// Executes GetSpiRecordAttribute.
+    /// </summary>
     private static string? GetSpiRecordAttribute(Record record, string attributeName)
     {
         if (record.AdditionalAttributes == null || string.IsNullOrWhiteSpace(attributeName))
@@ -349,6 +367,9 @@ public partial class Ct3xxProgramSimulator
         return attribute == null ? null : WebUtility.HtmlDecode(attribute.Value).Trim();
     }
 
+    /// <summary>
+    /// Executes EvaluateTextPart.
+    /// </summary>
     private string EvaluateTextPart(string raw)
     {
         var trimmed = raw.Trim();
@@ -366,6 +387,9 @@ public partial class Ct3xxProgramSimulator
         return _evaluator.ToText(trimmed);
     }
 
+    /// <summary>
+    /// Executes SplitSpiTextTopLevel.
+    /// </summary>
     private static List<string> SplitSpiTextTopLevel(string text, char separator)
     {
         var result = new List<string>();
@@ -434,6 +458,9 @@ public partial class Ct3xxProgramSimulator
         return result;
     }
 
+    /// <summary>
+    /// Executes BuildSpiInterfaceRuntime.
+    /// </summary>
     private SpiInterfaceRuntime BuildSpiInterfaceRuntime(InterfaceDefinition definition)
     {
         var name = NormalizeQuotedText(definition.Name) ?? "SPI";
@@ -455,6 +482,9 @@ public partial class Ct3xxProgramSimulator
         return new SpiInterfaceRuntime(name, route, function, frequencyHz, clockPhase, clockPolarity, csActive, cs, clk, mosi, miso, vcc, gnd, supplyVoltage);
     }
 
+    /// <summary>
+    /// Executes ApplySpiSupply.
+    /// </summary>
     private void ApplySpiSupply(SpiInterfaceRuntime runtime)
     {
         if (!runtime.SupplyVoltage.HasValue)
@@ -468,6 +498,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes BuildSpiTraces.
+    /// </summary>
     private IReadOnlyList<StepConnectionTrace> BuildSpiTraces(SpiInterfaceRuntime runtime)
     {
         var traces = BuildNamedSpiTraces(runtime.MosiSignal, runtime.MisoSignal, runtime.ClockSignal, runtime.ChipSelectSignal, runtime.SupplySignal, runtime.GroundSignal);
@@ -494,6 +527,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes BuildNamedSpiTraces.
+    /// </summary>
     private List<StepConnectionTrace> BuildNamedSpiTraces(params string?[] signals)
     {
         var traces = new List<StepConnectionTrace>();
@@ -508,6 +544,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes BuildSpiCurvePoints.
+    /// </summary>
     private IReadOnlyList<MeasurementCurvePoint> BuildSpiCurvePoints(SpiInterfaceRuntime runtime, SpiTransaction transaction, SpiTransactionResult result)
     {
         var points = new List<MeasurementCurvePoint>();
@@ -536,6 +575,9 @@ public partial class Ct3xxProgramSimulator
         return points;
     }
 
+    /// <summary>
+    /// Executes BuildSyntheticDm30SpiCurve.
+    /// </summary>
     private IReadOnlyList<MeasurementCurvePoint> BuildSyntheticDm30SpiCurve(string value, bool writeOperation)
     {
         var normalized = NormalizeSpiHex(value) ?? string.Empty;
@@ -558,6 +600,9 @@ public partial class Ct3xxProgramSimulator
         return points;
     }
 
+    /// <summary>
+    /// Executes BuildSpiTransaction.
+    /// </summary>
     private SpiTransaction BuildSpiTransaction(SpiRecordDefinition record, SpiInterfaceRuntime runtime)
     {
         var txHex = record.TxHex;
@@ -579,6 +624,9 @@ public partial class Ct3xxProgramSimulator
         return new SpiTransaction(txHex, record.BitCount, ExpandHexToBits(txHex, record.BitCount));
     }
 
+    /// <summary>
+    /// Executes ExpandHexToBits.
+    /// </summary>
     private static List<int> ExpandHexToBits(string? hex, int bitCount)
     {
         var bits = new List<int>(Math.Max(bitCount, 0));
@@ -607,6 +655,9 @@ public partial class Ct3xxProgramSimulator
         return bits;
     }
 
+    /// <summary>
+    /// Executes NormalizeSpiHex.
+    /// </summary>
     private static string? NormalizeSpiHex(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -636,6 +687,9 @@ public partial class Ct3xxProgramSimulator
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Executes ParseBitCount.
+    /// </summary>
     private static int ParseBitCount(string? raw, string? txHex)
     {
         if (int.TryParse(NormalizeQuotedText(raw), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
@@ -646,6 +700,9 @@ public partial class Ct3xxProgramSimulator
         return Math.Max(0, (NormalizeSpiHex(txHex)?.Length ?? 0) * 4);
     }
 
+    /// <summary>
+    /// Executes ResolveInterfaceReference.
+    /// </summary>
     private string? ResolveInterfaceReference(string? raw)
     {
         var normalized = NormalizeQuotedText(raw);
@@ -662,6 +719,9 @@ public partial class Ct3xxProgramSimulator
         return NormalizeQuotedText(normalized);
     }
 
+    /// <summary>
+    /// Executes ParseSpiFrequency.
+    /// </summary>
     private static double ParseSpiFrequency(string? raw)
     {
         var normalized = NormalizeQuotedText(raw);
@@ -689,6 +749,9 @@ public partial class Ct3xxProgramSimulator
             : 1000.0d;
     }
 
+    /// <summary>
+    /// Executes ResolveSpiLine.
+    /// </summary>
     private string? ResolveSpiLine(string? rawSignal)
     {
         var signal = NormalizeQuotedText(rawSignal);
@@ -700,6 +763,9 @@ public partial class Ct3xxProgramSimulator
         return ExtractSignalName(signal);
     }
 
+    /// <summary>
+    /// Executes BuildDerivedSpiSignal.
+    /// </summary>
     private static string? BuildDerivedSpiSignal(string? baseSignal, string suffix)
     {
         if (string.IsNullOrWhiteSpace(baseSignal))
@@ -710,6 +776,9 @@ public partial class Ct3xxProgramSimulator
         return $"{baseSignal}.{suffix}";
     }
 
+    /// <summary>
+    /// Executes ParseFirstByte.
+    /// </summary>
     private static double? ParseFirstByte(string? hex)
     {
         var normalized = NormalizeSpiHex(hex);
@@ -723,6 +792,9 @@ public partial class Ct3xxProgramSimulator
             : null;
     }
 
+    /// <summary>
+    /// Executes SpiInterfaceRuntime.
+    /// </summary>
     private sealed record SpiInterfaceRuntime(
         string Name,
         string? Route,
@@ -739,6 +811,9 @@ public partial class Ct3xxProgramSimulator
         string? GroundSignal,
         double? SupplyVoltage);
 
+    /// <summary>
+    /// Executes SpiRecordDefinition.
+    /// </summary>
     private sealed record SpiRecordDefinition(
         int Index,
         string InterfaceName,
@@ -750,7 +825,13 @@ public partial class Ct3xxProgramSimulator
         string? OutputState,
         string? LineComment);
 
+    /// <summary>
+    /// Executes SpiTransaction.
+    /// </summary>
     private sealed record SpiTransaction(string TxHex, int BitCount, IReadOnlyList<int> TxBits);
 
+    /// <summary>
+    /// Executes SpiTransactionResult.
+    /// </summary>
     private sealed record SpiTransactionResult(TestOutcome Outcome, string Details, string? ReadHex);
 }

@@ -240,6 +240,9 @@ public sealed class StepResultViewModel
         DisplayOutcome.Equals("ERROR", StringComparison.OrdinalIgnoreCase) ? "#FF8B1E3F" :
         "#FF2E5E86";
 
+    /// <summary>
+    /// Executes BuildCsvDetails.
+    /// </summary>
     private string BuildCsvDetails()
     {
         if (string.IsNullOrWhiteSpace(CsvDescription) && string.IsNullOrWhiteSpace(CsvMessage))

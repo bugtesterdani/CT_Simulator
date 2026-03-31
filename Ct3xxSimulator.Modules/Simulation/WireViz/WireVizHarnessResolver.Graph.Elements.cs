@@ -11,6 +11,9 @@ public sealed partial class WireVizHarnessResolver
 {
     private sealed partial class WireVizGraph
     {
+        /// <summary>
+        /// Executes GetDynamicTargets.
+        /// </summary>
         private IEnumerable<TraversalEdge> GetDynamicTargets(
             string current,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -65,6 +68,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes GetUnknownElementTargets.
+        /// </summary>
         private IEnumerable<TraversalEdge> GetUnknownElementTargets(
             string current,
             UnknownElementDefinition unknown,
@@ -157,11 +163,17 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes ReadMetadata.
+        /// </summary>
         private static string ReadMetadata(UnknownElementDefinition definition, string key)
         {
             return definition.Metadata.TryGetValue(key, out var value) ? value ?? string.Empty : string.Empty;
         }
 
+        /// <summary>
+        /// Executes IsGenericSwitchClosed.
+        /// </summary>
         internal static bool IsGenericSwitchClosed(
             UnknownElementDefinition definition,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -206,6 +218,9 @@ public sealed partial class WireVizHarnessResolver
             return desired;
         }
 
+        /// <summary>
+        /// Executes IsOptoActive.
+        /// </summary>
         private static bool IsOptoActive(
             UnknownElementDefinition definition,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -221,6 +236,9 @@ public sealed partial class WireVizHarnessResolver
             return IsGenericSwitchClosed(definition, signalState, signalTimes, currentTimeMs);
         }
 
+        /// <summary>
+        /// Executes IsTransistorActive.
+        /// </summary>
         private static bool IsTransistorActive(
             UnknownElementDefinition definition,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -241,6 +259,9 @@ public sealed partial class WireVizHarnessResolver
             return IsGenericSwitchClosed(definition, signalState, signalTimes, currentTimeMs);
         }
 
+        /// <summary>
+        /// Executes IsControlledBySignal.
+        /// </summary>
         private static bool IsControlledBySignal(
             UnknownElementDefinition definition,
             string controlSignal,
@@ -274,6 +295,9 @@ public sealed partial class WireVizHarnessResolver
             return desired;
         }
 
+        /// <summary>
+        /// Executes TryReadLongMetadata.
+        /// </summary>
         private static long TryReadLongMetadata(UnknownElementDefinition definition, string key)
         {
             return definition.Metadata.TryGetValue(key, out var text) &&
@@ -282,6 +306,9 @@ public sealed partial class WireVizHarnessResolver
                 : 0L;
         }
 
+        /// <summary>
+        /// Executes YieldBidirectional.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldBidirectional(string current, string a, string b, long currentTimeMs, SimulationFaultSet faults)
         {
             if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b) || faults.IsOpenConnection(a, b) || faults.HasContactProblem(a, b, currentTimeMs))
@@ -299,6 +326,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes YieldResistiveConnection.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldResistiveConnection(string current, string a, string b, double resistanceOhms, long currentTimeMs, SimulationFaultSet faults, string elementId)
         {
             if (resistanceOhms >= 1_000_000_000d)
@@ -312,6 +342,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes YieldDirected.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldDirected(string current, string from, string to, long currentTimeMs, SimulationFaultSet faults)
         {
             if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to) || faults.IsOpenConnection(from, to) || faults.HasContactProblem(from, to, currentTimeMs))
@@ -325,6 +358,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes YieldTransformerCoupling.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldTransformerCoupling(string current, string primary, string secondary, double ratio, long currentTimeMs, SimulationFaultSet faults, string elementId)
         {
             if (string.IsNullOrWhiteSpace(primary) || string.IsNullOrWhiteSpace(secondary) || faults.IsOpenConnection(primary, secondary) || faults.HasContactProblem(primary, secondary, currentTimeMs))
@@ -349,6 +385,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes YieldCurrentTransformerTargets.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldCurrentTransformerTargets(string current, CurrentTransformerElementDefinition transformer, SimulationFaultSet faults, bool forWrite)
         {
             if (forWrite)
@@ -374,6 +413,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes YieldVoltageDividerTargets.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldVoltageDividerTargets(string current, UnknownElementDefinition definition, long currentTimeMs, SimulationFaultSet faults)
         {
             var input = ReadMetadata(definition, "input");
@@ -409,6 +451,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes YieldSensorTargets.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldSensorTargets(string current, UnknownElementDefinition definition, IReadOnlyDictionary<string, object?>? signalState)
         {
             var inputSignal = ReadMetadata(definition, "input_signal");
@@ -449,6 +494,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes YieldTransistorConnection.
+        /// </summary>
         private static IEnumerable<TraversalEdge> YieldTransistorConnection(string current, string input, string output, string type, long currentTimeMs, SimulationFaultSet faults)
         {
             var normalizedType = (type ?? string.Empty).Trim().ToLowerInvariant();
@@ -471,6 +519,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes IsRelayClosed.
+        /// </summary>
         internal static bool IsRelayClosed(
             RelayElementDefinition relay,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -505,6 +556,9 @@ public sealed partial class WireVizHarnessResolver
             return currentTimeMs - lastChanged >= delayMs;
         }
 
+        /// <summary>
+        /// Executes ParseSignalValue.
+        /// </summary>
         private static double ParseSignalValue(object? control)
         {
             return control switch

@@ -57,6 +57,9 @@ public static class SimulationConfigurationValidator
         return issues;
     }
 
+    /// <summary>
+    /// Executes IsSupportedDeviceModelExtension.
+    /// </summary>
     private static bool IsSupportedDeviceModelExtension(string extension)
     {
         return extension.Equals(".py", StringComparison.OrdinalIgnoreCase) ||

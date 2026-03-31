@@ -92,6 +92,9 @@ public static class SimulationSnapshotSessionSerializer
                 branch.Details)).ToList());
     }
 
+    /// <summary>
+    /// Executes ToEntry.
+    /// </summary>
     private static SimulationSnapshotEntry ToEntry(int index, SimulationStateSnapshot snapshot)
     {
         return new SimulationSnapshotEntry(
@@ -120,6 +123,9 @@ public static class SimulationSnapshotSessionSerializer
                 branch.Details)).ToList());
     }
 
+    /// <summary>
+    /// Executes CopyMap.
+    /// </summary>
     private static Dictionary<string, string> CopyMap(IReadOnlyDictionary<string, string> source)
     {
         return source.ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase);

@@ -129,6 +129,9 @@ public sealed class SignalTableParser : ICt3xxFileParser
         return new SignalTable(sourcePath, modules);
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (string Name, string? Description) ParseModuleHeader(string line, int lineNumber)
     {
         var match = ModuleRegex.Match(line);
@@ -142,6 +145,9 @@ public sealed class SignalTableParser : ICt3xxFileParser
         return (name, description);
     }
 
+    /// <summary>
+    /// Executes ParseAssignment.
+    /// </summary>
     private static SignalAssignment ParseAssignment(string line, int lineNumber, string? sourcePath, string? moduleName)
     {
         var match = AssignmentRegex.Match(line);
@@ -161,6 +167,9 @@ public sealed class SignalTableParser : ICt3xxFileParser
         return new SignalAssignment(channel, name, board, comment, moduleName);
     }
 
+    /// <summary>
+    /// Executes Normalize.
+    /// </summary>
     private static string? Normalize(string? value)
     {
         var candidate = value;
@@ -174,6 +183,9 @@ public sealed class SignalTableParser : ICt3xxFileParser
         return string.IsNullOrWhiteSpace(unescaped) ? null : unescaped;
     }
 
+    /// <summary>
+    /// Executes Unescape.
+    /// </summary>
     private static string Unescape(string value)
     {
         if (string.IsNullOrEmpty(value))

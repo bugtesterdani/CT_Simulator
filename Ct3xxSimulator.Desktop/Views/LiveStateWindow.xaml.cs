@@ -111,6 +111,9 @@ public partial class LiveStateWindow : Window
         RenderHistory(SignalHistorySelector.SelectedItem as string);
     }
 
+    /// <summary>
+    /// Executes CreateStateItems.
+    /// </summary>
     private static List<SimulationStateItemViewModel> CreateStateItems(IReadOnlyDictionary<string, string> items)
     {
         return items
@@ -119,11 +122,17 @@ public partial class LiveStateWindow : Window
             .ToList();
     }
 
+    /// <summary>
+    /// Executes OnViewModeChanged.
+    /// </summary>
     private void OnViewModeChanged(object sender, SelectionChangedEventArgs e)
     {
         ApplyViewMode();
     }
 
+    /// <summary>
+    /// Executes ApplyViewMode.
+    /// </summary>
     private void ApplyViewMode()
     {
         if (ViewModeSelector == null || CompactPanel == null || ExpertPanel == null)
@@ -141,6 +150,9 @@ public partial class LiveStateWindow : Window
         ExpertPanel.Visibility = isExpert ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>
+    /// Executes OnSignalHistoryChanged.
+    /// </summary>
     private void OnSignalHistoryChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_updatingSelector)
@@ -152,6 +164,9 @@ public partial class LiveStateWindow : Window
         RenderHistory(selected);
     }
 
+    /// <summary>
+    /// Executes RenderHistory.
+    /// </summary>
     private void RenderHistory(string? signalName)
     {
         HistoryCanvas.Children.Clear();
@@ -222,6 +237,9 @@ public partial class LiveStateWindow : Window
         AddHistoryLabel(left + 6, top - 24, signalName);
     }
 
+    /// <summary>
+    /// Executes AddHistoryLabel.
+    /// </summary>
     private void AddHistoryLabel(double left, double top, string text)
     {
         var label = new TextBlock

@@ -515,6 +515,9 @@ public sealed class WireVizElementBehaviorTests
         Assert.IsNull(lowValue);
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (Dictionary<string, object?> Values, Dictionary<string, long> Times) ScenarioState(params (string Signal, object? Value)[] values)
     {
         var signalValues = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
@@ -528,6 +531,9 @@ public sealed class WireVizElementBehaviorTests
         return (signalValues, signalTimes);
     }
 
+    /// <summary>
+    /// Executes AssertSingleDeviceTarget.
+    /// </summary>
     private static WireVizRuntimeTarget AssertSingleDeviceTarget(
         ResolverScenario scenario,
         string signalName,
@@ -542,6 +548,9 @@ public sealed class WireVizElementBehaviorTests
         return target!;
     }
 
+    /// <summary>
+    /// Executes AssertNoDeviceTarget.
+    /// </summary>
     private static void AssertNoDeviceTarget(
         ResolverScenario scenario,
         string signalName,
@@ -555,11 +564,17 @@ public sealed class WireVizElementBehaviorTests
             $"Unerwarteter Device-Target fuer '{signalName}': {string.Join(", ", targets.Select(item => item.Endpoint?.Key ?? item.SignalName))}");
     }
 
+    /// <summary>
+    /// Executes CreateScenario.
+    /// </summary>
     private static ResolverScenario CreateScenario(string wirevizYaml, string simulationYaml, params string[] signalNames) =>
         ResolverScenario.Create(wirevizYaml, simulationYaml, signalNames);
 
     private sealed class ResolverScenario : IDisposable
     {
+        /// <summary>
+        /// Initializes a new instance of ResolverScenario.
+        /// </summary>
         private ResolverScenario(string directory, WireVizHarnessResolver resolver)
         {
             DirectoryPath = directory;
@@ -643,6 +658,9 @@ public sealed class WireVizElementBehaviorTests
             }
         }
 
+        /// <summary>
+        /// Executes BuildSignalTable.
+        /// </summary>
         private static string BuildSignalTable(IReadOnlyList<string> signalNames)
         {
             var lines = new List<string>

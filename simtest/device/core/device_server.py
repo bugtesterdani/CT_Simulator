@@ -18,6 +18,7 @@ class DeviceServer:
     """Serve one device model instance over the shared pipe protocol."""
 
     def __init__(self, model: BaseDeviceModel, device_name: str):
+        """Executes __init__."""
         self.model = model
         self.device_name = device_name
         self.pipe_handler = PipeHandler()
@@ -124,6 +125,7 @@ class DeviceServer:
             return self._error_response(request_id, state_at_request, "bad_request", str(error)), False
 
     def _ok_response(self, request_id: Any, state_at_request: dict[str, Any], result: Any) -> dict[str, Any]:
+        """Executes _ok_response."""
         return {
             "id": request_id,
             "ok": True,
@@ -133,6 +135,7 @@ class DeviceServer:
         }
 
     def _error_response(self, request_id: Any, state_at_request: dict[str, Any], code: str, message: str) -> dict[str, Any]:
+        """Executes _error_response."""
         return {
             "id": request_id,
             "ok": False,

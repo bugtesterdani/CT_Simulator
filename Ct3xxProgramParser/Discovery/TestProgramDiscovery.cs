@@ -54,9 +54,15 @@ public sealed class TestProgramInfo
     /// </summary>
     public string DisplayName { get; }
 
+    /// <summary>
+    /// Executes NormalizeSeparators.
+    /// </summary>
     private static string NormalizeSeparators(string path) =>
         path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Trim('\\');
 
+    /// <summary>
+    /// Executes GetRelativePath.
+    /// </summary>
     private static string GetRelativePath(string basePath, string targetPath)
     {
         if (string.IsNullOrWhiteSpace(basePath))
@@ -70,6 +76,9 @@ public sealed class TestProgramInfo
         return relative.Replace('/', Path.DirectorySeparatorChar);
     }
 
+    /// <summary>
+    /// Executes AppendDirectorySeparator.
+    /// </summary>
     private static string AppendDirectorySeparator(string path)
     {
         if (string.IsNullOrEmpty(path))

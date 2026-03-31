@@ -96,6 +96,9 @@ public static class TestDetailsFactory
         return viewModel;
     }
 
+    /// <summary>
+    /// Executes CreateMetric.
+    /// </summary>
     private static TestRecordMetricViewModel CreateMetric(Record record)
     {
         var title = FirstValue(record.Text, record.DrawingReference, record.Destination, record.Variable, record.Id, "Eintrag");
@@ -118,6 +121,9 @@ public static class TestDetailsFactory
             upper);
     }
 
+    /// <summary>
+    /// Executes BuildAdditionalInfo.
+    /// </summary>
     private static string? BuildAdditionalInfo(Record record)
     {
         var parts = new List<string>();
@@ -155,6 +161,9 @@ public static class TestDetailsFactory
         return parts.Count == 0 ? null : string.Join(", ", parts);
     }
 
+    /// <summary>
+    /// Executes ParseOptions.
+    /// </summary>
     private static IEnumerable<string> ParseOptions(string? rawOptions)
     {
         if (string.IsNullOrWhiteSpace(rawOptions))
@@ -178,6 +187,9 @@ public static class TestDetailsFactory
         }
     }
 
+/// <summary>
+/// Executes Clean.
+/// </summary>
 internal static string? Clean(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -195,11 +207,17 @@ internal static string? Clean(string? value)
         return WebUtility.HtmlDecode(trimmed).Trim();
     }
 
+    /// <summary>
+    /// Executes FirstValue.
+    /// </summary>
     private static string? FirstValue(params string?[] values)
     {
         return values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
     }
 
+    /// <summary>
+    /// Executes DetermineDisplayModeName.
+    /// </summary>
     private static string? DetermineDisplayModeName(Test test, TestParameters? parameters)
     {
         if (!string.Equals(test.Id, "PRT^", StringComparison.OrdinalIgnoreCase))
@@ -224,6 +242,9 @@ internal static string? Clean(string? value)
         };
     }
 
+    /// <summary>
+    /// Executes TryParseDouble.
+    /// </summary>
     private static double? TryParseDouble(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -239,6 +260,9 @@ internal static string? Clean(string? value)
         return null;
     }
 
+    /// <summary>
+    /// Executes AppendExternalDetails.
+    /// </summary>
     private static void AppendExternalDetails(Test test, TestDetailsViewModel viewModel, string? directory)
     {
         if (!TryResolveExternalFile(test.File, directory, out var path))
@@ -259,6 +283,9 @@ internal static string? Clean(string? value)
         }
     }
 
+    /// <summary>
+    /// Executes AppendIctDetails.
+    /// </summary>
     private static void AppendIctDetails(string filePath, TestDetailsViewModel viewModel)
     {
         var lines = File.ReadAllLines(filePath, AnsiEncoding);
@@ -484,6 +511,9 @@ internal static string? Clean(string? value)
         return (key, value);
     }
 
+    /// <summary>
+    /// Executes TryParseMeasurement.
+    /// </summary>
     private static bool TryParseMeasurement(string? text, out double value, out string unit)
     {
         value = 0;
@@ -513,6 +543,9 @@ internal static string? Clean(string? value)
         return true;
     }
 
+    /// <summary>
+    /// Executes ExtractPrefix.
+    /// </summary>
     private static double ExtractPrefix(string unit, out string normalizedUnit)
     {
         if (string.IsNullOrWhiteSpace(unit))
@@ -539,6 +572,9 @@ internal static string? Clean(string? value)
         return 1;
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (double? LowerFactor, double? UpperFactor) ParseTolerancePercent(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -565,6 +601,9 @@ internal static string? Clean(string? value)
         return (value, value);
     }
 
+    /// <summary>
+    /// Executes ParseSinglePercent.
+    /// </summary>
     private static double ParseSinglePercent(string text)
     {
         var cleaned = text.Replace("%", string.Empty).Replace("+", string.Empty).Trim();
@@ -572,6 +611,9 @@ internal static string? Clean(string? value)
         return number / 100.0;
     }
 
+    /// <summary>
+    /// Executes AppendChannelDetails.
+    /// </summary>
     private static void AppendChannelDetails(TestParameters parameters, TestDetailsViewModel viewModel)
     {
         var stimulusChannels = new[]
@@ -634,6 +676,9 @@ internal static string? Clean(string? value)
         }
     }
 
+    /// <summary>
+    /// Executes AppendAdditionalAttributes.
+    /// </summary>
     private static void AppendAdditionalAttributes(TestParameters parameters, TestDetailsViewModel viewModel)
     {
         if (parameters.AdditionalAttributes == null || parameters.AdditionalAttributes.Length == 0)
@@ -674,6 +719,9 @@ internal static string? Clean(string? value)
         }
     }
 
+    /// <summary>
+    /// Executes AppendDisplayOptions.
+    /// </summary>
     private static void AppendDisplayOptions(TestParameters parameters, TestDetailsViewModel viewModel)
     {
         if (parameters.AdditionalAttributes == null || parameters.AdditionalAttributes.Length == 0)
@@ -706,6 +754,9 @@ internal static string? Clean(string? value)
         }
     }
 
+    /// <summary>
+    /// Executes AppendArbMetadataRecords.
+    /// </summary>
     private static void AppendArbMetadataRecords(IEnumerable<KeyValuePair<string, string>> entries, TestDetailsViewModel viewModel)
     {
         foreach (var entry in entries)
@@ -738,6 +789,9 @@ internal static string? Clean(string? value)
         }
     }
 
+    /// <summary>
+    /// Executes TryResolveExternalFile.
+    /// </summary>
     private static bool TryResolveExternalFile(string? relativePath, string? baseDirectory, out string resolvedPath)
     {
         resolvedPath = string.Empty;
@@ -757,6 +811,9 @@ internal static string? Clean(string? value)
         return true;
     }
 
+    /// <summary>
+    /// Executes IsAm2Test.
+    /// </summary>
     private static bool IsAm2Test(Test test)
     {
         if (test.Id != null && test.Id.StartsWith("AM", StringComparison.OrdinalIgnoreCase))
@@ -768,6 +825,9 @@ internal static string? Clean(string? value)
         return reference.IndexOf("AM2", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
+    /// <summary>
+    /// Executes IsIctTest.
+    /// </summary>
     private static bool IsIctTest(Test test)
     {
         if (test.Id != null && test.Id.StartsWith("ICT", StringComparison.OrdinalIgnoreCase))
@@ -779,6 +839,9 @@ internal static string? Clean(string? value)
         return name.IndexOf("ICT", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
+    /// <summary>
+    /// Executes IsDisplayOptionAttribute.
+    /// </summary>
     private static bool IsDisplayOptionAttribute(string name)
     {
         if (DisplayOptionAttributeNames.Contains(name))
@@ -789,6 +852,9 @@ internal static string? Clean(string? value)
         return name.StartsWith("Show", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes FormatDisplayOptionLabel.
+    /// </summary>
     private static string FormatDisplayOptionLabel(string name)
     {
         return name switch

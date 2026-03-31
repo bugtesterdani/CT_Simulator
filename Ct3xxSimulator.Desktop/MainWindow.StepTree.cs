@@ -9,6 +9,9 @@ namespace Ct3xxSimulator.Desktop;
 
 public partial class MainWindow
 {
+    /// <summary>
+    /// Executes BuildStepTree.
+    /// </summary>
     private void BuildStepTree(Ct3xxProgram program)
     {
         StepTreeRootNodes.Clear();
@@ -49,6 +52,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes RebuildFlatStepTreeFromResults.
+    /// </summary>
     private void RebuildFlatStepTreeFromResults()
     {
         StepTreeRootNodes.Clear();
@@ -67,6 +73,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes RebuildStepTreeForTimelineIndex.
+    /// </summary>
     private void RebuildStepTreeForTimelineIndex(int timelineIndex)
     {
         if (!_isLoadedSnapshotSession && _program != null)
@@ -86,6 +95,9 @@ public partial class MainWindow
         RebuildFlatStepTreeFromResults(timelineIndex);
     }
 
+    /// <summary>
+    /// Executes SelectBestStepNodeForTimelineIndex.
+    /// </summary>
     private void SelectBestStepNodeForTimelineIndex(int timelineIndex, string? currentStep)
     {
         var candidates = EnumerateVisibleNodes(StepTreeRootNodes)
@@ -121,6 +133,9 @@ public partial class MainWindow
         SelectedStepTreeNode = latest.Node;
     }
 
+    /// <summary>
+    /// Executes EnumerateVisibleNodes.
+    /// </summary>
     private static IEnumerable<StepTreeNodeViewModel> EnumerateVisibleNodes(IEnumerable<StepTreeNodeViewModel> nodes)
     {
         foreach (var node in nodes)
@@ -134,11 +149,17 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes GetLatestTimelineIndexForSelectedNode.
+    /// </summary>
     private int? GetLatestTimelineIndexForSelectedNode()
     {
         return GetLatestTimelineIndexForNode(SelectedStepTreeNode);
     }
 
+    /// <summary>
+    /// Executes GetLatestTimelineIndexForNode.
+    /// </summary>
     private static int? GetLatestTimelineIndexForNode(StepTreeNodeViewModel? node)
     {
         if (node == null)
@@ -159,6 +180,9 @@ public partial class MainWindow
         return latest;
     }
 
+    /// <summary>
+    /// Executes RebuildFlatStepTreeFromResults.
+    /// </summary>
     private void RebuildFlatStepTreeFromResults(int timelineIndex)
     {
         StepTreeRootNodes.Clear();
@@ -177,6 +201,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes IsResultVisibleAtTimeline.
+    /// </summary>
     private bool IsResultVisibleAtTimeline(StepResultViewModel result, int timelineIndex)
     {
         if (!result.TimelineIndex.HasValue)
@@ -187,6 +214,9 @@ public partial class MainWindow
         return result.TimelineIndex.Value <= timelineIndex;
     }
 
+    /// <summary>
+    /// Executes AddSequenceNodeToTree.
+    /// </summary>
     private void AddSequenceNodeToTree(SequenceNode item, StepTreeNodeViewModel? parent, ICollection<StepTreeNodeViewModel> target, string parentKey)
     {
         var nodeIndex = target.Count;
@@ -234,6 +264,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes ConfigureGroupPresentation.
+    /// </summary>
     private static void ConfigureGroupPresentation(StepTreeNodeViewModel groupNode, Group group)
     {
         var isConcurrent = string.Equals(group.ExecMode, "concurrent", StringComparison.OrdinalIgnoreCase);
@@ -262,6 +295,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes EstimateEvaluationCount.
+    /// </summary>
     private static int EstimateEvaluationCount(Test test)
     {
         if (!string.Equals(test.Id, "PET$", StringComparison.OrdinalIgnoreCase))
@@ -276,6 +312,9 @@ public partial class MainWindow
         return Math.Max(1, count);
     }
 
+    /// <summary>
+    /// Executes ApplyEvaluationToStepTree.
+    /// </summary>
     private void ApplyEvaluationToStepTree(Test test, StepResultViewModel result)
     {
         if (!_stepTreeNodes.TryGetValue(test, out var testNode))
@@ -303,6 +342,9 @@ public partial class MainWindow
         RefreshStepTreeBranch(testNode);
     }
 
+    /// <summary>
+    /// Executes RefreshStepTreeBranch.
+    /// </summary>
     private void RefreshStepTreeBranch(StepTreeNodeViewModel? node)
     {
         while (node != null)
@@ -312,6 +354,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes SetGroupExpanded.
+    /// </summary>
     private void SetGroupExpanded(Group group, bool isExpanded)
     {
         if (!_groupTreeNodes.TryGetValue(group, out var node))
@@ -328,6 +373,9 @@ public partial class MainWindow
         node.IsExpanded = isExpanded;
     }
 
+    /// <summary>
+    /// Executes OnJumpToSelectedStepSnapshot.
+    /// </summary>
     private void OnJumpToSelectedStepSnapshot(object sender, System.Windows.RoutedEventArgs e)
     {
         var index = GetLatestTimelineIndexForSelectedNode();
@@ -341,6 +389,9 @@ public partial class MainWindow
         AddLog($"Zu letztem Snapshot von '{SelectedStepTreeNode?.Title ?? "Testschritt"}' gesprungen.");
     }
 
+    /// <summary>
+    /// Executes TryGetSelectedNodeTest.
+    /// </summary>
     private bool TryGetSelectedNodeTest(out Test test)
     {
         if (SelectedStepTreeNode != null && _treeNodeTests.TryGetValue(SelectedStepTreeNode, out var selectedTest))
@@ -353,6 +404,9 @@ public partial class MainWindow
         return false;
     }
 
+    /// <summary>
+    /// Executes TryGetSelectedNodeGroup.
+    /// </summary>
     private bool TryGetSelectedNodeGroup(out Group group)
     {
         if (SelectedStepTreeNode != null && _treeNodeGroups.TryGetValue(SelectedStepTreeNode, out var selectedGroup))
@@ -365,6 +419,9 @@ public partial class MainWindow
         return false;
     }
 
+    /// <summary>
+    /// Executes ToggleBreakpointForSelectedNode.
+    /// </summary>
     private void ToggleBreakpointForSelectedNode()
     {
         if (SelectedStepTreeNode == null)

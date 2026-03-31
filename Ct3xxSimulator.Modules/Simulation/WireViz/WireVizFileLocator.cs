@@ -28,11 +28,17 @@ internal static class WireVizFileLocator
         return FindCandidateFilesInRoots(EnumerateSearchRoots(programDirectory));
     }
 
+    /// <summary>
+    /// Executes FindCandidateFilesInRoot.
+    /// </summary>
     private static IReadOnlyList<string> FindCandidateFilesInRoot(string rootDirectory)
     {
         return FindCandidateFilesInRoots(new[] { rootDirectory });
     }
 
+    /// <summary>
+    /// Executes FindCandidateFilesInRoots.
+    /// </summary>
     private static IReadOnlyList<string> FindCandidateFilesInRoots(IEnumerable<string> roots)
     {
         var candidates = roots
@@ -71,6 +77,9 @@ internal static class WireVizFileLocator
         return valid;
     }
 
+    /// <summary>
+    /// Executes EnumerateSearchRoots.
+    /// </summary>
     private static IEnumerable<string> EnumerateSearchRoots(string programDirectory)
     {
         yield return programDirectory;
@@ -87,6 +96,9 @@ internal static class WireVizFileLocator
         }
     }
 
+    /// <summary>
+    /// Executes Rank.
+    /// </summary>
     private static int Rank(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))

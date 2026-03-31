@@ -17,6 +17,7 @@ Parser library for simulation-side YAML models that complement WireViz.
 - `resistor`
 - `transformer`
 - `current_transformer`
+- `limit`
 - `assembly`
 - `tester_supply`
 - `tester_output`
@@ -53,6 +54,16 @@ elements:
     a: R1.A
     b: R1.B
     ohms: 1000
+
+  - id: UEM3_1
+    type: limit
+    mode: voltage
+    gain: 10
+    max_voltage: 90
+    nodes:
+      - UEM3/1-1
+      - UEM3/1-2
+      - UEM3/1-3
 ```
 
 ## Assemblies
@@ -77,6 +88,7 @@ The current simulator runtime actively evaluates:
 - `assembly`
 - `transformer`
 - `current_transformer`
+- `limit`
 - `tester_supply`
 - `tester_output`
 - `switch`

@@ -46,6 +46,7 @@ def handle_ict_request(model: Any, interface_name: str, definition: dict[str, An
 
 
 def _matches(condition: dict[str, Any], metric_key: str, name: str, reference: str, type_id: str) -> bool:
+    """Executes _matches."""
     if not isinstance(condition, dict):
         return True
 
@@ -61,6 +62,7 @@ def _matches(condition: dict[str, Any], metric_key: str, name: str, reference: s
 
 
 def _resolve_payload_fallback(payload: dict[str, Any]) -> float | None:
+    """Executes _resolve_payload_fallback."""
     nominal = _payload_numeric(payload.get("nominal"))
     if nominal is not None:
         return nominal
@@ -76,6 +78,7 @@ def _resolve_payload_fallback(payload: dict[str, Any]) -> float | None:
 
 
 def _payload_numeric(value: Any) -> float | None:
+    """Executes _payload_numeric."""
     try:
         if value is None:
             return None

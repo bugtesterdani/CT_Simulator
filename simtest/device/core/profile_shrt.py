@@ -52,6 +52,7 @@ def handle_shrt_request(model: Any, interface_name: str, definition: dict[str, A
 
 
 def _normalize_list(raw: Any) -> list[str]:
+    """Executes _normalize_list."""
     if not raw:
         return []
     if isinstance(raw, list):
@@ -60,6 +61,7 @@ def _normalize_list(raw: Any) -> list[str]:
 
 
 def _handle_pairs(definition: dict[str, Any], pairs: Any) -> dict[str, Any]:
+    """Executes _handle_pairs."""
     if not isinstance(pairs, list):
         return {"error": "SHRT pairs must be a list."}
 
@@ -85,6 +87,7 @@ def _handle_pairs(definition: dict[str, Any], pairs: Any) -> dict[str, Any]:
 
 
 def _build_pair_overrides(raw: Any) -> dict[str, float]:
+    """Executes _build_pair_overrides."""
     overrides: dict[str, float] = {}
     if not isinstance(raw, list):
         raw = [raw]
@@ -103,4 +106,5 @@ def _build_pair_overrides(raw: Any) -> dict[str, float]:
 
 
 def _normalize_pair(a: str, b: str) -> str:
+    """Executes _normalize_pair."""
     return "|".join(sorted([a.strip().lower(), b.strip().lower()]))

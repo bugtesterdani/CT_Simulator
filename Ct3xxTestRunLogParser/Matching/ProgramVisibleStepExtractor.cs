@@ -40,6 +40,9 @@ public sealed class ProgramVisibleStepExtractor
         return result;
     }
 
+    /// <summary>
+    /// Executes ExtractSequenceNode.
+    /// </summary>
     private static void ExtractSequenceNode(
         SequenceNode node,
         string parentNodePath,
@@ -69,6 +72,9 @@ public sealed class ProgramVisibleStepExtractor
         }
     }
 
+    /// <summary>
+    /// Executes AppendVisibleSteps.
+    /// </summary>
     private static void AppendVisibleSteps(
         Test test,
         string parentNodePath,

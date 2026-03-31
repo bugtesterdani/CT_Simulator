@@ -40,5 +40,8 @@ public abstract class TextFileParser<TDocument> : ICt3xxFileParser where TDocume
         return CreateDocument(filePath, tableDefinition, lines);
     }
 
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected abstract TDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines);
 }

@@ -119,8 +119,14 @@ public class SimulationNodeViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Occurs when PropertyChanged is raised.
+    /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>
+    /// Executes OnPropertyChanged.
+    /// </summary>
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

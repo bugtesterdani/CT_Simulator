@@ -106,6 +106,9 @@ public partial class EvaluationDetailsWindow : Window
         RenderChart();
     }
 
+    /// <summary>
+    /// Executes BuildMetricRows.
+    /// </summary>
     private static IEnumerable<MetricDetailRow> BuildMetricRows(string outcome, string measuredValue, string lowerLimit, string upperLimit, string unit, string? details, string fallbackScope = "Schritt")
     {
         var (summaryPrefix, metricDetails) = SplitDetailsSections(details);
@@ -207,6 +210,9 @@ public partial class EvaluationDetailsWindow : Window
         return rows;
     }
 
+    /// <summary>
+    /// Executes BuildSubtitle.
+    /// </summary>
     private static string BuildSubtitle(StepResultViewModel result)
     {
         if (!result.HasCsvReplayMatch)
@@ -217,6 +223,9 @@ public partial class EvaluationDetailsWindow : Window
         return $"Auswertung des ausgewaehlten Testschritts. Anzeigequelle: {result.ResultSourceLabel}. CSV-Zeile {result.CsvRowNumber?.ToString(CultureInfo.InvariantCulture) ?? "-"}.";
     }
 
+    /// <summary>
+    /// Executes BuildComparisonModeText.
+    /// </summary>
     private static string BuildComparisonModeText(StepResultViewModel result)
     {
         return result.CsvDisplayMode.ToUpperInvariant() switch
@@ -227,6 +236,9 @@ public partial class EvaluationDetailsWindow : Window
         };
     }
 
+    /// <summary>
+    /// Executes BuildCsvDetails.
+    /// </summary>
     private static string BuildCsvDetails(StepResultViewModel result)
     {
         var parts = new List<string>();
@@ -248,6 +260,9 @@ public partial class EvaluationDetailsWindow : Window
         return parts.Count == 0 ? "-" : string.Join(" | ", parts);
     }
 
+    /// <summary>
+    /// Executes BuildCsvRawText.
+    /// </summary>
     private static string BuildCsvRawText(StepResultViewModel result)
     {
         if (!result.HasCsvReplayMatch)
@@ -265,6 +280,9 @@ public partial class EvaluationDetailsWindow : Window
                $"Match: {FormatFallback(result.CsvMatchReason)}";
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (string SummaryPrefix, string MetricDetails) SplitDetailsSections(string? details)
     {
         if (string.IsNullOrWhiteSpace(details))
@@ -281,6 +299,9 @@ public partial class EvaluationDetailsWindow : Window
         return (details[..separatorIndex].Trim(), details[(separatorIndex + 1)..].Trim());
     }
 
+    /// <summary>
+    /// Executes GetPrimaryScope.
+    /// </summary>
     private static string GetPrimaryScope(string? details, string fallbackScope)
     {
         if (string.IsNullOrWhiteSpace(details))
@@ -306,6 +327,9 @@ public partial class EvaluationDetailsWindow : Window
         return fallbackScope;
     }
 
+    /// <summary>
+    /// Executes OnSeriesSelectionChanged.
+    /// </summary>
     private void OnSeriesSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_updatingSelection)
@@ -316,6 +340,9 @@ public partial class EvaluationDetailsWindow : Window
         RenderChart();
     }
 
+    /// <summary>
+    /// Executes RenderChart.
+    /// </summary>
     private void RenderChart()
     {
         ChartCanvas.Children.Clear();
@@ -456,6 +483,9 @@ public partial class EvaluationDetailsWindow : Window
         StatusTextBlock.Text = $"Kurven: {selectedSeries.Count} | Punkte: {points.Count} | Grenzen: {FormatLimit(lowerLimit)} .. {FormatLimit(upperLimit)} | Ausserhalb: {violationCount}";
     }
 
+    /// <summary>
+    /// Executes DrawLimitLine.
+    /// </summary>
     private void DrawLimitLine(double value, string label, double width, double height, double left, double top, double minValue, double maxValue, string color)
     {
         var y = top + height - ((value - minValue) / (maxValue - minValue) * height);
@@ -473,6 +503,9 @@ public partial class EvaluationDetailsWindow : Window
         AddChartLabel(left + width + 12, y - 8, $"{label}: {value.ToString("0.###", CultureInfo.InvariantCulture)}");
     }
 
+    /// <summary>
+    /// Executes DrawLimitBand.
+    /// </summary>
     private void DrawLimitBand(double lowerLimit, double upperLimit, double width, double height, double left, double top, double minValue, double maxValue)
     {
         var upperY = top + height - ((upperLimit - minValue) / (maxValue - minValue) * height);
@@ -493,6 +526,9 @@ public partial class EvaluationDetailsWindow : Window
         AddChartLabel(left + 8, bandTop + 4, "Zulaessiger Bereich");
     }
 
+    /// <summary>
+    /// Executes DrawLegendEntry.
+    /// </summary>
     private void DrawLegendEntry(int index, string color, string text)
     {
         var top = 316 + index * 22;
@@ -509,6 +545,9 @@ public partial class EvaluationDetailsWindow : Window
         AddChartLabel(78, top, text);
     }
 
+    /// <summary>
+    /// Executes AddChartLabel.
+    /// </summary>
     private void AddChartLabel(double left, double top, string text)
     {
         var label = new TextBlock
@@ -522,6 +561,9 @@ public partial class EvaluationDetailsWindow : Window
         ChartCanvas.Children.Add(label);
     }
 
+    /// <summary>
+    /// Executes AppendUnit.
+    /// </summary>
     private static string AppendUnit(string value, string unit)
     {
         if (string.IsNullOrWhiteSpace(value) || value == "-")
@@ -532,6 +574,9 @@ public partial class EvaluationDetailsWindow : Window
         return string.IsNullOrWhiteSpace(unit) ? value : $"{value} {unit}";
     }
 
+    /// <summary>
+    /// Executes BuildRangeText.
+    /// </summary>
     private static string BuildRangeText(string lowerLimit, string upperLimit, string unit)
     {
         if (string.IsNullOrWhiteSpace(lowerLimit) && string.IsNullOrWhiteSpace(upperLimit))
@@ -544,16 +589,25 @@ public partial class EvaluationDetailsWindow : Window
         return string.IsNullOrWhiteSpace(unit) ? $"{lower} .. {upper}" : $"{lower} .. {upper} {unit}";
     }
 
+    /// <summary>
+    /// Executes FormatLimitText.
+    /// </summary>
     private static string FormatLimitText(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? "-" : value;
     }
 
+    /// <summary>
+    /// Executes FormatFallback.
+    /// </summary>
     private static string FormatFallback(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? "-" : value;
     }
 
+    /// <summary>
+    /// Executes TryParseNumeric.
+    /// </summary>
     private static double? TryParseNumeric(string text)
     {
         if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
@@ -569,11 +623,17 @@ public partial class EvaluationDetailsWindow : Window
         return null;
     }
 
+    /// <summary>
+    /// Executes FormatLimit.
+    /// </summary>
     private static string FormatLimit(double? value)
     {
         return value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";
     }
 
+    /// <summary>
+    /// Executes IsOutsideLimits.
+    /// </summary>
     private static bool IsOutsideLimits(double value, double? lowerLimit, double? upperLimit)
     {
         if (lowerLimit.HasValue && value < lowerLimit.Value)
@@ -589,6 +649,9 @@ public partial class EvaluationDetailsWindow : Window
         return false;
     }
 
+    /// <summary>
+    /// Executes ComputeStatus.
+    /// </summary>
     private static string ComputeStatus(double? actual, double? lowerLimit, double? upperLimit, string? fallbackOutcome)
     {
         if (actual.HasValue)
@@ -612,6 +675,9 @@ public partial class EvaluationDetailsWindow : Window
         return string.IsNullOrWhiteSpace(fallbackOutcome) ? string.Empty : fallbackOutcome;
     }
 
+    /// <summary>
+    /// Executes GetOutcomeBrush.
+    /// </summary>
     private static SolidColorBrush GetOutcomeBrush(string? outcome)
     {
         return (outcome ?? string.Empty).ToUpperInvariant() switch
@@ -623,6 +689,9 @@ public partial class EvaluationDetailsWindow : Window
         };
     }
 
+    /// <summary>
+    /// Executes GetSourceBrush.
+    /// </summary>
     private static SolidColorBrush GetSourceBrush(string? sourceLabel)
     {
         return (sourceLabel ?? string.Empty).ToUpperInvariant() switch
@@ -633,11 +702,17 @@ public partial class EvaluationDetailsWindow : Window
         };
     }
 
+    /// <summary>
+    /// Executes OnClose.
+    /// </summary>
     private void OnClose(object sender, RoutedEventArgs e)
     {
         Close();
     }
 
+    /// <summary>
+    /// Executes Brush.
+    /// </summary>
     private static SolidColorBrush Brush(string color) =>
         new((Color)ColorConverter.ConvertFromString(color));
 

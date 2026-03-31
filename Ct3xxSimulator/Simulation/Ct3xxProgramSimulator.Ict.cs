@@ -23,6 +23,9 @@ public partial class Ct3xxProgramSimulator
         IctEncoding = Encoding.GetEncoding(1252);
     }
 
+    /// <summary>
+    /// Executes RunIctTest.
+    /// </summary>
     private TestOutcome RunIctTest(Test test)
     {
         if (_fileSet == null)
@@ -91,6 +94,9 @@ public partial class Ct3xxProgramSimulator
         return overall;
     }
 
+    /// <summary>
+    /// Executes TryLoadIctDocument.
+    /// </summary>
     private bool TryLoadIctDocument(Test test, out IctDocument document, out string? error)
     {
         var fileName = test.File?.Trim().Trim('\'', '"');
@@ -129,6 +135,9 @@ public partial class Ct3xxProgramSimulator
         return true;
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (IctDefaults Defaults, List<IctComponent> Components) ParseIctDocument(IctDocument document)
     {
         var defaults = new IctDefaults();
@@ -549,6 +558,9 @@ public partial class Ct3xxProgramSimulator
         return (key, value);
     }
 
+    /// <summary>
+    /// Executes TryParseMeasurement.
+    /// </summary>
     private static bool TryParseMeasurement(string? text, out double value, out string unit)
     {
         value = 0;
@@ -577,6 +589,9 @@ public partial class Ct3xxProgramSimulator
         return true;
     }
 
+    /// <summary>
+    /// Executes CleanMeasurementText.
+    /// </summary>
     private static string CleanMeasurementText(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -589,6 +604,9 @@ public partial class Ct3xxProgramSimulator
         return cleaned.Trim();
     }
 
+    /// <summary>
+    /// Executes ExtractPrefix.
+    /// </summary>
     private static double ExtractPrefix(string unit, out string normalizedUnit)
     {
         if (string.IsNullOrWhiteSpace(unit))
@@ -614,12 +632,18 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes NormalizeUnit.
+    /// </summary>
     private static double NormalizeUnit(string tail, string defaultUnit, double factor, ref string normalizedUnit)
     {
         normalizedUnit = string.IsNullOrWhiteSpace(tail) ? defaultUnit : tail.Trim();
         return factor;
     }
 
+    /// <summary>
+    /// Executes FormatMeasurement.
+    /// </summary>
     private static string FormatMeasurement(double? value, string? unit)
     {
         if (!value.HasValue)
@@ -631,6 +655,9 @@ public partial class Ct3xxProgramSimulator
         return $"{value.Value.ToString("0.###", CultureInfo.InvariantCulture)}{unitText}";
     }
 
+    /// <summary>
+    /// Executes FormatLimitText.
+    /// </summary>
     private static string FormatLimitText(double? lower, double? upper, string? unit)
     {
         if (!lower.HasValue && !upper.HasValue)
@@ -646,10 +673,22 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class IctDefaults
     {
+        /// <summary>
+        /// Gets or sets DefaultToleranceR.
+        /// </summary>
         public string? DefaultToleranceR { get; set; }
+        /// <summary>
+        /// Gets or sets DefaultToleranceL.
+        /// </summary>
         public string? DefaultToleranceL { get; set; }
+        /// <summary>
+        /// Gets or sets DefaultToleranceC.
+        /// </summary>
         public string? DefaultToleranceC { get; set; }
 
+        /// <summary>
+        /// Executes ResolveDefaultTolerance.
+        /// </summary>
         public string? ResolveDefaultTolerance(string unit)
         {
             if (string.IsNullOrWhiteSpace(unit))
@@ -678,6 +717,9 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class IctComponent
     {
+        /// <summary>
+        /// Initializes a new instance of IctComponent.
+        /// </summary>
         private IctComponent(Dictionary<string, string> parameters, string? typeId)
         {
             Parameters = parameters;
@@ -691,20 +733,53 @@ public partial class Ct3xxProgramSimulator
             Bounds = BuildBounds();
         }
 
+        /// <summary>
+        /// Gets or sets TypeId.
+        /// </summary>
         public string TypeId { get; }
+        /// <summary>
+        /// Gets or sets Name.
+        /// </summary>
         public string Name { get; }
+        /// <summary>
+        /// Gets or sets DrawingReference.
+        /// </summary>
         public string DrawingReference { get; }
+        /// <summary>
+        /// Gets or sets Value.
+        /// </summary>
         public string? Value { get; }
+        /// <summary>
+        /// Gets or sets Tolerance.
+        /// </summary>
         public string? Tolerance { get; }
+        /// <summary>
+        /// Gets or sets ToleranceAbs.
+        /// </summary>
         public string? ToleranceAbs { get; }
+        /// <summary>
+        /// Gets or sets IsEnabled.
+        /// </summary>
         public bool IsEnabled { get; }
+        /// <summary>
+        /// Gets or sets Bounds.
+        /// </summary>
         public IReadOnlyList<IctBound> Bounds { get; }
+        /// <summary>
+        /// Gets or sets Parameters.
+        /// </summary>
         public Dictionary<string, string> Parameters { get; }
         public string DisplayName => string.IsNullOrWhiteSpace(Name) ? DrawingReference : Name;
 
+        /// <summary>
+        /// Executes FromParameters.
+        /// </summary>
         public static IctComponent FromParameters(Dictionary<string, string> parameters, string? typeId) =>
             new(parameters, typeId);
 
+        /// <summary>
+        /// Executes GetAllNets.
+        /// </summary>
         public IEnumerable<string> GetAllNets()
         {
             foreach (var key in new[] { "Net.Stim.Out", "Net.Stim.Sense", "Net.Gnd.Out", "Net.Gnd.Sense" })
@@ -719,6 +794,9 @@ public partial class Ct3xxProgramSimulator
             }
         }
 
+        /// <summary>
+        /// Executes BuildNetPayload.
+        /// </summary>
         public JsonObject BuildNetPayload()
         {
             var payload = new JsonObject();
@@ -733,6 +811,9 @@ public partial class Ct3xxProgramSimulator
             return payload;
         }
 
+        /// <summary>
+        /// Executes BuildBounds.
+        /// </summary>
         private IReadOnlyList<IctBound> BuildBounds()
         {
             var bounds = new List<IctBound>();
@@ -751,11 +832,17 @@ public partial class Ct3xxProgramSimulator
             return bounds;
         }
 
+        /// <summary>
+        /// Executes GetParameter.
+        /// </summary>
         private string? GetParameter(string key)
         {
             return Parameters.TryGetValue(key, out var value) ? value : null;
         }
 
+        /// <summary>
+        /// Executes SplitNets.
+        /// </summary>
         private static IEnumerable<string> SplitNets(string raw)
         {
             return raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
@@ -766,6 +853,9 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class IctBound
     {
+        /// <summary>
+        /// Initializes a new instance of IctBound.
+        /// </summary>
         public IctBound(string rawKey, string value, bool isLower)
         {
             RawKey = rawKey;
@@ -784,12 +874,30 @@ public partial class Ct3xxProgramSimulator
             };
         }
 
+        /// <summary>
+        /// Gets or sets RawKey.
+        /// </summary>
         public string RawKey { get; }
+        /// <summary>
+        /// Gets or sets Value.
+        /// </summary>
         public string Value { get; }
+        /// <summary>
+        /// Gets or sets IsLower.
+        /// </summary>
         public bool IsLower { get; }
+        /// <summary>
+        /// Gets or sets Key.
+        /// </summary>
         public string Key { get; }
+        /// <summary>
+        /// Gets or sets Label.
+        /// </summary>
         public string Label { get; }
 
+        /// <summary>
+        /// Executes NormalizeKey.
+        /// </summary>
         private static string NormalizeKey(string rawKey)
         {
             var stripped = rawKey.Replace("Upper", string.Empty, StringComparison.OrdinalIgnoreCase)
@@ -818,6 +926,9 @@ public partial class Ct3xxProgramSimulator
 
     private sealed class IctMetric
     {
+        /// <summary>
+        /// Initializes a new instance of IctMetric.
+        /// </summary>
         public IctMetric(IctComponent component, string key, string label, double? nominal, double? lower, double? upper, string? unit)
         {
             Component = component;
@@ -829,12 +940,33 @@ public partial class Ct3xxProgramSimulator
             Unit = unit;
         }
 
+        /// <summary>
+        /// Gets or sets Component.
+        /// </summary>
         public IctComponent Component { get; }
+        /// <summary>
+        /// Gets or sets Key.
+        /// </summary>
         public string Key { get; }
+        /// <summary>
+        /// Gets or sets Label.
+        /// </summary>
         public string Label { get; }
+        /// <summary>
+        /// Gets or sets Nominal.
+        /// </summary>
         public double? Nominal { get; }
+        /// <summary>
+        /// Gets or sets LowerLimit.
+        /// </summary>
         public double? LowerLimit { get; set; }
+        /// <summary>
+        /// Gets or sets UpperLimit.
+        /// </summary>
         public double? UpperLimit { get; set; }
+        /// <summary>
+        /// Gets or sets Unit.
+        /// </summary>
         public string? Unit { get; }
     }
 }

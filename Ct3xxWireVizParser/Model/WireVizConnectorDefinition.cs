@@ -51,6 +51,9 @@ public sealed class WireVizConnectorDefinition
     /// </summary>
     public bool IsEmphasized => IsYellow(BackgroundColor);
 
+    /// <summary>
+    /// Executes ResolveBackgroundColor.
+    /// </summary>
     private static string? ResolveBackgroundColor(WireVizValue value)
     {
         if (value.TryGetProperty("bgcolor", out var background))
@@ -66,6 +69,9 @@ public sealed class WireVizConnectorDefinition
         return null;
     }
 
+    /// <summary>
+    /// Executes ResolveRole.
+    /// </summary>
     private static WireVizConnectorRole ResolveRole(string? backgroundColor, bool isUppercaseDesignator)
     {
         var isYellow = IsYellow(backgroundColor);
@@ -87,6 +93,9 @@ public sealed class WireVizConnectorDefinition
         return WireVizConnectorRole.Unknown;
     }
 
+    /// <summary>
+    /// Executes IsUppercase.
+    /// </summary>
     private static bool IsUppercase(string value)
     {
         var hasLetter = false;
@@ -107,6 +116,9 @@ public sealed class WireVizConnectorDefinition
         return hasLetter;
     }
 
+    /// <summary>
+    /// Executes IsYellow.
+    /// </summary>
     private static bool IsYellow(string? color)
     {
         if (string.IsNullOrWhiteSpace(color))

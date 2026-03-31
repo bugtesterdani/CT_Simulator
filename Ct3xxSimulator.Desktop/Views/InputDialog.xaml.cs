@@ -26,6 +26,9 @@ public partial class InputDialog : Window
     /// </summary>
     public string Response => InputBox.Text;
 
+    /// <summary>
+    /// Executes OnOk.
+    /// </summary>
     private void OnOk(object sender, RoutedEventArgs e)
     {
         DialogResult = true;

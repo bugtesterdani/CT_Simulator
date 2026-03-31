@@ -191,6 +191,9 @@ public sealed class AppliedWaveform
         };
     }
 
+    /// <summary>
+    /// Executes ClassifyShape.
+    /// </summary>
     private static string ClassifyShape(IReadOnlyList<double> values)
     {
         if (values.Count < 3)

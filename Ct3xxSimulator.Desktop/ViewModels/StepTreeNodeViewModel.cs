@@ -209,6 +209,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(DetailLine));
     }
 
+    /// <summary>
+    /// Executes BuildNodeTypeLabel.
+    /// </summary>
     private string BuildNodeTypeLabel()
     {
         if (!IsGroup)
@@ -229,6 +232,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return "Gruppe";
     }
 
+    /// <summary>
+    /// Executes BuildGroupSummary.
+    /// </summary>
     private string BuildGroupSummary()
     {
         var parts = new System.Collections.Generic.List<string>();
@@ -243,6 +249,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return string.Join("   |   ", parts);
     }
 
+    /// <summary>
+    /// Executes BuildMeasurementSummary.
+    /// </summary>
     private string BuildMeasurementSummary()
     {
         var parts = new System.Collections.Generic.List<string>();
@@ -262,6 +271,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return string.Join("   |   ", parts);
     }
 
+    /// <summary>
+    /// Executes BuildDetailLine.
+    /// </summary>
     private string BuildDetailLine()
     {
         if (Result?.HasComparisonSummary == true)
@@ -272,6 +284,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return Details;
     }
 
+    /// <summary>
+    /// Executes BuildTestSummary.
+    /// </summary>
     private string BuildTestSummary()
     {
         if (Children.Count > 0)
@@ -289,6 +304,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return BuildMeasurementSummary();
     }
 
+    /// <summary>
+    /// Executes BuildValueSummary.
+    /// </summary>
     private string BuildValueSummary()
     {
         if (string.IsNullOrWhiteSpace(MeasuredValue))
@@ -299,6 +317,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return $"{MeasuredValue}{AppendUnit(Unit)}";
     }
 
+    /// <summary>
+    /// Executes BuildRangeSummary.
+    /// </summary>
     private string BuildRangeSummary()
     {
         if (string.IsNullOrWhiteSpace(LowerLimit) && string.IsNullOrWhiteSpace(UpperLimit))
@@ -311,6 +332,9 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return $"{lower} .. {upper}{AppendUnit(Unit)}";
     }
 
+    /// <summary>
+    /// Executes BuildGroupRangeSummary.
+    /// </summary>
     private string BuildGroupRangeSummary()
     {
         if (string.IsNullOrWhiteSpace(GroupHint))
@@ -323,11 +347,17 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return firstSentence ?? GroupHint!;
     }
 
+    /// <summary>
+    /// Executes AppendUnit.
+    /// </summary>
     private static string AppendUnit(string unit)
     {
         return string.IsNullOrWhiteSpace(unit) ? string.Empty : $" {unit}";
     }
 
+    /// <summary>
+    /// Executes ComputeAggregateOutcome.
+    /// </summary>
     private string ComputeAggregateOutcome()
     {
         if (Children.Count == 0)
@@ -363,8 +393,14 @@ public sealed class StepTreeNodeViewModel : INotifyPropertyChanged
         return string.Empty;
     }
 
+    /// <summary>
+    /// Occurs when PropertyChanged is raised.
+    /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>
+    /// Executes OnPropertyChanged.
+    /// </summary>
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

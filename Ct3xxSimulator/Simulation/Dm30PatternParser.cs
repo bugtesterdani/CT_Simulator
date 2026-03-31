@@ -14,6 +14,9 @@ internal static class Dm30PatternParser
 {
     private static readonly Encoding PatternEncoding = GetPatternEncoding();
 
+    /// <summary>
+    /// Executes TryParse.
+    /// </summary>
     public static bool TryParse(string filePath, out Dm30PatternDocument document, out string? error)
     {
         document = Dm30PatternDocument.Empty;
@@ -38,6 +41,9 @@ internal static class Dm30PatternParser
         return string.IsNullOrWhiteSpace(error);
     }
 
+    /// <summary>
+    /// Executes ParseHexToBits.
+    /// </summary>
     public static List<int>? ParseHexToBits(string? hex, int expectedBits)
     {
         if (string.IsNullOrWhiteSpace(hex))
@@ -78,6 +84,9 @@ internal static class Dm30PatternParser
         return bits;
     }
 
+    /// <summary>
+    /// Executes NormalizeHex.
+    /// </summary>
     private static string NormalizeHex(string raw)
     {
         var builder = new StringBuilder(raw.Length);
@@ -92,6 +101,9 @@ internal static class Dm30PatternParser
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Executes GetPatternEncoding.
+    /// </summary>
     private static Encoding GetPatternEncoding()
     {
         try
@@ -120,13 +132,22 @@ internal static class Dm30PatternParser
         private readonly List<Dm30Group> _stimuli = new();
         private readonly List<Dm30Group> _acquisition = new();
 
+        /// <summary>
+        /// Initializes a new instance of Parser.
+        /// </summary>
         public Parser(string[] lines)
         {
             _lines = lines;
         }
 
+        /// <summary>
+        /// Gets or sets Error.
+        /// </summary>
         public string? Error { get; private set; }
 
+        /// <summary>
+        /// Executes Parse.
+        /// </summary>
         public Dm30PatternDocument Parse(string filePath)
         {
             for (var index = 0; index < _lines.Length; index++)
@@ -267,6 +288,9 @@ internal static class Dm30PatternParser
                 _acquisition);
         }
 
+        /// <summary>
+        /// Executes EnterPendingBlock.
+        /// </summary>
         private void EnterPendingBlock()
         {
             if (string.IsNullOrWhiteSpace(_pendingBlock))
@@ -306,6 +330,9 @@ internal static class Dm30PatternParser
             }
         }
 
+        /// <summary>
+        /// Executes ExitBlock.
+        /// </summary>
         private void ExitBlock()
         {
             if (_blockStack.Count == 0)
@@ -327,6 +354,9 @@ internal static class Dm30PatternParser
             }
         }
 
+        /// <summary>
+        /// Executes ReadPatternBlock.
+        /// </summary>
         private string? ReadPatternBlock(ref int index)
         {
             for (var i = index + 1; i < _lines.Length; i++)
@@ -361,6 +391,9 @@ internal static class Dm30PatternParser
             return builder.Length == 0 ? null : builder.ToString();
         }
 
+        /// <summary>
+        /// Executes ExtractValue.
+        /// </summary>
         private static string? ExtractValue(string line)
         {
             var atIndex = line.IndexOf('@');
@@ -379,12 +412,18 @@ internal static class Dm30PatternParser
             return value.Trim();
         }
 
+        /// <summary>
+        /// Executes ParseIntValue.
+        /// </summary>
         private static int ParseIntValue(string line)
         {
             var value = ExtractValue(line);
             return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
         }
 
+        /// <summary>
+        /// Executes ParseDoubleValue.
+        /// </summary>
         private static double ParseDoubleValue(string line, double fallback)
         {
             var value = ExtractValue(line);
@@ -422,28 +461,64 @@ internal sealed record Dm30PatternDocument(
 
 internal sealed class Dm30Group
 {
+    /// <summary>
+    /// Initializes a new instance of Dm30Group.
+    /// </summary>
     public Dm30Group(string kind)
     {
         Kind = kind;
     }
 
+    /// <summary>
+    /// Gets or sets Kind.
+    /// </summary>
     public string Kind { get; }
+    /// <summary>
+    /// Gets or sets HighLevel.
+    /// </summary>
     public double HighLevel { get; set; } = 0d;
+    /// <summary>
+    /// Gets or sets LowLevel.
+    /// </summary>
     public double LowLevel { get; set; } = 0d;
+    /// <summary>
+    /// Gets or sets Signals.
+    /// </summary>
     public List<Dm30Signal> Signals { get; } = new();
 }
 
 internal sealed class Dm30Signal
 {
+    /// <summary>
+    /// Initializes a new instance of Dm30Signal.
+    /// </summary>
     public Dm30Signal(bool isTriState)
     {
         IsTriState = isTriState;
     }
 
+    /// <summary>
+    /// Gets or sets Name.
+    /// </summary>
     public string Name { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets IsUsed.
+    /// </summary>
     public bool IsUsed { get; set; } = true;
+    /// <summary>
+    /// Gets or sets IsTriState.
+    /// </summary>
     public bool IsTriState { get; }
+    /// <summary>
+    /// Gets or sets StimuliPattern.
+    /// </summary>
     public string? StimuliPattern { get; set; }
+    /// <summary>
+    /// Gets or sets AcquisitionNominalPattern.
+    /// </summary>
     public string? AcquisitionNominalPattern { get; set; }
+    /// <summary>
+    /// Gets or sets AcquisitionMaskPattern.
+    /// </summary>
     public string? AcquisitionMaskPattern { get; set; }
 }

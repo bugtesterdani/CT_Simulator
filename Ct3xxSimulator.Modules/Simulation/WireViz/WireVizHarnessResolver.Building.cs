@@ -13,6 +13,9 @@ namespace Ct3xxSimulator.Simulation.WireViz;
 
 public sealed partial class WireVizHarnessResolver
 {
+    /// <summary>
+    /// Executes BuildGraph.
+    /// </summary>
     private static WireVizGraph BuildGraph(
         WireVizDocument document,
         SimulationModelDocument? simulationModel,
@@ -75,6 +78,9 @@ public sealed partial class WireVizHarnessResolver
             prefixedSimulationElements);
     }
 
+    /// <summary>
+    /// Executes ParseConnectorPins.
+    /// </summary>
     private static Dictionary<string, List<WireVizEndpoint>> ParseConnectorPins(IReadOnlyDictionary<string, WireVizConnectorDefinition> connectors, string prefix)
     {
         var result = new Dictionary<string, List<WireVizEndpoint>>(StringComparer.OrdinalIgnoreCase);
@@ -101,6 +107,9 @@ public sealed partial class WireVizHarnessResolver
         return result;
     }
 
+    /// <summary>
+    /// Executes MergeAssembly.
+    /// </summary>
     private static void MergeAssembly(
         WireVizDocument parentDocument,
         AssemblyElementDefinition assembly,
@@ -155,6 +164,9 @@ public sealed partial class WireVizHarnessResolver
         visitedModels.Remove(childKey);
     }
 
+    /// <summary>
+    /// Executes LoadAssemblySimulationDocument.
+    /// </summary>
     private static SimulationModelDocument? LoadAssemblySimulationDocument(string basePath, string? simulationPath, HashSet<string> visitedModels)
     {
         if (string.IsNullOrWhiteSpace(simulationPath))
@@ -172,11 +184,17 @@ public sealed partial class WireVizHarnessResolver
         return parser.ParseFile(fullPath);
     }
 
+    /// <summary>
+    /// Executes ResolveRelativePath.
+    /// </summary>
     private static string ResolveRelativePath(string basePath, string path)
     {
         return Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(basePath, path));
     }
 
+    /// <summary>
+    /// Executes PrefixElement.
+    /// </summary>
     private static SimulationElementDefinition PrefixElement(SimulationElementDefinition element, string prefix)
     {
         switch (element)
@@ -221,11 +239,23 @@ public sealed partial class WireVizHarnessResolver
                     assembly.Simulation,
                     assembly.Ports,
                     assembly.Metadata);
+            case LimitElementDefinition limit:
+                return new LimitElementDefinition(
+                    $"{prefix}{limit.Id}",
+                    limit.Mode,
+                    limit.NodePrefixes.Select(node => PrefixNodeToken(node, prefix)).ToList(),
+                    limit.MaxVoltage,
+                    limit.MaxCurrent,
+                    limit.Gain,
+                    limit.Metadata);
             default:
                 return element;
         }
     }
 
+    /// <summary>
+    /// Executes PrefixNode.
+    /// </summary>
     private static string PrefixNode(string node, string prefix)
     {
         if (string.IsNullOrWhiteSpace(node))
@@ -238,6 +268,24 @@ public sealed partial class WireVizHarnessResolver
             : node;
     }
 
+    /// <summary>
+    /// Executes PrefixNodeToken.
+    /// </summary>
+    private static string PrefixNodeToken(string node, string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(node))
+        {
+            return node;
+        }
+
+        return node.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? node
+            : $"{prefix}{node}";
+    }
+
+    /// <summary>
+    /// Executes ExpandPins.
+    /// </summary>
     private static List<string> ExpandPins(WireVizValue connector)
     {
         if (connector.TryGetProperty("pins", out var pins))
@@ -265,6 +313,9 @@ public sealed partial class WireVizHarnessResolver
             : Enumerable.Range(1, pinCount).Select(index => index.ToString(CultureInfo.InvariantCulture)).ToList();
     }
 
+    /// <summary>
+    /// Executes ExpandPinLabels.
+    /// </summary>
     private static List<string?> ExpandPinLabels(WireVizValue connector)
     {
         if (!connector.TryGetProperty("pinlabels", out var labels))
@@ -277,6 +328,9 @@ public sealed partial class WireVizHarnessResolver
             .ToList();
     }
 
+    /// <summary>
+    /// Executes ParseConnectionSegment.
+    /// </summary>
     private static ConnectionSegment? ParseConnectionSegment(WireVizValue value)
     {
         var properties = value.AsMappingOrEmpty();
@@ -292,6 +346,9 @@ public sealed partial class WireVizHarnessResolver
             : new ConnectionSegment(pair.Key, terminals);
     }
 
+    /// <summary>
+    /// Executes ExpandTerminalValue.
+    /// </summary>
     private static List<string> ExpandTerminalValue(WireVizValue value)
     {
         if (value.Kind == WireVizValueKind.Sequence)
@@ -310,6 +367,9 @@ public sealed partial class WireVizHarnessResolver
         return ExpandToken(text);
     }
 
+    /// <summary>
+    /// Executes ExpandToken.
+    /// </summary>
     private static List<string> ExpandToken(string token)
     {
         var trimmed = token.Trim();
@@ -337,6 +397,9 @@ public sealed partial class WireVizHarnessResolver
         return values;
     }
 
+    /// <summary>
+    /// Executes ConnectPath.
+    /// </summary>
     private static void ConnectPath(Dictionary<string, HashSet<string>> edges, IReadOnlyList<string> nodes)
     {
         for (var i = 0; i < nodes.Count - 1; i++)
@@ -346,6 +409,9 @@ public sealed partial class WireVizHarnessResolver
         }
     }
 
+    /// <summary>
+    /// Executes AddEdge.
+    /// </summary>
     private static void AddEdge(Dictionary<string, HashSet<string>> edges, string from, string to)
     {
         if (!edges.TryGetValue(from, out var targets))

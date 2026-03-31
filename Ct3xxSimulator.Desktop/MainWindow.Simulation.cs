@@ -11,16 +11,25 @@ namespace Ct3xxSimulator.Desktop;
 
 public partial class MainWindow
 {
+    /// <summary>
+    /// Executes OnStartSimulation.
+    /// </summary>
     private async void OnStartSimulation(object sender, RoutedEventArgs e)
     {
         await StartSimulationAsync();
     }
 
+    /// <summary>
+    /// Executes OnCancelSimulation.
+    /// </summary>
     private void OnCancelSimulation(object sender, RoutedEventArgs e)
     {
         _cts?.Cancel();
     }
 
+    /// <summary>
+    /// Executes StartSimulationAsync.
+    /// </summary>
     private async Task StartSimulationAsync(int? replayPauseAfterStepCount = null)
     {
         ResolveProgramFromCurrentFolder(true);
@@ -114,6 +123,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes ApplySimulationOverrides.
+    /// </summary>
     private void ApplySimulationOverrides()
     {
         _previousWireVizRoot = Environment.GetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", EnvironmentVariableTarget.Process);
@@ -124,6 +136,9 @@ public partial class MainWindow
         AddLog($"Simulations-Ordner: {SimulationModelFolderPath}");
     }
 
+    /// <summary>
+    /// Executes RestoreSimulationOverrides.
+    /// </summary>
     private void RestoreSimulationOverrides()
     {
         Environment.SetEnvironmentVariable("CT3XX_WIREVIZ_ROOT", _previousWireVizRoot, EnvironmentVariableTarget.Process);
@@ -132,6 +147,9 @@ public partial class MainWindow
         _previousSimulationModelRoot = null;
     }
 
+    /// <summary>
+    /// Executes EnsurePythonDevice.
+    /// </summary>
     private void EnsurePythonDevice()
     {
         DisposePythonDeviceHost();
@@ -151,6 +169,9 @@ public partial class MainWindow
         AddLog($"Geraetemodell gestartet: {Path.GetFileName(PythonScriptPath)}");
     }
 
+    /// <summary>
+    /// Executes DisposePythonDeviceHost.
+    /// </summary>
     private void DisposePythonDeviceHost()
     {
         if (_pythonDeviceHost == null)
@@ -164,6 +185,9 @@ public partial class MainWindow
         _previousPythonPipe = null;
     }
 
+    /// <summary>
+    /// Executes OnClosed.
+    /// </summary>
     private void OnClosed(object? sender, EventArgs e)
     {
         _liveStateWindow?.Close();
@@ -231,6 +255,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes PauseExecutionAtInteractionPoint.
+    /// </summary>
     private void PauseExecutionAtInteractionPoint(string message, CancellationToken cancellationToken, bool addLog = true)
     {
         if (addLog)

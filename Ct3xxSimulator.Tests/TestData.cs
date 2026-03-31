@@ -32,6 +32,9 @@ internal static class TestData
         return fullPath;
     }
 
+    /// <summary>
+    /// Executes ResolveRootDirectory.
+    /// </summary>
     private static string ResolveRootDirectory()
     {
         var current = AppContext.BaseDirectory;

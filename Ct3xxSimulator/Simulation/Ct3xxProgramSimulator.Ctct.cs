@@ -13,6 +13,9 @@ namespace Ct3xxSimulator.Simulation;
 /// </summary>
 public partial class Ct3xxProgramSimulator
 {
+    /// <summary>
+    /// Executes RunConnectionContactTest.
+    /// </summary>
     private TestOutcome RunConnectionContactTest(Test test)
     {
         var parameters = test.Parameters;
@@ -68,6 +71,9 @@ public partial class Ct3xxProgramSimulator
         return overall;
     }
 
+    /// <summary>
+    /// Executes EvaluateCtctRecord.
+    /// </summary>
     private CtctRecordEvaluation EvaluateCtctRecord(Record sourceRecord, IReadOnlyList<Record> allRecords)
     {
         var sourcePoint = sourceRecord.TestPoint?.Trim() ?? string.Empty;
@@ -158,6 +164,9 @@ public partial class Ct3xxProgramSimulator
             BuildCtctTraces(sourcePoint, bestMeasurements));
     }
 
+    /// <summary>
+    /// Executes BuildCtctDetailText.
+    /// </summary>
     private static string BuildCtctDetailText(
         string sourcePoint,
         bool expectedClosed,
@@ -189,6 +198,9 @@ public partial class Ct3xxProgramSimulator
         return $"{sourcePoint}: erwartet {expectation}, {bestText}, Messungen=[{string.Join("; ", pairTexts)}]";
     }
 
+    /// <summary>
+    /// Executes BuildCtctTraces.
+    /// </summary>
     private static IReadOnlyList<StepConnectionTrace> BuildCtctTraces(string sourcePoint, IReadOnlyList<WireVizResistanceMeasurement> measurements)
     {
         if (measurements.Count == 0)
@@ -211,6 +223,9 @@ public partial class Ct3xxProgramSimulator
         return traces;
     }
 
+    /// <summary>
+    /// Executes SelectBestMeasurements.
+    /// </summary>
     private static IReadOnlyList<WireVizResistanceMeasurement> SelectBestMeasurements(IReadOnlyList<WireVizResistanceMeasurement> measurements)
     {
         if (measurements.Count == 0)
@@ -225,6 +240,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes FormatEngineeringValue.
+    /// </summary>
     private static string FormatEngineeringValue(double? value)
     {
         if (!value.HasValue)
@@ -245,6 +263,9 @@ public partial class Ct3xxProgramSimulator
         return $"{value.Value.ToString("0.###", CultureInfo.InvariantCulture)} Ohm";
     }
 
+    /// <summary>
+    /// Executes CtctRecordEvaluation.
+    /// </summary>
     private sealed record CtctRecordEvaluation(
         TestOutcome Outcome,
         double? MeasuredResistanceOhms,

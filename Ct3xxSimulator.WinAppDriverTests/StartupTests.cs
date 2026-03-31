@@ -57,6 +57,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         AssertLogContains("Simulation abgeschlossen", TimeSpan.FromSeconds(60));
     }
 
+    /// <summary>
+    /// Executes GetSamplePrograms.
+    /// </summary>
     private static IEnumerable<object[]> GetSamplePrograms()
     {
         var root = TestProgramDiscovery.FindRoot(AppContext.BaseDirectory);
@@ -77,6 +80,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes LoadProgramViaUi.
+    /// </summary>
     private void LoadProgramViaUi(string programPath, string displayName)
     {
         if (TrySelectProgramFromList(displayName))
@@ -93,6 +99,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         WaitUntil(() => WaitForElementByAccessibilityId("StartSimulationButton").Enabled, TimeSpan.FromSeconds(10), "Start button did not enable after loading program.");
     }
 
+    /// <summary>
+    /// Executes TrySelectProgramFromList.
+    /// </summary>
     private bool TrySelectProgramFromList(string displayName)
     {
         try
@@ -123,6 +132,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes EnterProgramPath.
+    /// </summary>
     private void EnterProgramPath(string programPath)
     {
         var pathBox = WaitForElementByAccessibilityId("ProgramPathBox");
@@ -130,6 +142,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         pathBox.SendKeys(programPath);
     }
 
+    /// <summary>
+    /// Executes SeedMeasurementQueue.
+    /// </summary>
     private void SeedMeasurementQueue(int pairs)
     {
         for (var i = 0; i < pairs; i++)
@@ -139,11 +154,17 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes StartSimulation.
+    /// </summary>
     private void StartSimulation()
     {
         WaitForElementByAccessibilityId("StartSimulationButton").Click();
     }
 
+    /// <summary>
+    /// Executes WaitForSimulationToFinish.
+    /// </summary>
     private void WaitForSimulationToFinish()
     {
         var timeout = DateTime.UtcNow.AddMinutes(5);
@@ -164,6 +185,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         Assert.Fail("Simulation did not finish before the timeout elapsed.");
     }
 
+    /// <summary>
+    /// Executes HandleModalDialogs.
+    /// </summary>
     private void HandleModalDialogs()
     {
         var handles = Session.WindowHandles;
@@ -204,6 +228,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         SwitchToMainWindow();
     }
 
+    /// <summary>
+    /// Executes TryHandleInputDialog.
+    /// </summary>
     private bool TryHandleInputDialog()
     {
         try
@@ -221,6 +248,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes TryHandleSelectionDialog.
+    /// </summary>
     private bool TryHandleSelectionDialog()
     {
         try
@@ -241,6 +271,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes TryHandleGenericOk.
+    /// </summary>
     private bool TryHandleGenericOk(out string? dialogText)
     {
         dialogText = null;
@@ -263,6 +296,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes ExtractDialogText.
+    /// </summary>
     private string? ExtractDialogText()
     {
         try
@@ -290,6 +326,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes IsErrorDialogText.
+    /// </summary>
     private static bool IsErrorDialogText(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -302,6 +341,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         return keywords.Any(normalized.Contains);
     }
 
+    /// <summary>
+    /// Executes ClickDisplayConfirmationIfVisible.
+    /// </summary>
     private void ClickDisplayConfirmationIfVisible()
     {
         try
@@ -317,6 +359,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes AssertLogContains.
+    /// </summary>
     private void AssertLogContains(string expectedText, TimeSpan timeout)
     {
         var limit = DateTime.UtcNow + timeout;
@@ -341,6 +386,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         Assert.Fail($"Log entry '{expectedText}' was not found.");
     }
 
+    /// <summary>
+    /// Executes SafeGetText.
+    /// </summary>
     private string SafeGetText(string automationId)
     {
         try
@@ -353,6 +401,9 @@ public sealed class StartupTests : WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes ResolveInputValue.
+    /// </summary>
     private static string ResolveInputValue(string prompt)
     {
         if (string.IsNullOrWhiteSpace(prompt))

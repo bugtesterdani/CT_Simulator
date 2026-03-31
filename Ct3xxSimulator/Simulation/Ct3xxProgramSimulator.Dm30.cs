@@ -12,6 +12,9 @@ namespace Ct3xxSimulator.Simulation;
 /// </summary>
 public partial class Ct3xxProgramSimulator
 {
+    /// <summary>
+    /// Executes RunDm30DigitalPatternTest.
+    /// </summary>
     private TestOutcome RunDm30DigitalPatternTest(Test test, string patternPath)
     {
         var stepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "DM30";
@@ -209,6 +212,9 @@ public partial class Ct3xxProgramSimulator
         return outcome;
     }
 
+    /// <summary>
+    /// Executes ParseDm30AcquisitionResponse.
+    /// </summary>
     private static Dictionary<string, string>? ParseDm30AcquisitionResponse(System.Text.Json.Nodes.JsonObject response)
     {
         var acquisitionNode = response["acquisition"];
@@ -253,6 +259,9 @@ public partial class Ct3xxProgramSimulator
         return null;
     }
 
+    /// <summary>
+    /// Executes BuildDm30CurvePoints.
+    /// </summary>
     private static IReadOnlyList<MeasurementCurvePoint> BuildDm30CurvePoints(string signalName, IReadOnlyList<int> bits, int startStep, int endStep, long stepDurationMs, long startTimeMs, string labelPrefix)
     {
         var points = new List<MeasurementCurvePoint>();
@@ -266,6 +275,9 @@ public partial class Ct3xxProgramSimulator
         return points;
     }
 
+    /// <summary>
+    /// Executes BuildDm30DetailText.
+    /// </summary>
     private static string BuildDm30DetailText(Dm30PatternDocument document, IReadOnlyList<Dm30SignalEvaluation> evaluations, int overallMismatch)
     {
         var header = $"DM30 Schritte={document.TestSteps}, Bereich={document.TestStart}-{document.TestEnd}";
@@ -285,6 +297,9 @@ public partial class Ct3xxProgramSimulator
         return $"{header} | {string.Join("; ", detailParts)}";
     }
 
+    /// <summary>
+    /// Executes ResolveTestFilePath.
+    /// </summary>
     private string? ResolveTestFilePath(Test test)
     {
         var fileName = NormalizeQuotedText(test.File);
@@ -306,6 +321,9 @@ public partial class Ct3xxProgramSimulator
         return File.Exists(candidate) ? candidate : null;
     }
 
+    /// <summary>
+    /// Executes Dm30SignalEvaluation.
+    /// </summary>
     private sealed record Dm30SignalEvaluation(
         string SignalName,
         int MismatchBits,

@@ -113,6 +113,9 @@ public partial class Ct3xxProgramSimulator
         RunCore(fileSet.Program, dutLoopIterations, cancellationToken);
     }
 
+    /// <summary>
+    /// Executes RunCore.
+    /// </summary>
     private void RunCore(Ct3xxProgram program, int dutLoopIterations, CancellationToken cancellationToken)
     {
         _cancellationToken = cancellationToken;
@@ -169,6 +172,9 @@ public partial class Ct3xxProgramSimulator
         _observer.OnMessage($"Simulation finished. Last result: {_context.LastResult}");
     }
 
+    /// <summary>
+    /// Executes ExecuteGroup.
+    /// </summary>
     private void ExecuteGroup(Group group)
     {
         if (IsDisabled(group.Disabled))
@@ -213,6 +219,9 @@ public partial class Ct3xxProgramSimulator
         _executionController.WaitAfterGroup(group, _cancellationToken);
     }
 
+    /// <summary>
+    /// Executes ExecuteSequenceItems.
+    /// </summary>
     private void ExecuteSequenceItems(IEnumerable<SequenceNode> items)
     {
         foreach (var item in items)
@@ -233,11 +242,17 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes ExecuteConcurrentGroupItems.
+    /// </summary>
     private void ExecuteConcurrentGroupItems(IEnumerable<SequenceNode> items)
     {
         RunConcurrentGroupScheduler(items.ToList());
     }
 
+    /// <summary>
+    /// Executes ExecuteDutLoop.
+    /// </summary>
     private void ExecuteDutLoop(DutLoop loop, int iterations)
     {
         if (IsDisabled(loop.Disabled))
@@ -276,16 +291,25 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes ExecuteTest.
+    /// </summary>
     private void ExecuteTest(Test test)
     {
         ExecuteTestCore(test, advanceStepDuration: true);
     }
 
+    /// <summary>
+    /// Executes ExecuteTestWithoutStepDuration.
+    /// </summary>
     private void ExecuteTestWithoutStepDuration(Test test)
     {
         ExecuteTestCore(test, advanceStepDuration: false);
     }
 
+    /// <summary>
+    /// Executes ExecuteTestCore.
+    /// </summary>
     private void ExecuteTestCore(Test test, bool advanceStepDuration)
     {
         if (IsDisabled(test.Disabled))
@@ -340,6 +364,9 @@ public partial class Ct3xxProgramSimulator
         _executionController.WaitAfterTest(test, _cancellationToken);
     }
 
+    /// <summary>
+    /// Executes RunAssignmentTest.
+    /// </summary>
     private TestOutcome RunAssignmentTest(Test test)
     {
         var parameters = test.Parameters;
@@ -398,6 +425,9 @@ public partial class Ct3xxProgramSimulator
         return TestOutcome.Pass;
     }
 
+    /// <summary>
+    /// Executes RunEvaluationTest.
+    /// </summary>
     private TestOutcome RunEvaluationTest(Test test)
     {
         var parameters = test.Parameters;
@@ -477,6 +507,9 @@ public partial class Ct3xxProgramSimulator
         return overall;
     }
 
+    /// <summary>
+    /// Executes RunOperatorTest.
+    /// </summary>
     private TestOutcome RunOperatorTest(Test test)
     {
         var parameters = test.Parameters;
@@ -590,10 +623,14 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes RunDigitalIoControlTest.
+    /// </summary>
     private TestOutcome RunDigitalIoControlTest(Test test)
     {
         var parameters = test.Parameters;
-        if (parameters?.ExtraElements == null || parameters.ExtraElements.Length == 0)
+        if ((parameters?.ExtraElements == null || parameters.ExtraElements.Length == 0) &&
+            (parameters?.Records == null || parameters.Records.Count == 0))
         {
             PublishStepEvaluation(test, TestOutcome.Pass, details: "IOXX ohne Datensaetze.");
             return TestOutcome.Pass;
@@ -602,41 +639,77 @@ public partial class Ct3xxProgramSimulator
         var actions = new List<string>();
         var traces = new List<StepConnectionTrace>();
         long maxWaitMs = 0;
+        var ioActions = new List<(string ChannelName, string OutState, string? RelayState, long WaitMs, string? Direction)>();
 
-        foreach (var element in parameters.ExtraElements)
+        if (parameters?.ExtraElements != null)
         {
-            if (!string.Equals(element.Name, "Record", StringComparison.OrdinalIgnoreCase))
+            foreach (var element in parameters.ExtraElements)
+            {
+                if (!string.Equals(element.Name, "Record", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var disabled = element.GetAttribute("Disabled");
+                if (string.Equals(disabled, "yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var channelName = element.GetAttribute("ChannelName");
+                var outState = element.GetAttribute("Out");
+                var relayState = element.GetAttribute("RelayState");
+                var direction = element.GetAttribute("Direction");
+                var waitMs = ParseDurationMilliseconds(element.GetAttribute("WaitTime"));
+                if (!string.IsNullOrWhiteSpace(channelName) && !string.IsNullOrWhiteSpace(outState))
+                {
+                    ioActions.Add((channelName, outState, relayState, waitMs, direction));
+                }
+            }
+        }
+
+        if (parameters?.Records != null)
+        {
+            foreach (var record in parameters.Records)
+            {
+                if (string.Equals(record.Disabled, "yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var channelName = GetRecordAttribute(record, "ChannelName") ?? record.Destination ?? record.Variable;
+                var outState = GetRecordAttribute(record, "Out") ?? record.Expression ?? record.Text;
+                var relayState = GetRecordAttribute(record, "RelayState");
+                var direction = record.Direction ?? GetRecordAttribute(record, "Direction");
+                var waitMs = ParseDurationMilliseconds(GetRecordAttribute(record, "WaitTime"));
+                if (!string.IsNullOrWhiteSpace(channelName) && !string.IsNullOrWhiteSpace(outState))
+                {
+                    ioActions.Add((channelName, outState, relayState, waitMs, direction));
+                }
+            }
+        }
+
+        foreach (var action in ioActions)
+        {
+            if (!string.Equals(action.Direction, "Send", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            var disabled = element.GetAttribute("Disabled");
-            if (string.Equals(disabled, "yes", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var direction = element.GetAttribute("Direction");
-            if (!string.Equals(direction, "Send", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var channelName = ExtractSignalName(element.GetAttribute("ChannelName"));
+            var channelName = ExtractSignalName(action.ChannelName);
             if (string.IsNullOrWhiteSpace(channelName))
             {
                 continue;
             }
 
-            var outState = element.GetAttribute("Out").Trim().Trim('\'', '"');
+            var outState = action.OutState.Trim().Trim('\'', '"');
             object? value = ResolveDigitalIoValue(channelName!, outState, out var valueDescription);
 
             WriteSignal(channelName!, value);
             traces.AddRange(CollectSignalTraces(channelName!, "Ansteuerung"));
 
-            var relayState = element.GetAttribute("RelayState").Trim().Trim('\'', '"');
-            var waitMs = ParseDurationMilliseconds(element.GetAttribute("WaitTime"));
-            maxWaitMs = Math.Max(maxWaitMs, waitMs);
+            var relayState = action.RelayState?.Trim().Trim('\'', '"');
+            maxWaitMs = Math.Max(maxWaitMs, action.WaitMs);
 
             actions.Add(string.IsNullOrWhiteSpace(valueDescription)
                 ? $"{channelName}={_evaluator.ToText(value)} Relay={relayState}"
@@ -659,6 +732,9 @@ public partial class Ct3xxProgramSimulator
         return TestOutcome.Pass;
     }
 
+    /// <summary>
+    /// Executes ResolveDigitalIoValue.
+    /// </summary>
     private object? ResolveDigitalIoValue(string signalName, string outState, out string? description)
     {
         description = null;
@@ -680,6 +756,9 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes RunGenericTest.
+    /// </summary>
     private TestOutcome RunGenericTest(Test test)
     {
         var info = test.Parameters?.DrawingReference ?? test.Parameters?.Message;
@@ -693,6 +772,9 @@ public partial class Ct3xxProgramSimulator
         return TestOutcome.Pass;
     }
 
+    /// <summary>
+    /// Executes RunExecutableCallTest.
+    /// </summary>
     private TestOutcome RunExecutableCallTest(Test test)
     {
         var parameters = test.Parameters;
@@ -753,6 +835,9 @@ public partial class Ct3xxProgramSimulator
         return outcome;
     }
 
+    /// <summary>
+    /// Executes TryStartConcurrentTest.
+    /// </summary>
     private bool TryStartConcurrentTest(Test test, int branchIndex, out ConcurrentTestHandle? handle)
     {
         handle = null;
@@ -812,6 +897,9 @@ public partial class Ct3xxProgramSimulator
         return true;
     }
 
+    /// <summary>
+    /// Executes CompleteConcurrentTest.
+    /// </summary>
     private void CompleteConcurrentTest(ConcurrentTestHandle handle)
     {
         using var process = handle.Process;
@@ -846,6 +934,9 @@ public partial class Ct3xxProgramSimulator
         _currentConcurrentEvent = null;
     }
 
+    /// <summary>
+    /// Executes InitializeConcurrentBranchStates.
+    /// </summary>
     private void InitializeConcurrentBranchStates(IReadOnlyList<SequenceNode> items)
     {
         _concurrentBranchStates.Clear();
@@ -859,6 +950,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes UpdateConcurrentBranchState.
+    /// </summary>
     private void UpdateConcurrentBranchState(int branchIndex, string status, string? currentItem = null, long? waitUntilTimeMs = null, string? details = null)
     {
         if (branchIndex < 0 || branchIndex >= _concurrentBranchStates.Count)
@@ -876,11 +970,17 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes CompleteConcurrentBranchState.
+    /// </summary>
     private void CompleteConcurrentBranchState(int branchIndex)
     {
         UpdateConcurrentBranchState(branchIndex, "completed", details: null, waitUntilTimeMs: null);
     }
 
+    /// <summary>
+    /// Executes BeginConcurrentBranchScope.
+    /// </summary>
     private IDisposable BeginConcurrentBranchScope(int branchIndex)
     {
         var previous = _activeConcurrentBranchIndex;
@@ -888,6 +988,9 @@ public partial class Ct3xxProgramSimulator
         return new ScopeGuard(() => _activeConcurrentBranchIndex = previous);
     }
 
+    /// <summary>
+    /// Executes GetBranchName.
+    /// </summary>
     private static string GetBranchName(SequenceNode item, int index)
     {
         return item switch
@@ -899,6 +1002,9 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes DescribeSequenceNode.
+    /// </summary>
     private static string DescribeSequenceNode(SequenceNode item)
     {
         return item switch
@@ -910,6 +1016,9 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes RunWaitTest.
+    /// </summary>
     private TestOutcome RunWaitTest(Test test)
     {
         var waitExpression = GetParameterAttribute(test.Parameters, "WaitTime");
@@ -947,6 +1056,9 @@ public partial class Ct3xxProgramSimulator
     // E488 is a communication test for RS232 / IEEE-488 / VISA style interfaces.
     // The simulator sends commands to the external DUT, reads the response and maps it
     // back into CT3xx variables so that following evaluation steps can use it.
+    /// <summary>
+    /// Executes RunInterfaceTest.
+    /// </summary>
     private TestOutcome RunInterfaceTest(Test test)
     {
         var parameters = test.Parameters;
@@ -1043,6 +1155,9 @@ public partial class Ct3xxProgramSimulator
         return overallOutcome;
     }
 
+    /// <summary>
+    /// Executes RunWaveformTest.
+    /// </summary>
     private TestOutcome RunWaveformTest(Test test)
     {
         if (_externalDeviceSession == null)
@@ -1144,6 +1259,9 @@ public partial class Ct3xxProgramSimulator
         return waveformOutcome;
     }
 
+    /// <summary>
+    /// Executes RunScannerConnectTest.
+    /// </summary>
     private TestOutcome RunScannerConnectTest(Test test)
     {
         var parameters = test.Parameters;
@@ -1174,6 +1292,9 @@ public partial class Ct3xxProgramSimulator
         return TestOutcome.Pass;
     }
 
+    /// <summary>
+    /// Executes RunCdmaTest.
+    /// </summary>
     private TestOutcome RunCdmaTest(Test test)
     {
         var parameters = test.Parameters;
@@ -1228,13 +1349,22 @@ public partial class Ct3xxProgramSimulator
         return outcome;
     }
 
+    /// <summary>
+    /// Executes IsDisabled.
+    /// </summary>
     private static bool IsDisabled(string? flag) => string.Equals(flag, "yes", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Executes ParseNullable.
+    /// </summary>
     private static double? ParseNullable(string? text)
     {
         return ParseEngineeringValue(text);
     }
 
+    /// <summary>
+    /// Executes ParseResultIndexes.
+    /// </summary>
     private static IReadOnlyList<int> ParseResultIndexes(string? specification)
     {
         if (string.IsNullOrWhiteSpace(specification))
@@ -1260,6 +1390,9 @@ public partial class Ct3xxProgramSimulator
         return indices;
     }
 
+    /// <summary>
+    /// Executes ResolveMeasurementInput.
+    /// </summary>
     private object? ResolveMeasurementInput(Test test, Record record)
     {
         var expression = record.Expression;
@@ -1278,6 +1411,9 @@ public partial class Ct3xxProgramSimulator
         return _context.GetValue(address);
     }
 
+    /// <summary>
+    /// Executes EnsureConditionContext.
+    /// </summary>
     private void EnsureConditionContext(string? condition)
     {
         if (string.IsNullOrWhiteSpace(condition))
@@ -1301,6 +1437,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes CheckCancellation.
+    /// </summary>
     private void CheckCancellation()
     {
         if (_cancellationToken.IsCancellationRequested)
@@ -1309,6 +1448,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes ReportWireViz.
+    /// </summary>
     private void ReportWireViz(string? candidate)
     {
         if (_wireVizResolver == null || string.IsNullOrWhiteSpace(candidate))
@@ -1328,6 +1470,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes TryWriteExternalSignal.
+    /// </summary>
     private void TryWriteExternalSignal(string? destination, object? value)
     {
         if (_externalDeviceSession == null || _wireVizResolver == null)
@@ -1344,6 +1489,16 @@ public partial class Ct3xxProgramSimulator
         RememberSignal(signalName!, value);
         if (!_wireVizResolver.TryResolveRuntimeTargets(signalName, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, true, out var runtimeTargets))
         {
+            if (_externalDeviceSession.TryWriteSignal(signalName, value, _cancellationToken, out var fallbackError, _simulatedTimeMs))
+            {
+                RefreshExternalDeviceState();
+                _observer.OnMessage($"Python device input <= {signalName} = {_evaluator.ToText(value)}");
+            }
+            else if (!string.IsNullOrWhiteSpace(fallbackError))
+            {
+                _observer.OnMessage($"Python device input error for {signalName}: {fallbackError}");
+            }
+
             return;
         }
 
@@ -1352,12 +1507,28 @@ public partial class Ct3xxProgramSimulator
             RefreshExternalDeviceState();
             _observer.OnMessage($"Python device input <= {string.Join(", ", writtenSignals)} = {_evaluator.ToText(value)}");
         }
-        else if (!string.IsNullOrWhiteSpace(error))
+        else
         {
-            _observer.OnMessage($"Python device input error for {signalName}: {error}");
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                _observer.OnMessage($"Python device input error for {signalName}: {error}");
+            }
+
+            if (_externalDeviceSession.TryWriteSignal(signalName, value, _cancellationToken, out var fallbackError, _simulatedTimeMs))
+            {
+                RefreshExternalDeviceState();
+                _observer.OnMessage($"Python device input <= {signalName} = {_evaluator.ToText(value)}");
+            }
+            else if (!string.IsNullOrWhiteSpace(fallbackError))
+            {
+                _observer.OnMessage($"Python device input error for {signalName}: {fallbackError}");
+            }
         }
     }
 
+    /// <summary>
+    /// Executes ResolveExternalMeasurement.
+    /// </summary>
     private object? ResolveExternalMeasurement(Record record)
     {
         if (_externalDeviceSession == null || _wireVizResolver == null)
@@ -1417,6 +1588,9 @@ public partial class Ct3xxProgramSimulator
         return null;
     }
 
+    /// <summary>
+    /// Executes ResetSimulationState.
+    /// </summary>
     private void ResetSimulationState()
     {
         _measurementBusSignals.Clear();
@@ -1431,6 +1605,9 @@ public partial class Ct3xxProgramSimulator
         PublishStateSnapshot();
     }
 
+    /// <summary>
+    /// Executes PublishStepEvaluation.
+    /// </summary>
     private void PublishStepEvaluation(Test test, TestOutcome outcome, double? measured = null, double? lower = null, double? upper = null, string? unit = null, string? details = null, IReadOnlyList<StepConnectionTrace>? traces = null, IReadOnlyList<MeasurementCurvePoint>? curvePoints = null, string? stepNameOverride = null)
     {
         var stepName = stepNameOverride ?? test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
@@ -1444,6 +1621,9 @@ public partial class Ct3xxProgramSimulator
         PublishStateSnapshot(force: true);
     }
 
+    /// <summary>
+    /// Executes BuildWaveformCurvePoints.
+    /// </summary>
     private IReadOnlyList<MeasurementCurvePoint> BuildWaveformCurvePoints(ActiveWaveformSession? session)
     {
         if (session == null)
@@ -1466,11 +1646,17 @@ public partial class Ct3xxProgramSimulator
         return points.Count == 0 ? CaptureCurvePoints() : points;
     }
 
+    /// <summary>
+    /// Executes ResolveMeasurementBusSignal.
+    /// </summary>
     private string? ResolveMeasurementBusSignal(string busName)
     {
         return _measurementBusSignals.TryGetValue(busName, out var signal) ? signal : null;
     }
 
+    /// <summary>
+    /// Executes WriteSignal.
+    /// </summary>
     private void WriteSignal(string signalName, object? value)
     {
         var normalized = ExtractSignalName(signalName);
@@ -1479,10 +1665,50 @@ public partial class Ct3xxProgramSimulator
             return;
         }
 
+        if (TryGetNumericValue(value, out var numeric))
+        {
+            var limitIssues = _wireVizResolver?.CheckOutputLimits(normalized!, numeric, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults);
+            if (limitIssues != null && limitIssues.Count > 0)
+            {
+                throw new SimulationAbortException(SimulationAbortReason.OutputLimitViolation, string.Join(" | ", limitIssues));
+            }
+        }
+
         RememberSignal(normalized!, value);
         TryWriteExternalSignal(normalized, value);
     }
 
+    /// <summary>
+    /// Executes TryGetNumericValue.
+    /// </summary>
+    private static bool TryGetNumericValue(object? value, out double numeric)
+    {
+        switch (value)
+        {
+            case double d:
+                numeric = d;
+                return true;
+            case float f:
+                numeric = f;
+                return true;
+            case int i:
+                numeric = i;
+                return true;
+            case long l:
+                numeric = l;
+                return true;
+            case string s when double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed):
+                numeric = parsed;
+                return true;
+            default:
+                numeric = 0d;
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Executes TryReadSignal.
+    /// </summary>
     private bool TryReadSignal(string signalName, out object? value, out string? details)
     {
         details = null;
@@ -1538,6 +1764,9 @@ public partial class Ct3xxProgramSimulator
         return false;
     }
 
+    /// <summary>
+    /// Executes EvaluateNumericOutcome.
+    /// </summary>
     private static TestOutcome EvaluateNumericOutcome(double? measured, double? lowerLimit, double? upperLimit)
     {
         if (!measured.HasValue)
@@ -1563,11 +1792,17 @@ public partial class Ct3xxProgramSimulator
         return TestOutcome.Pass;
     }
 
+    /// <summary>
+    /// Executes FormatLimit.
+    /// </summary>
     private static string FormatLimit(double? value)
     {
         return value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";
     }
 
+    /// <summary>
+    /// Executes ParseEngineeringValue.
+    /// </summary>
     private static double? ParseEngineeringValue(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -1604,6 +1839,9 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes GetParameterAttribute.
+    /// </summary>
     private static string? GetParameterAttribute(TestParameters? parameters, string attributeName)
     {
         if (parameters?.AdditionalAttributes == null || string.IsNullOrWhiteSpace(attributeName))
@@ -1616,6 +1854,9 @@ public partial class Ct3xxProgramSimulator
         return attribute?.Value;
     }
 
+    /// <summary>
+    /// Executes ParseYesNo.
+    /// </summary>
     private static bool ParseYesNo(string? value, bool defaultValue)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -1629,6 +1870,9 @@ public partial class Ct3xxProgramSimulator
                normalized.Equals("on", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes ParseExpectedExitCode.
+    /// </summary>
     private static int ParseExpectedExitCode(TestParameters parameters)
     {
         var candidates = new[] { "ExpectedExitCode", "ExitCode", "PassExitCode" };
@@ -1644,6 +1888,9 @@ public partial class Ct3xxProgramSimulator
         return 0;
     }
 
+    /// <summary>
+    /// Executes ParseDurationMilliseconds.
+    /// </summary>
     private static long ParseDurationMilliseconds(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -1678,6 +1925,9 @@ public partial class Ct3xxProgramSimulator
         return (long)Math.Max(0d, Math.Round(milliseconds, MidpointRounding.AwayFromZero));
     }
 
+    /// <summary>
+    /// Executes BuildExecutableStartInfo.
+    /// </summary>
     private ProcessStartInfo BuildExecutableStartInfo(string executablePath)
     {
         var extension = Path.GetExtension(executablePath);
@@ -1715,6 +1965,9 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes EnumerateSignalCandidates.
+    /// </summary>
     private IEnumerable<string> EnumerateSignalCandidates(Record record)
     {
         var candidates = new[]
@@ -1745,6 +1998,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes EnumerateRecordAttributeSignals.
+    /// </summary>
     private IEnumerable<string> EnumerateRecordAttributeSignals(Record record)
     {
         if (record.AdditionalAttributes == null || record.AdditionalAttributes.Length == 0)
@@ -1778,6 +2034,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes ReadAttributeValue.
+    /// </summary>
     private static string? ReadAttributeValue(XmlAttribute[] attributes, string name)
     {
         foreach (var attribute in attributes)
@@ -1791,6 +2050,9 @@ public partial class Ct3xxProgramSimulator
         return null;
     }
 
+    /// <summary>
+    /// Executes CollectTestTraces.
+    /// </summary>
     private IReadOnlyList<StepConnectionTrace> CollectTestTraces(Test test)
     {
         var result = new List<StepConnectionTrace>();
@@ -1863,6 +2125,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes ExtractSignalName.
+    /// </summary>
     private static string? ExtractSignalName(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -1880,6 +2145,9 @@ public partial class Ct3xxProgramSimulator
         return trimmed;
     }
 
+    /// <summary>
+    /// Executes AssignInterfaceResponse.
+    /// </summary>
     private void AssignInterfaceResponse(Record record, object? responsePayload)
     {
         if (string.IsNullOrWhiteSpace(record.Variable))
@@ -1901,6 +2169,9 @@ public partial class Ct3xxProgramSimulator
         _context.SetValue(record.Variable!, responsePayload);
     }
 
+    /// <summary>
+    /// Executes TrySplitInterfaceArray.
+    /// </summary>
     private static bool TrySplitInterfaceArray(object? responsePayload, out List<object?> values)
     {
         values = new List<object?>();
@@ -1936,6 +2207,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes ParseInterfaceScalar.
+    /// </summary>
     private static object? ParseInterfaceScalar(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -1957,6 +2231,9 @@ public partial class Ct3xxProgramSimulator
         return trimmed;
     }
 
+    /// <summary>
+    /// Executes DescribeInterfaceResponse.
+    /// </summary>
     private static string DescribeInterfaceResponse(object? responsePayload)
     {
         return responsePayload switch
@@ -1967,6 +2244,9 @@ public partial class Ct3xxProgramSimulator
         };
     }
 
+    /// <summary>
+    /// Executes GetRecordAttribute.
+    /// </summary>
     private static string? GetRecordAttribute(Record record, string attributeName)
     {
         if (record.AdditionalAttributes == null || string.IsNullOrWhiteSpace(attributeName))
@@ -1979,6 +2259,9 @@ public partial class Ct3xxProgramSimulator
         return attribute?.Value?.Trim().Trim('\'', '"');
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (bool send, bool receive) NormalizeInterfaceDirection(string? rawDirection)
     {
         var direction = rawDirection?.Trim().Trim('\'', '"') ?? string.Empty;
@@ -1993,6 +2276,9 @@ public partial class Ct3xxProgramSimulator
             receive: normalized.Contains("receive", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Executes CreateExternalDeviceSession.
+    /// </summary>
     private ExternalDeviceSession? CreateExternalDeviceSession()
     {
         var pipeName = Environment.GetEnvironmentVariable("CT3XX_PY_DEVICE_PIPE");
@@ -2004,6 +2290,9 @@ public partial class Ct3xxProgramSimulator
         return new ExternalDeviceSession(new PythonDeviceSimulatorClient(pipeName));
     }
 
+    /// <summary>
+    /// Executes TryAnnounceExternalDevice.
+    /// </summary>
     private void TryAnnounceExternalDevice()
     {
         try
@@ -2037,6 +2326,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes ParseDeviceCtctResistors.
+    /// </summary>
     private static IReadOnlyList<ResistorElementDefinition> ParseDeviceCtctResistors(JsonNode? payload)
     {
         if (payload is not JsonObject payloadObject)
@@ -2100,6 +2392,9 @@ public partial class Ct3xxProgramSimulator
         return results;
     }
 
+    /// <summary>
+    /// Executes TrySetExternalSignal.
+    /// </summary>
     private void TrySetExternalSignal(string signalName, object? value)
     {
         RememberSignal(signalName, value);
@@ -2119,6 +2414,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes RememberSignal.
+    /// </summary>
     private void RememberSignal(string signalName, object? value)
     {
         if (string.IsNullOrWhiteSpace(signalName))
@@ -2131,6 +2429,9 @@ public partial class Ct3xxProgramSimulator
         PublishStateSnapshot();
     }
 
+    /// <summary>
+    /// Executes PublishStateSnapshot.
+    /// </summary>
     private void PublishStateSnapshot(bool force = false)
     {
         if (!force)
@@ -2181,6 +2482,9 @@ public partial class Ct3xxProgramSimulator
             concurrentBranches), _cancellationToken);
     }
 
+    /// <summary>
+    /// Executes BuildConcurrentBranchSnapshots.
+    /// </summary>
     private IReadOnlyList<ConcurrentBranchSnapshot> BuildConcurrentBranchSnapshots()
     {
         return _concurrentBranchStates
@@ -2193,6 +2497,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes CollectSignalTraces.
+    /// </summary>
     private IReadOnlyList<StepConnectionTrace> CollectSignalTraces(string signalName, string traceKind)
     {
         if (_wireVizResolver == null || string.IsNullOrWhiteSpace(signalName))
@@ -2225,6 +2532,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes CollectRecordTraces.
+    /// </summary>
     private IReadOnlyList<StepConnectionTrace> CollectRecordTraces(Record record)
     {
         var result = new List<StepConnectionTrace>();
@@ -2236,6 +2546,9 @@ public partial class Ct3xxProgramSimulator
         return result;
     }
 
+    /// <summary>
+    /// Executes HandlesOwnChildSequence.
+    /// </summary>
     private static bool HandlesOwnChildSequence(Test test)
     {
         var id = test.Id?.Trim();
@@ -2244,6 +2557,9 @@ public partial class Ct3xxProgramSimulator
                string.Equals(id, "TRGA", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes StartActiveWaveformSession.
+    /// </summary>
     private void StartActiveWaveformSession(IReadOnlyList<(AppliedWaveform Waveform, string StimulusSignal, string? ObserveSignal, string ExternalStimulusSignal, string? ExternalObserveSignal, JsonObject? Response)> channelRuns)
     {
         var monitors = channelRuns
@@ -2254,11 +2570,17 @@ public partial class Ct3xxProgramSimulator
         _activeWaveformSession = new ActiveWaveformSession(_simulatedTimeMs, sampleStepMs, monitors);
     }
 
+    /// <summary>
+    /// Executes EndActiveWaveformSession.
+    /// </summary>
     private void EndActiveWaveformSession()
     {
         _activeWaveformSession = null;
     }
 
+    /// <summary>
+    /// Executes SampleActiveWaveformSignals.
+    /// </summary>
     private void SampleActiveWaveformSignals()
     {
         var session = _activeWaveformSession;
@@ -2292,6 +2614,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes EvaluateWaveformOutcome.
+    /// </summary>
     private TestOutcome EvaluateWaveformOutcome(
         ActiveWaveformSession? session,
         IReadOnlyList<(AppliedWaveform Waveform, string StimulusSignal, string? ObserveSignal, string ExternalStimulusSignal, string? ExternalObserveSignal, JsonObject? Response)> channelRuns,
@@ -2325,6 +2650,9 @@ public partial class Ct3xxProgramSimulator
         return outcome;
     }
 
+    /// <summary>
+    /// Executes CombineOutcomes.
+    /// </summary>
     private static TestOutcome CombineOutcomes(TestOutcome current, TestOutcome next)
     {
         if (current == TestOutcome.Error || next == TestOutcome.Error)
@@ -2340,6 +2668,9 @@ public partial class Ct3xxProgramSimulator
         return TestOutcome.Pass;
     }
 
+    /// <summary>
+    /// Executes GetWaveformChannelIndex.
+    /// </summary>
     private static int GetWaveformChannelIndex(IReadOnlyDictionary<string, string> metadata)
     {
         return metadata.TryGetValue("CHANNEL_INDEX", out var text) &&
@@ -2349,6 +2680,9 @@ public partial class Ct3xxProgramSimulator
             : 0;
     }
 
+    /// <summary>
+    /// Executes EvaluateWaveformChannel.
+    /// </summary>
     private static WaveformEvaluationResult EvaluateWaveformChannel(IReadOnlyDictionary<string, string> metadata, int channelIndex, IReadOnlyList<WaveformPoint> samples)
     {
         if (samples.Count == 0)
@@ -2396,6 +2730,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes CountPulses.
+    /// </summary>
     private static int CountPulses(IReadOnlyList<WaveformPoint> samples, double threshold)
     {
         var count = 0;
@@ -2414,6 +2751,9 @@ public partial class Ct3xxProgramSimulator
         return count;
     }
 
+    /// <summary>
+    /// Executes CalculateAveragePulseWidthMs.
+    /// </summary>
     private static double CalculateAveragePulseWidthMs(IReadOnlyList<WaveformPoint> samples, double threshold)
     {
         var widths = new List<double>();
@@ -2440,12 +2780,18 @@ public partial class Ct3xxProgramSimulator
         return widths.Count == 0 ? 0d : widths.Average();
     }
 
+    /// <summary>
+    /// Executes IsWaveformMetricEnabled.
+    /// </summary>
     private static bool IsWaveformMetricEnabled(IReadOnlyDictionary<string, string> metadata, string metricName, int channelIndex)
     {
         var key = $"Disable{metricName}:{channelIndex}";
         return !metadata.TryGetValue(key, out var value) || !value.Contains("yes", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes GetWaveformMetricLimit.
+    /// </summary>
     private static double? GetWaveformMetricLimit(IReadOnlyDictionary<string, string> metadata, string keyBase, int channelIndex, string defaultUnit)
     {
         var key = $"{keyBase}:{channelIndex}";
@@ -2538,8 +2884,14 @@ public partial class Ct3xxProgramSimulator
         public double? LastObservedValue { get; set; }
     }
 
+    /// <summary>
+    /// Executes WaveformEvaluationResult.
+    /// </summary>
     private readonly record struct WaveformEvaluationResult(TestOutcome Outcome, string Message);
 
+    /// <summary>
+    /// Executes AdvanceTime.
+    /// </summary>
     private void AdvanceTime(long milliseconds)
     {
         var remaining = Math.Max(0L, milliseconds);
@@ -2568,6 +2920,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes GetStepDurationMs.
+    /// </summary>
     private static long GetStepDurationMs(Test test)
     {
         if (test.Parameters?.AdditionalAttributes != null)
@@ -2583,11 +2938,17 @@ public partial class Ct3xxProgramSimulator
         return 100L;
     }
 
+    /// <summary>
+    /// Executes RecordCurvePoint.
+    /// </summary>
     private void RecordCurvePoint(string label, double? value, string? unit = null)
     {
         _currentCurvePoints.Add(new MeasurementCurvePoint(_simulatedTimeMs, label, value, unit));
     }
 
+    /// <summary>
+    /// Executes RefreshExternalDeviceState.
+    /// </summary>
     private void RefreshExternalDeviceState()
     {
         if (_externalDeviceSession == null)
@@ -2611,6 +2972,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes CaptureCurvePoints.
+    /// </summary>
     private IReadOnlyList<MeasurementCurvePoint> CaptureCurvePoints()
     {
         return _currentCurvePoints.ToList();
@@ -2657,6 +3021,9 @@ public partial class Ct3xxProgramSimulator
         public int ExpectedExitCode { get; }
     }
 
+    /// <summary>
+    /// Executes ConcurrentBranchRuntimeState.
+    /// </summary>
     private sealed record ConcurrentBranchRuntimeState(
         int BranchIndex,
         string BranchName,

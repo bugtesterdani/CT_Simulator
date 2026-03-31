@@ -64,6 +64,31 @@ Sinnvoll fuer:
 - unterschiedliche DUT-Modelle
 - unterschiedliche Verdrahtungsvarianten
 
+Optional koennen Presets auch die verfuegbare Kartenbestueckung und Testtyp-Zuordnung enthalten:
+
+- `InstalledCards`: Dictionary `Kartenname -> Anzahl`
+- `TestTypeCards`: Dictionary `Testtyp -> Kartenname` (verwende `PC` fuer Tests ohne Kartenbedarf)
+- `TestTypeCardRules`: Liste von Regeln, um pro Testtyp mehrere Karten und bedingte Matches zu definieren
+- `CardIndexPatterns`: Dictionary `Kartenname -> Regex` fuer die Index-Erkennung im Testprogramm
+
+Die Validierung prueft damit, ob die benoetigte Kartenanzahl (basierend auf den gefundenen Indizes im Programm)
+groesser ist als die installierte Anzahl. Fuer `AM2` ist standardmaessig `AM2/<Index>` als Indexmuster hinterlegt,
+alle anderen Karten koennen ueber `CardIndexPatterns` konfiguriert werden.
+
+Beispiel mit mehreren Karten pro Testtyp und bedingter Regel:
+
+```json
+{
+  "InstalledCards": { "AM2": 1, "SC3": 1 },
+  "TestTypeCards": { "ICT": "AM2,SC3", "CTCT": "SC3", "SHRT": "SC3", "USR": "PC" },
+  "TestTypeCardRules": [
+    { "TestType": "2ARB", "Cards": ["AM2"], "MatchRegex": "Measurement Bus" },
+    { "TestType": "2ARB", "Cards": ["AM2", "SC3"], "MatchRegex": "Frontside Connector" }
+  ],
+  "CardIndexPatterns": { "AM2": "AM2\\s*/\\s*(\\d+)" }
+}
+```
+
 ## Verfuegbare Aktionen
 
 - Validieren

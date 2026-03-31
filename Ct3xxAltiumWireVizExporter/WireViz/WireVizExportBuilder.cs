@@ -57,6 +57,9 @@ public static class WireVizExportBuilder
         return new WireVizExportDocument(configuration.BoardName, connectors, connections);
     }
 
+    /// <summary>
+    /// Executes SortPin.
+    /// </summary>
     private static int SortPin(string pin)
     {
         return int.TryParse(pin, out var numeric) ? numeric : int.MaxValue;

@@ -35,6 +35,9 @@ public static class SimulationResultExportWriter
         WriteJson(path, document, steps, logItems, svgAssets);
     }
 
+    /// <summary>
+    /// Executes WriteCsv.
+    /// </summary>
     private static void WriteCsv(string path, IReadOnlyList<SimulationExportStep> stepResults, IReadOnlyList<SimulationExportLogEntry> logs, IReadOnlyDictionary<string, string> svgAssets)
     {
         var builder = new StringBuilder();
@@ -68,6 +71,9 @@ public static class SimulationResultExportWriter
         File.WriteAllText(logPath, logBuilder.ToString(), Encoding.UTF8);
     }
 
+    /// <summary>
+    /// Executes WriteJson.
+    /// </summary>
     private static void WriteJson(string path, SimulationExportDocument document, IReadOnlyList<SimulationExportStep> stepResults, IReadOnlyList<SimulationExportLogEntry> logs, IReadOnlyDictionary<string, string> svgAssets)
     {
         var payload = new
@@ -95,12 +101,18 @@ public static class SimulationResultExportWriter
         File.WriteAllText(path, JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
     }
 
+    /// <summary>
+    /// Executes Quote.
+    /// </summary>
     private static string Quote(string? text)
     {
         var value = (text ?? string.Empty).Replace("\"", "\"\"", StringComparison.Ordinal);
         return $"\"{value}\"";
     }
 
+    /// <summary>
+    /// Executes PrepareAssetDirectory.
+    /// </summary>
     private static string PrepareAssetDirectory(string exportPath)
     {
         var directory = Path.Combine(
@@ -110,6 +122,9 @@ public static class SimulationResultExportWriter
         return directory;
     }
 
+    /// <summary>
+    /// Executes WriteDiagramAssets.
+    /// </summary>
     private static IReadOnlyDictionary<string, string> WriteDiagramAssets(string assetDirectory, IReadOnlyList<SimulationExportStep> stepResults)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -125,6 +140,9 @@ public static class SimulationResultExportWriter
         return result;
     }
 
+    /// <summary>
+    /// Executes SanitizeFileName.
+    /// </summary>
     private static string SanitizeFileName(string value)
     {
         var invalid = Path.GetInvalidFileNameChars();

@@ -75,6 +75,9 @@ public abstract class WinAppDriverTestBase
         }
     }
 
+    /// <summary>
+    /// Executes WaitForElementByAccessibilityId.
+    /// </summary>
     protected AppiumElement WaitForElementByAccessibilityId(string automationId, int timeoutSeconds = 10)
     {
         var timeout = DateTime.UtcNow.AddSeconds(timeoutSeconds);
@@ -99,6 +102,9 @@ public abstract class WinAppDriverTestBase
         throw new InvalidOperationException();
     }
 
+    /// <summary>
+    /// Executes WaitForWindowHandles.
+    /// </summary>
     protected IReadOnlyCollection<string> WaitForWindowHandles(int timeoutSeconds = 10)
     {
         var timeout = DateTime.UtcNow.AddSeconds(timeoutSeconds);
@@ -117,6 +123,9 @@ public abstract class WinAppDriverTestBase
         throw new InvalidOperationException();
     }
 
+    /// <summary>
+    /// Executes WaitForAdditionalWindowHandle.
+    /// </summary>
     protected string WaitForAdditionalWindowHandle(IReadOnlyCollection<string> existingHandles, int timeoutSeconds = 10)
     {
         var timeout = DateTime.UtcNow.AddSeconds(timeoutSeconds);
@@ -136,11 +145,17 @@ public abstract class WinAppDriverTestBase
         throw new InvalidOperationException();
     }
 
+    /// <summary>
+    /// Executes SwitchToMainWindow.
+    /// </summary>
     protected void SwitchToMainWindow()
     {
         Session.SwitchTo().Window(MainWindowHandle);
     }
 
+    /// <summary>
+    /// Executes WaitUntil.
+    /// </summary>
     protected void WaitUntil(Func<bool> condition, TimeSpan timeout, string failureMessage)
     {
         var limit = DateTime.UtcNow + timeout;
@@ -157,8 +172,14 @@ public abstract class WinAppDriverTestBase
         Assert.Fail(failureMessage);
     }
 
+    /// <summary>
+    /// Executes TryFindTestProgramRoot.
+    /// </summary>
     protected static string? TryFindTestProgramRoot() => TestProgramDiscovery.FindRoot(AppContext.BaseDirectory);
 
+    /// <summary>
+    /// Executes ResolveApplicationPath.
+    /// </summary>
     protected static string ResolveApplicationPath()
     {
         var explicitPath = Environment.GetEnvironmentVariable("CT3XX_APP_PATH");
@@ -178,6 +199,9 @@ public abstract class WinAppDriverTestBase
         return candidate;
     }
 
+    /// <summary>
+    /// Executes ResolveProgramPath.
+    /// </summary>
     protected static string ResolveProgramPath(string appPath)
     {
         var directory = Path.GetDirectoryName(appPath);

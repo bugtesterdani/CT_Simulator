@@ -18,6 +18,9 @@ public sealed class WireVizValue
 
     private static readonly IReadOnlyList<WireVizValue> EmptyList = Array.Empty<WireVizValue>();
 
+    /// <summary>
+    /// Initializes a new instance of WireVizValue.
+    /// </summary>
     private WireVizValue(
         WireVizValueKind kind,
         object? scalar,

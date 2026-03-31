@@ -92,6 +92,9 @@ public class SimulationContext
     /// </summary>
     public void SetValue(VariableAddress address, object? value) => ApplyValue(address, value);
 
+    /// <summary>
+    /// Executes ApplyValue.
+    /// </summary>
     private void ApplyValue(VariableAddress address, object? value)
     {
         if (value is ArrayAllocation allocation)
@@ -112,6 +115,9 @@ public class SimulationContext
         }
     }
 
+    /// <summary>
+    /// Executes GetOrCreateArray.
+    /// </summary>
     private ProgramArray GetOrCreateArray(string name)
     {
         if (!_arrays.TryGetValue(name, out var array))

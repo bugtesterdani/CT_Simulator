@@ -15,6 +15,9 @@ public sealed class InterfaceTableFileParser : TextFileParser<InterfaceTableDocu
     /// </summary>
     public override string Extension => ".ctifc";
 
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override InterfaceTableDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }

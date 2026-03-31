@@ -140,11 +140,17 @@ internal sealed class CliSimulationObserver : ISimulationObserver
         return new SimulationExportDocument(DateTimeOffset.Now, configurationSummary, steps, _logs.ToList());
     }
 
+    /// <summary>
+    /// Executes Log.
+    /// </summary>
     private void Log(string message)
     {
         _logs.Add(new SimulationExportLogEntry(DateTime.Now, message));
     }
 
+    /// <summary>
+    /// Executes FormatNumber.
+    /// </summary>
     private static string FormatNumber(double? value) =>
         value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";
 }

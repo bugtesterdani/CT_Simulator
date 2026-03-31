@@ -6,6 +6,9 @@ namespace Ct3xxProgramParser.Documents;
 
 public abstract class BinaryCt3xxFileDocument : Ct3xxFileDocument
 {
+    /// <summary>
+    /// Initializes a new instance of BinaryCt3xxFileDocument.
+    /// </summary>
     protected BinaryCt3xxFileDocument(string filePath, Table? tableDefinition, byte[] content)
         : base(filePath, tableDefinition)
     {

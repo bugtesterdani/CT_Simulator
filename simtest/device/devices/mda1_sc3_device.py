@@ -148,6 +148,7 @@ class Mda1Sc3DeviceModel(BaseDeviceModel):
 
 
 def _try_float(value: Any) -> float | None:
+    """Executes _try_float."""
     try:
         if value is None:
             return None

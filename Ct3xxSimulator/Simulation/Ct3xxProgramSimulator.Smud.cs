@@ -14,6 +14,9 @@ public partial class Ct3xxProgramSimulator
 {
     private readonly HashSet<string> _blownSmudSupplySignals = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Executes RunSmudPowerSupplyTest.
+    /// </summary>
     private TestOutcome RunSmudPowerSupplyTest(Test test)
     {
         var parameters = test.Parameters;
@@ -146,6 +149,9 @@ public partial class Ct3xxProgramSimulator
         return outcome;
     }
 
+    /// <summary>
+    /// Executes BuildSmudRuntime.
+    /// </summary>
     private SmudRuntime BuildSmudRuntime(TestParameters parameters)
     {
         var moduleName = ResolveSmudModuleName(parameters);
@@ -172,6 +178,9 @@ public partial class Ct3xxProgramSimulator
             measurementDelayMs);
     }
 
+    /// <summary>
+    /// Executes BuildSmudTraces.
+    /// </summary>
     private IReadOnlyList<StepConnectionTrace> BuildSmudTraces(SmudRuntime runtime)
     {
         var traces = new List<StepConnectionTrace>();
@@ -185,6 +194,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes ResolveSmudModuleName.
+    /// </summary>
     private static string ResolveSmudModuleName(TestParameters parameters)
     {
         var candidates = new[]
@@ -211,6 +223,9 @@ public partial class Ct3xxProgramSimulator
         return "SM2";
     }
 
+    /// <summary>
+    /// Executes SmudRuntime.
+    /// </summary>
     private sealed record SmudRuntime(
         string ModuleName,
         string SupplySignal,

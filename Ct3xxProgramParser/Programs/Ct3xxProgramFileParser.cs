@@ -47,6 +47,9 @@ public sealed class Ct3xxProgramFileParser
         return new Ct3xxProgramFileSet(programFilePath, program, externalFiles);
     }
 
+    /// <summary>
+    /// Executes LoadExternalFiles.
+    /// </summary>
     private IReadOnlyList<Ct3xxFileDocument> LoadExternalFiles(string programFilePath, Ct3xxProgram program)
     {
         var programDirectory = Path.GetDirectoryName(Path.GetFullPath(programFilePath)) ?? Directory.GetCurrentDirectory();
@@ -81,6 +84,9 @@ public sealed class Ct3xxProgramFileParser
         return documents;
     }
 
+    /// <summary>
+    /// Executes EnumerateTables.
+    /// </summary>
     private static IEnumerable<Table> EnumerateTables(Ct3xxProgram program)
     {
         var visited = new HashSet<Table>();
@@ -112,6 +118,9 @@ public sealed class Ct3xxProgramFileParser
         }
     }
 
+    /// <summary>
+    /// Executes EnumerateTables.
+    /// </summary>
     private static IEnumerable<Table> EnumerateTables(IEnumerable<Table>? tables, HashSet<Table> visited)
     {
         if (tables == null)
@@ -128,6 +137,9 @@ public sealed class Ct3xxProgramFileParser
         }
     }
 
+    /// <summary>
+    /// Executes EnumerateTableAndChildren.
+    /// </summary>
     private static IEnumerable<Table> EnumerateTableAndChildren(Table? table, HashSet<Table> visited)
     {
         if (table == null)
@@ -167,6 +179,9 @@ public sealed class Ct3xxProgramFileParser
         }
     }
 
+    /// <summary>
+    /// Executes EnumerateSequenceTables.
+    /// </summary>
     private static IEnumerable<Table> EnumerateSequenceTables(IEnumerable<SequenceNode>? nodes, HashSet<Table> visited)
     {
         if (nodes == null)
@@ -183,6 +198,9 @@ public sealed class Ct3xxProgramFileParser
         }
     }
 
+    /// <summary>
+    /// Executes EnumerateSequenceTables.
+    /// </summary>
     private static IEnumerable<Table> EnumerateSequenceTables(SequenceNode? node, HashSet<Table> visited)
     {
         if (node == null)
@@ -213,6 +231,9 @@ public sealed class Ct3xxProgramFileParser
         }
     }
 
+    /// <summary>
+    /// Executes NormalizePath.
+    /// </summary>
     private static string? NormalizePath(string? path)
     {
         var candidate = path;

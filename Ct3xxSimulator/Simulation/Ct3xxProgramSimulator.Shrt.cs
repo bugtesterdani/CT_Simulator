@@ -12,6 +12,9 @@ namespace Ct3xxSimulator.Simulation;
 /// </summary>
 public partial class Ct3xxProgramSimulator
 {
+    /// <summary>
+    /// Executes RunShortcutTest.
+    /// </summary>
     private TestOutcome RunShortcutTest(Test test)
     {
         var parameters = test.Parameters;
@@ -143,6 +146,9 @@ public partial class Ct3xxProgramSimulator
         return TestOutcome.Fail;
     }
 
+    /// <summary>
+    /// Executes ResolveShortcutWireViz.
+    /// </summary>
     private WireVizHarnessResolver? ResolveShortcutWireViz()
     {
         if (_fileSet == null)
@@ -158,6 +164,9 @@ public partial class Ct3xxProgramSimulator
         return WireVizHarnessResolver.Create(_fileSet);
     }
 
+    /// <summary>
+    /// Executes BuildShortcutPairs.
+    /// </summary>
     private List<ShortcutMeasurement> BuildShortcutPairs(
         WireVizHarnessResolver resolver,
         IReadOnlyList<string> testpoints,
@@ -202,6 +211,9 @@ public partial class Ct3xxProgramSimulator
         return results;
     }
 
+    /// <summary>
+    /// Executes LoadShortcutTestpoints.
+    /// </summary>
     private static List<string> LoadShortcutTestpoints(TestParameters parameters)
     {
         var testpoints = new List<string>();
@@ -234,6 +246,9 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes BuildKnownShortPairs.
+    /// </summary>
     private static HashSet<string> BuildKnownShortPairs(TestParameters parameters)
     {
         var pairs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -282,6 +297,9 @@ public partial class Ct3xxProgramSimulator
         return pairs;
     }
 
+    /// <summary>
+    /// Executes SplitTestpointList.
+    /// </summary>
     private static IReadOnlyList<string> SplitTestpointList(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -295,12 +313,18 @@ public partial class Ct3xxProgramSimulator
             .ToList();
     }
 
+    /// <summary>
+    /// Executes NormalizePair.
+    /// </summary>
     private static string NormalizePair(string first, string second)
     {
         var order = string.Compare(first, second, StringComparison.OrdinalIgnoreCase);
         return order <= 0 ? $"{first}|{second}" : $"{second}|{first}";
     }
 
+    /// <summary>
+    /// Executes BuildShortcutDetailText.
+    /// </summary>
     private static string BuildShortcutDetailText(ShortcutFinding finding, double thresholdOhms)
     {
         var elementText = finding.Measurement.EdgeDescriptions.Count == 0
@@ -311,6 +335,9 @@ public partial class Ct3xxProgramSimulator
         return $"SHRT: unerwarteter Kurzschluss {finding.Source}->{finding.Target} = {measured} (Limit <= {threshold}){elementText}";
     }
 
+    /// <summary>
+    /// Executes BuildShortcutTrace.
+    /// </summary>
     private static IReadOnlyList<StepConnectionTrace> BuildShortcutTrace(WireVizResistanceMeasurement measurement)
     {
         if (!measurement.PathFound || measurement.Nodes.Count == 0)
@@ -322,11 +349,20 @@ public partial class Ct3xxProgramSimulator
         return new[] { new StepConnectionTrace(title, measurement.Nodes) };
     }
 
+    /// <summary>
+    /// Executes ShortcutFinding.
+    /// </summary>
     private sealed record ShortcutFinding(string Source, string Target, WireVizResistanceMeasurement Measurement)
     {
+        /// <summary>
+        /// Gets or sets ReportedResistanceOhms.
+        /// </summary>
         public double? ReportedResistanceOhms { get; init; }
     }
 
+    /// <summary>
+    /// Executes TryQueryShortcutMeasurements.
+    /// </summary>
     private bool TryQueryShortcutMeasurements(
         IReadOnlyList<ShortcutMeasurement> pairs,
         double thresholdOhms,
@@ -362,6 +398,9 @@ public partial class Ct3xxProgramSimulator
         return measurements.Count > 0;
     }
 
+    /// <summary>
+    /// Executes TryExtractShortcutMeasurements.
+    /// </summary>
     private static bool TryExtractShortcutMeasurements(object? payload, List<ShortcutMeasurement> measurements, out string? error)
     {
         error = null;
@@ -420,6 +459,9 @@ public partial class Ct3xxProgramSimulator
         return false;
     }
 
+    /// <summary>
+    /// Executes TrySplitPair.
+    /// </summary>
     private static bool TrySplitPair(string key, out string source, out string target)
     {
         source = string.Empty;
@@ -441,6 +483,9 @@ public partial class Ct3xxProgramSimulator
         return source.Length > 0 && target.Length > 0;
     }
 
+    /// <summary>
+    /// Executes TryReadNumeric.
+    /// </summary>
     private static double? TryReadNumeric(System.Text.Json.Nodes.JsonNode? node)
     {
         if (node == null)
@@ -475,5 +520,8 @@ public partial class Ct3xxProgramSimulator
         return null;
     }
 
+    /// <summary>
+    /// Executes ShortcutMeasurement.
+    /// </summary>
     private sealed record ShortcutMeasurement(string Source, string Target, double? ResistanceOhms);
 }

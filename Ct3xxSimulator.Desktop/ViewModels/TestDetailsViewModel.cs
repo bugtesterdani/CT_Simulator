@@ -196,8 +196,14 @@ public class TestDetailsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasDisplayOptions));
     }
 
+    /// <summary>
+    /// Occurs when PropertyChanged is raised.
+    /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>
+    /// Executes OnPropertyChanged.
+    /// </summary>
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -359,6 +365,9 @@ public class TestRecordMetricViewModel
         }
     }
 
+    /// <summary>
+    /// Executes UpdateNormalization.
+    /// </summary>
     internal void UpdateNormalization(double min, double max, double chartWidth)
     {
         ChartWidth = chartWidth;
@@ -388,11 +397,17 @@ public class TestRecordMetricViewModel
         RangeWidth = Math.Max(2, width);
     }
 
+    /// <summary>
+    /// Executes FormatDouble.
+    /// </summary>
     private static string FormatDouble(double? value)
     {
         return value.HasValue ? value.Value.ToString("0.###", CultureInfo.InvariantCulture) : "-";
     }
 
+    /// <summary>
+    /// Executes Clamp.
+    /// </summary>
     private static double Clamp(double value, double min, double max)
     {
         if (value < min) return min;

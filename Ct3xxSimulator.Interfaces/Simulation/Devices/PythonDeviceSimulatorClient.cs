@@ -195,6 +195,9 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
     public ExternalDeviceResponse Shutdown(long simTimeMs, CancellationToken cancellationToken) =>
         Send("shutdown", null, simTimeMs, cancellationToken);
 
+    /// <summary>
+    /// Executes Send.
+    /// </summary>
     private ExternalDeviceResponse Send(string action, JsonObject? payload, long simTimeMs, CancellationToken cancellationToken)
     {
         lock (_sync)
@@ -229,6 +232,9 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes EnsureConnected.
+    /// </summary>
     private void EnsureConnected(CancellationToken cancellationToken)
     {
         if (_stream is { IsConnected: true })
@@ -257,12 +263,18 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
         _stream = stream;
     }
 
+    /// <summary>
+    /// Executes DisposeConnection.
+    /// </summary>
     private void DisposeConnection()
     {
         _stream?.Dispose();
         _stream = null;
     }
 
+    /// <summary>
+    /// Executes WriteMessage.
+    /// </summary>
     private static void WriteMessage(Stream stream, string json)
     {
         var payload = Encoding.UTF8.GetBytes(json);
@@ -273,6 +285,9 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
         stream.Flush();
     }
 
+    /// <summary>
+    /// Executes ReadMessage.
+    /// </summary>
     private static string ReadMessage(Stream stream)
     {
         Span<byte> lengthPrefix = stackalloc byte[4];
@@ -288,6 +303,9 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
         return Encoding.UTF8.GetString(payload);
     }
 
+    /// <summary>
+    /// Executes ReadExact.
+    /// </summary>
     private static void ReadExact(Stream stream, Span<byte> buffer)
     {
         var offset = 0;
@@ -303,6 +321,9 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes NormalizePipeName.
+    /// </summary>
     private static string NormalizePipeName(string pipeName)
     {
         var trimmed = pipeName.Trim();
@@ -311,6 +332,9 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
             : $@"\\.\pipe\{trimmed}";
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (string ServerName, string PipeName) SplitPipeName(string pipePath)
     {
         const string prefix = @"\\";
@@ -328,6 +352,9 @@ public sealed class PythonDeviceSimulatorClient : IDisposable
         return (parts[0], parts[2]);
     }
 
+    /// <summary>
+    /// Executes ToJsonNode.
+    /// </summary>
     private static JsonNode? ToJsonNode(object? value)
     {
         return value == null ? null : JsonSerializer.SerializeToNode(value);

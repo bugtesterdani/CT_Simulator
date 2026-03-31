@@ -141,6 +141,9 @@ internal sealed class CliOptions
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Executes RequireValue.
+    /// </summary>
     private static string RequireValue(string argument, ref int index, string? next)
     {
         if (string.IsNullOrWhiteSpace(next))

@@ -7,6 +7,9 @@ namespace Ct3xxProgramParser.Documents;
 
 public abstract class TextCt3xxFileDocument : Ct3xxFileDocument
 {
+    /// <summary>
+    /// Initializes a new instance of TextCt3xxFileDocument.
+    /// </summary>
     protected TextCt3xxFileDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines)
         : base(filePath, tableDefinition)
     {

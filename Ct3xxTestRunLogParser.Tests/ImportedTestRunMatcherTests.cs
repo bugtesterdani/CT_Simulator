@@ -200,6 +200,9 @@ public sealed class ImportedTestRunMatcherTests
         Assert.IsTrue(report.IsReliable);
     }
 
+    /// <summary>
+    /// Executes CreateTest.
+    /// </summary>
     private static Test CreateTest(string id, string name)
     {
         return new Test
@@ -213,6 +216,9 @@ public sealed class ImportedTestRunMatcherTests
         };
     }
 
+    /// <summary>
+    /// Executes CreatePetTest.
+    /// </summary>
     private static Test CreatePetTest(string name, params string[] labels)
     {
         var table = new Table();
@@ -237,6 +243,9 @@ public sealed class ImportedTestRunMatcherTests
         };
     }
 
+    /// <summary>
+    /// Executes CreateCsvStep.
+    /// </summary>
     private static ImportedTestRunStep CreateCsvStep(
         int rowNumber,
         string description,

@@ -227,6 +227,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         }
     }
 
+    /// <summary>
+    /// Gets or sets CsvReplayModeOptions.
+    /// </summary>
     public IReadOnlyList<KeyValuePair<CsvReplayMode, string>> CsvReplayModeOptions { get; } =
         new[]
         {
@@ -378,6 +381,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         }
     }
 
+    /// <summary>
+    /// Occurs when PropertyChanged is raised.
+    /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -392,11 +398,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged, ISimulationObs
         return true;
     }
 
+    /// <summary>
+    /// Executes OnPropertyChanged.
+    /// </summary>
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
+    /// <summary>
+    /// Executes FormatNumber.
+    /// </summary>
     private static string FormatNumber(double? value)
     {
         return value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";

@@ -64,10 +64,16 @@ internal static class ConnectionDiagramSvgFormatter
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Executes Escape.
+    /// </summary>
     private static string Escape(string value)
     {
         return SecurityElement.Escape(value) ?? string.Empty;
     }
 
+    /// <summary>
+    /// Executes SvgTrace.
+    /// </summary>
     private sealed record SvgTrace(string Title, IReadOnlyList<string> Nodes);
 }

@@ -347,6 +347,9 @@ public sealed class ExternalDeviceSession : IDisposable
         return written.Count > 0;
     }
 
+    /// <summary>
+    /// Executes SelectPreferredTargetSignals.
+    /// </summary>
     private static IEnumerable<string> SelectPreferredTargetSignals(IEnumerable<WireVizConnectionResolution> resolutions)
     {
         return resolutions
@@ -358,11 +361,17 @@ public sealed class ExternalDeviceSession : IDisposable
             .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes IsGenericBoundaryLabel.
+    /// </summary>
     private static bool IsGenericBoundaryLabel(string? label)
     {
         return !string.IsNullOrWhiteSpace(label) && GenericPortLabels.Contains(label.Trim());
     }
 
+    /// <summary>
+    /// Executes ExtractNodeValue.
+    /// </summary>
     private static object? ExtractNodeValue(System.Text.Json.Nodes.JsonNode? node)
     {
         if (node == null)
@@ -411,6 +420,9 @@ public sealed class ExternalDeviceSession : IDisposable
         return node.ToJsonString();
     }
 
+    /// <summary>
+    /// Executes ExtractNamedResponsePayload.
+    /// </summary>
     private static object? ExtractNamedResponsePayload(JsonNode? result)
     {
         if (result is JsonObject resultObject && resultObject["response"] != null)
@@ -421,11 +433,17 @@ public sealed class ExternalDeviceSession : IDisposable
         return ExtractNodeValue(result);
     }
 
+    /// <summary>
+    /// Executes FormatState.
+    /// </summary>
     private static string? FormatState(ExternalDeviceResponse response)
     {
         return response.StateAtRequest?.ToJsonString();
     }
 
+    /// <summary>
+    /// Executes ParseStateSnapshot.
+    /// </summary>
     private static ExternalDeviceStateSnapshot ParseStateSnapshot(JsonObject? payload)
     {
         if (payload == null)
@@ -442,6 +460,9 @@ public sealed class ExternalDeviceSession : IDisposable
             ReadStringMap(payload["interfaces"] as JsonObject));
     }
 
+    /// <summary>
+    /// Executes ReadStringMap.
+    /// </summary>
     private static IReadOnlyDictionary<string, string> ReadStringMap(JsonObject? values)
     {
         if (values == null)

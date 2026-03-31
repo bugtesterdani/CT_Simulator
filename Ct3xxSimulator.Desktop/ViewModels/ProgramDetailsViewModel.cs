@@ -529,6 +529,9 @@ public static class ProgramDetailsFactory
         };
     }
 
+    /// <summary>
+    /// Executes EnumerateDisplays.
+    /// </summary>
     private static IEnumerable<OperatorDisplayViewModel> EnumerateDisplays(OperatorScreen? screen)
     {
         if (screen == null)
@@ -557,6 +560,9 @@ public static class ProgramDetailsFactory
         }
     }
 
+    /// <summary>
+    /// Executes EnumerateButtons.
+    /// </summary>
     private static IEnumerable<UserButtonViewModel> EnumerateButtons(UserButtonPanel? panel)
     {
         if (panel == null)
@@ -593,5 +599,8 @@ public static class ProgramDetailsFactory
         }
     }
 
+    /// <summary>
+    /// Executes Clean.
+    /// </summary>
     private static string? Clean(string? value) => TestDetailsFactory.Clean(value);
 }

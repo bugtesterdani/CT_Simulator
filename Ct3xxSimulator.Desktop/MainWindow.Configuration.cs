@@ -11,11 +11,15 @@ using Ct3xxSimulator.Desktop.Views;
 using Ct3xxSimulator.Validation;
 using Ct3xxTestRunLogParser.Matching;
 using Ct3xxTestRunLogParser.Parsing;
+using Ct3xxProgramParser.Model;
 
 namespace Ct3xxSimulator.Desktop;
 
 public partial class MainWindow
 {
+    /// <summary>
+    /// Executes OnLoaded.
+    /// </summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
@@ -26,6 +30,9 @@ public partial class MainWindow
         ValidateCurrentConfiguration(false);
     }
 
+    /// <summary>
+    /// Executes ApplyDefaultScenario.
+    /// </summary>
     private void ApplyDefaultScenario()
     {
         var simtestRoot = FindSimtestRoot();
@@ -47,6 +54,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes FindSimtestRoot.
+    /// </summary>
     private static string? FindSimtestRoot()
     {
         var candidates = new[]
@@ -68,6 +78,9 @@ public partial class MainWindow
         return null;
     }
 
+    /// <summary>
+    /// Executes OnBrowseProgramFolder.
+    /// </summary>
     private void OnBrowseProgramFolder(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog { Title = "Ordner mit CT3xx-Testprogramm waehlen" };
@@ -84,6 +97,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes OnBrowseWiringFolder.
+    /// </summary>
     private void OnBrowseWiringFolder(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog { Title = "Ordner mit WireViz-Verdrahtung waehlen" };
@@ -93,6 +109,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes OnBrowseSimulationModelFolder.
+    /// </summary>
     private void OnBrowseSimulationModelFolder(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog { Title = "Ordner mit Simulationsmodell waehlen" };
@@ -102,6 +121,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes OnBrowsePythonScript.
+    /// </summary>
     private void OnBrowsePythonScript(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -116,6 +138,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes OnBrowseCsvReplayFile.
+    /// </summary>
     private void OnBrowseCsvReplayFile(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -132,6 +157,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes OnLoadProgramFromResolvedSelection.
+    /// </summary>
     private void OnLoadProgramFromResolvedSelection(object sender, RoutedEventArgs e)
     {
         ResolveProgramFromCurrentFolder(true);
@@ -141,12 +169,18 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes ResolveProgramFromCurrentFolder.
+    /// </summary>
     private void ResolveProgramFromCurrentFolder(bool promptIfMultiple)
     {
         SelectedFilePath = ResolveProgramFileFromFolder(TestProgramFolderPath, promptIfMultiple);
         UpdateConfigurationSummary();
     }
 
+    /// <summary>
+    /// Executes ResolveProgramFileFromFolder.
+    /// </summary>
     private string? ResolveProgramFileFromFolder(string? folderPath, bool promptIfMultiple)
     {
         if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
@@ -173,6 +207,9 @@ public partial class MainWindow
         return string.IsNullOrWhiteSpace(choice) ? programs[0] : choice;
     }
 
+    /// <summary>
+    /// Executes LoadProgramFile.
+    /// </summary>
     private bool LoadProgramFile(string filePath, bool showErrors = true)
     {
         try
@@ -211,6 +248,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes UpdateConfigurationSummary.
+    /// </summary>
     private void UpdateConfigurationSummary()
     {
         ConfigurationSummary =
@@ -222,6 +262,9 @@ public partial class MainWindow
             $"Szenario-Datei: {Path.GetFileName(ScenarioPresetFilePath ?? string.Empty)}";
     }
 
+    /// <summary>
+    /// Executes LoadScenarioPresets.
+    /// </summary>
     private void LoadScenarioPresets()
     {
         ScenarioPresets.Clear();
@@ -233,6 +276,9 @@ public partial class MainWindow
         AddLog($"Szenario-Datei geladen: {_scenarioPresetStore.FilePath}");
     }
 
+    /// <summary>
+    /// Executes OnBrowseScenarioPresetFile.
+    /// </summary>
     private void OnBrowseScenarioPresetFile(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -249,6 +295,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes OnLoadScenarioPresetFile.
+    /// </summary>
     private void OnLoadScenarioPresetFile(object sender, RoutedEventArgs e)
     {
         _scenarioPresetStore = new ScenarioPresetStore(ScenarioPresetFilePath);
@@ -256,6 +305,9 @@ public partial class MainWindow
         AddLog($"Szenario-Datei explizit geladen: {_scenarioPresetStore.FilePath}");
     }
 
+    /// <summary>
+    /// Executes OnSaveScenarioPresetFileAs.
+    /// </summary>
     private void OnSaveScenarioPresetFileAs(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog
@@ -277,6 +329,9 @@ public partial class MainWindow
         AddLog($"Szenario-Datei gespeichert: {_scenarioPresetStore.FilePath}");
     }
 
+    /// <summary>
+    /// Executes OnApplyScenarioPreset.
+    /// </summary>
     private void OnApplyScenarioPreset(object sender, RoutedEventArgs e)
     {
         if (SelectedScenarioPreset == null)
@@ -316,6 +371,9 @@ public partial class MainWindow
         AddLog($"Szenario geladen: {SelectedScenarioPreset.Name}");
     }
 
+    /// <summary>
+    /// Executes OnSaveScenarioPreset.
+    /// </summary>
     private void OnSaveScenarioPreset(object sender, RoutedEventArgs e)
     {
         var name = PromptInput("Name fuer das Szenario:");
@@ -330,6 +388,11 @@ public partial class MainWindow
             ScenarioPresets.Remove(existing);
         }
 
+        var existingCards = SelectedScenarioPreset?.InstalledCards;
+        var existingMapping = SelectedScenarioPreset?.TestTypeCards;
+        var existingPatterns = SelectedScenarioPreset?.CardIndexPatterns;
+        var existingRules = SelectedScenarioPreset?.TestTypeCardRules;
+
         var preset = new ScenarioPreset
         {
             Name = name.Trim(),
@@ -341,7 +404,24 @@ public partial class MainWindow
             PythonScriptPath = PythonScriptPath,
             CsvReplayFilePath = CsvReplayFilePath,
             CsvReplayMode = SelectedCsvReplayMode,
-            BreakpointKeys = _breakpointNodeKeys.OrderBy(item => item, StringComparer.OrdinalIgnoreCase).ToList()
+            BreakpointKeys = _breakpointNodeKeys.OrderBy(item => item, StringComparer.OrdinalIgnoreCase).ToList(),
+            InstalledCards = existingCards != null
+                ? new System.Collections.Generic.Dictionary<string, int>(existingCards, StringComparer.OrdinalIgnoreCase)
+                : new System.Collections.Generic.Dictionary<string, int>(),
+            TestTypeCards = existingMapping != null
+                ? new System.Collections.Generic.Dictionary<string, string>(existingMapping, StringComparer.OrdinalIgnoreCase)
+                : new System.Collections.Generic.Dictionary<string, string>(),
+            CardIndexPatterns = existingPatterns != null
+                ? new System.Collections.Generic.Dictionary<string, string>(existingPatterns, StringComparer.OrdinalIgnoreCase)
+                : new System.Collections.Generic.Dictionary<string, string>(),
+            TestTypeCardRules = existingRules != null
+                ? new System.Collections.Generic.List<Ct3xxSimulator.Validation.TestTypeCardRule>(existingRules.Select(rule => new Ct3xxSimulator.Validation.TestTypeCardRule
+                {
+                    TestType = rule.TestType,
+                    Cards = rule.Cards != null ? new System.Collections.Generic.List<string>(rule.Cards) : new System.Collections.Generic.List<string>(),
+                    MatchRegex = rule.MatchRegex
+                }))
+                : new System.Collections.Generic.List<Ct3xxSimulator.Validation.TestTypeCardRule>()
         };
 
         ScenarioPresets.Add(preset);
@@ -350,6 +430,9 @@ public partial class MainWindow
         AddLog($"Szenario gespeichert: {preset.Name}");
     }
 
+    /// <summary>
+    /// Executes OnDeleteScenarioPreset.
+    /// </summary>
     private void OnDeleteScenarioPreset(object sender, RoutedEventArgs e)
     {
         if (SelectedScenarioPreset == null)
@@ -364,6 +447,9 @@ public partial class MainWindow
         AddLog($"Szenario geloescht: {removedName}");
     }
 
+    /// <summary>
+    /// Executes OnUpgradeScenarioPreset.
+    /// </summary>
     private void OnUpgradeScenarioPreset(object sender, RoutedEventArgs e)
     {
         if (SelectedScenarioPreset == null)
@@ -431,6 +517,9 @@ public partial class MainWindow
             : $"Szenario-Upgrade abgeschlossen: {SelectedScenarioPreset.Name} ({upgradedKeys.Count}/{SelectedScenarioPreset.BreakpointKeys.Count} Breakpoints uebernommen)");
     }
 
+    /// <summary>
+    /// Executes OnValidateConfiguration.
+    /// </summary>
     private void OnValidateConfiguration(object sender, RoutedEventArgs e)
     {
         var issues = ValidateCurrentConfiguration(true);
@@ -440,10 +529,14 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes ValidateCurrentConfiguration.
+    /// </summary>
     private IReadOnlyList<string> ValidateCurrentConfiguration(bool showSuccessMessage)
     {
         var issues = SimulationConfigurationValidator.Validate(SelectedFilePath, WiringFolderPath, SimulationModelFolderPath, PythonScriptPath).ToList();
         issues.AddRange(ValidateCsvReplayConfiguration());
+        issues.AddRange(ValidateTesterCardInventory());
         ValidationSummary = issues.Count == 0 ? "Validierung: OK" : $"Validierung: {issues.Count} Problem(e)";
         if (showSuccessMessage && issues.Count == 0)
         {
@@ -453,6 +546,35 @@ public partial class MainWindow
         return issues;
     }
 
+    /// <summary>
+    /// Executes ValidateTesterCardInventory.
+    /// </summary>
+    private IReadOnlyList<string> ValidateTesterCardInventory()
+    {
+        if (_program == null || SelectedScenarioPreset == null)
+        {
+            return Array.Empty<string>();
+        }
+
+        var definition = new Ct3xxSimulator.Validation.CardInventoryDefinition
+        {
+            InstalledCards = SelectedScenarioPreset.InstalledCards ?? new System.Collections.Generic.Dictionary<string, int>(),
+            TestTypeCards = SelectedScenarioPreset.TestTypeCards ?? new System.Collections.Generic.Dictionary<string, string>(),
+            TestTypeCardRules = SelectedScenarioPreset.TestTypeCardRules ?? new System.Collections.Generic.List<Ct3xxSimulator.Validation.TestTypeCardRule>(),
+            CardIndexPatterns = SelectedScenarioPreset.CardIndexPatterns ?? new System.Collections.Generic.Dictionary<string, string>()
+        };
+
+        if (!Ct3xxSimulator.Validation.CardInventoryValidator.HasCardConfiguration(definition))
+        {
+            return Array.Empty<string>();
+        }
+
+        return Ct3xxSimulator.Validation.CardInventoryValidator.Validate(_program, definition);
+    }
+
+    /// <summary>
+    /// Executes GetInitialDirectory.
+    /// </summary>
     private static string? GetInitialDirectory(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -464,6 +586,9 @@ public partial class MainWindow
         return string.IsNullOrWhiteSpace(directory) ? null : directory;
     }
 
+    /// <summary>
+    /// Executes ResolveProgramFileForPreset.
+    /// </summary>
     private string? ResolveProgramFileForPreset(ScenarioPreset preset)
     {
         if (string.IsNullOrWhiteSpace(preset.TestProgramFolderPath) || !Directory.Exists(preset.TestProgramFolderPath))
@@ -510,6 +635,9 @@ public partial class MainWindow
         return programs[0];
     }
 
+    /// <summary>
+    /// Executes ComputeFileSha256OrNull.
+    /// </summary>
     private static string? ComputeFileSha256OrNull(string? filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
@@ -523,6 +651,9 @@ public partial class MainWindow
         return Convert.ToHexString(hash);
     }
 
+    /// <summary>
+    /// Executes RefreshCsvReplayState.
+    /// </summary>
     private void RefreshCsvReplayState(bool showErrors)
     {
         _loadedCsvReplayRun = null;
@@ -572,6 +703,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes ValidateCsvReplayConfiguration.
+    /// </summary>
     private IReadOnlyList<string> ValidateCsvReplayConfiguration()
     {
         var issues = new System.Collections.Generic.List<string>();
@@ -611,6 +745,9 @@ public partial class MainWindow
         return issues;
     }
 
+    /// <summary>
+    /// Executes GetCsvReplayModeLabel.
+    /// </summary>
     private static string GetCsvReplayModeLabel(CsvReplayMode mode)
     {
         return mode switch
@@ -621,6 +758,9 @@ public partial class MainWindow
         };
     }
 
+    /// <summary>
+    /// Executes PrepareCsvReplayExecutionState.
+    /// </summary>
     private void PrepareCsvReplayExecutionState()
     {
         _activeCsvReplayMatches.Clear();
@@ -643,6 +783,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes BuildCsvReplayReliabilitySuffix.
+    /// </summary>
     private static string BuildCsvReplayReliabilitySuffix(Ct3xxTestRunLogParser.Model.ImportedTestRunMatchReport report)
     {
         if (report.IsReliable)
@@ -653,6 +796,9 @@ public partial class MainWindow
         return $" | Warnung: Unzuverlaessiges Matching ({report.Matches.Count} Treffer, {report.UnmatchedProgramSteps.Count} Programmschritte offen, {report.UnmatchedCsvSteps.Count} CSV-Zeilen offen)";
     }
 
+    /// <summary>
+    /// Executes BuildBreakpointUpgradeTargets.
+    /// </summary>
     private IReadOnlyList<BreakpointUpgradeTarget> BuildBreakpointUpgradeTargets()
     {
         var targets = new List<BreakpointUpgradeTarget>();
@@ -665,6 +811,9 @@ public partial class MainWindow
         return targets;
     }
 
+    /// <summary>
+    /// Executes EnumerateBreakpointNodes.
+    /// </summary>
     private static IEnumerable<StepTreeNodeViewModel> EnumerateBreakpointNodes(System.Collections.Generic.IEnumerable<StepTreeNodeViewModel> nodes)
     {
         foreach (var node in nodes)
@@ -681,6 +830,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes BuildNodePath.
+    /// </summary>
     private static string BuildNodePath(StepTreeNodeViewModel node)
     {
         var parts = new System.Collections.Generic.Stack<string>();

@@ -33,6 +33,9 @@ internal static class TestData
         return combine;
     }
 
+    /// <summary>
+    /// Executes ResolveRoot.
+    /// </summary>
     private static string ResolveRoot()
     {
         var root = TestProgramDiscovery.FindRoot(AppContext.BaseDirectory);

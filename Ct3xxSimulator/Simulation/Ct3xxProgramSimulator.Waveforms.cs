@@ -9,6 +9,9 @@ namespace Ct3xxSimulator.Simulation;
 
 public partial class Ct3xxProgramSimulator
 {
+    /// <summary>
+    /// Executes ResolveWaveformRuntimeSignal.
+    /// </summary>
     private string ResolveWaveformRuntimeSignal(string fallbackSignal, IReadOnlyDictionary<string, string> metadata, string mbusKey, string testPointKey)
     {
         metadata.TryGetValue("CHANNEL_CARD_INDEX", out var cardIndex);
@@ -28,6 +31,9 @@ public partial class Ct3xxProgramSimulator
         return fallbackSignal;
     }
 
+    /// <summary>
+    /// Executes ResolveExternalWaveformTarget.
+    /// </summary>
     private string ResolveExternalWaveformTarget(string signalName, bool write)
     {
         if (_wireVizResolver != null &&
@@ -43,6 +49,9 @@ public partial class Ct3xxProgramSimulator
         return signalName;
     }
 
+    /// <summary>
+    /// Executes LogWaveformResponse.
+    /// </summary>
     private void LogWaveformResponse(Test test, JsonObject? response)
     {
         var result = UnwrapWaveformResult(response);
@@ -72,6 +81,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes TryPublishWaveformVariables.
+    /// </summary>
     private void TryPublishWaveformVariables(string stimulusSignal, string? observeSignal, JsonObject? response)
     {
         var result = UnwrapWaveformResult(response);
@@ -102,6 +114,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes UnwrapWaveformResult.
+    /// </summary>
     private static JsonObject? UnwrapWaveformResult(JsonObject? response)
     {
         if (response == null)
@@ -117,6 +132,9 @@ public partial class Ct3xxProgramSimulator
         return response;
     }
 
+    /// <summary>
+    /// Executes PublishMetricVariable.
+    /// </summary>
     private void PublishMetricVariable(string variableName, JsonNode? node)
     {
         if (node == null)

@@ -83,6 +83,9 @@ public sealed class TestRunLogCsvParser
         return new ImportedTestRun(sourcePath, header, steps, runId, serialNumber);
     }
 
+    /// <summary>
+    /// Executes ParseStep.
+    /// </summary>
     private static ImportedTestRunStep ParseStep(int rowNumber, IReadOnlyList<string> row)
     {
         var runId = NormalizeCell(row[0]);
@@ -117,6 +120,9 @@ public sealed class TestRunLogCsvParser
             upper);
     }
 
+    /// <summary>
+    /// Executes ClassifyStep.
+    /// </summary>
     private static ImportedTestRunStepKind ClassifyStep(string description, string? message, double? lower, double? measured, double? upper)
     {
         if (lower.HasValue || measured.HasValue || upper.HasValue)
@@ -158,6 +164,9 @@ public sealed class TestRunLogCsvParser
         return ImportedTestRunStepKind.Unknown;
     }
 
+    /// <summary>
+    /// Executes ReadRows.
+    /// </summary>
     private static List<string[]> ReadRows(TextReader reader)
     {
         var rows = new List<string[]>();
@@ -170,6 +179,9 @@ public sealed class TestRunLogCsvParser
         return rows;
     }
 
+    /// <summary>
+    /// Executes ValidateHeader.
+    /// </summary>
     private static void ValidateHeader(IReadOnlyList<string> header)
     {
         if (header.Count != ExpectedHeaders.Length)
@@ -187,6 +199,9 @@ public sealed class TestRunLogCsvParser
         }
     }
 
+    /// <summary>
+    /// Executes NormalizeCell.
+    /// </summary>
     private static string? NormalizeCell(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -203,6 +218,9 @@ public sealed class TestRunLogCsvParser
         return trimmed.Trim();
     }
 
+    /// <summary>
+    /// Executes TryParseNullableDouble.
+    /// </summary>
     private static double? TryParseNullableDouble(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))

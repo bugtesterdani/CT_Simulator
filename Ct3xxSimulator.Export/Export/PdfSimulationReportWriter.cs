@@ -24,6 +24,9 @@ internal static class PdfSimulationReportWriter
         writer.Write(path, pages);
     }
 
+    /// <summary>
+    /// Executes BuildPages.
+    /// </summary>
     private static List<string> BuildPages(string? configurationSummary, IReadOnlyList<SimulationExportStep> stepResults, IReadOnlyList<SimulationExportLogEntry> logs)
     {
         var pages = new List<string>();
@@ -33,6 +36,9 @@ internal static class PdfSimulationReportWriter
         return pages;
     }
 
+    /// <summary>
+    /// Executes BuildSummaryPage.
+    /// </summary>
     private static string BuildSummaryPage(string? configurationSummary, IReadOnlyList<SimulationExportStep> stepResults)
     {
         var canvas = new PdfCanvasBuilder();
@@ -61,6 +67,9 @@ internal static class PdfSimulationReportWriter
         return canvas.Build();
     }
 
+    /// <summary>
+    /// Executes BuildStepPage.
+    /// </summary>
     private static string BuildStepPage(SimulationExportStep step)
     {
         var canvas = new PdfCanvasBuilder();
@@ -102,6 +111,9 @@ internal static class PdfSimulationReportWriter
         return canvas.Build();
     }
 
+    /// <summary>
+    /// Executes DrawTrace.
+    /// </summary>
     private static double DrawTrace(PdfCanvasBuilder canvas, Ct3xxSimulator.Simulation.StepConnectionTrace trace, double top)
     {
         canvas.AddText(Margin, top, 10, trace.Title);
@@ -125,6 +137,9 @@ internal static class PdfSimulationReportWriter
         return y - boxHeight - 8;
     }
 
+    /// <summary>
+    /// Executes BuildLogPage.
+    /// </summary>
     private static string BuildLogPage(IReadOnlyList<SimulationExportLogEntry> logs)
     {
         var canvas = new PdfCanvasBuilder();
@@ -195,6 +210,9 @@ internal static class PdfSimulationReportWriter
         /// </summary>
         public string Build() => _builder.ToString();
 
+        /// <summary>
+        /// Executes Wrap.
+        /// </summary>
         private static IEnumerable<string> Wrap(string text, int maxLength)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -221,6 +239,9 @@ internal static class PdfSimulationReportWriter
             }
         }
 
+        /// <summary>
+        /// Executes Escape.
+        /// </summary>
         private static string Escape(string text)
         {
             return (text ?? string.Empty)
@@ -282,12 +303,18 @@ internal static class PdfSimulationReportWriter
             writer.Write(Encoding.ASCII.GetBytes($"trailer << /Size {_objects.Count + 1} /Root {catalogId} 0 R >>\nstartxref\n{xrefPosition}\n%%EOF"));
         }
 
+        /// <summary>
+        /// Executes AddObject.
+        /// </summary>
         private int AddObject(string content)
         {
             _objects.Add(content);
             return _objects.Count;
         }
 
+        /// <summary>
+        /// Executes ReplaceObject.
+        /// </summary>
         private void ReplaceObject(int id, string content)
         {
             _objects[id - 1] = content;

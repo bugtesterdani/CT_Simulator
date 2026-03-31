@@ -80,6 +80,9 @@ public sealed class WireVizRuntimeTarget
             : targetValue;
     }
 
+    /// <summary>
+    /// Executes TryScaleNumeric.
+    /// </summary>
     private static bool TryScaleNumeric(object? value, double scale, out object? scaledValue)
     {
         switch (value)

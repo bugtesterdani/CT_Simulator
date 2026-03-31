@@ -253,6 +253,9 @@ public sealed class SimulationFaultSet
         return new SimulationFaultSet(document?.Faults?.Where(f => f.Enabled).ToList() ?? new List<SimulationFaultDefinition>(), path);
     }
 
+    /// <summary>
+    /// Executes TryReadLong.
+    /// </summary>
     private static long TryReadLong(SimulationFaultDefinition fault, string key, long defaultValue)
     {
         return fault.Metadata.TryGetValue(key, out var text) &&
@@ -261,6 +264,9 @@ public sealed class SimulationFaultSet
             : defaultValue;
     }
 
+    /// <summary>
+    /// Executes MatchesConnection.
+    /// </summary>
     private static bool MatchesConnection(SimulationFaultDefinition fault, string a, string b)
     {
         return (string.Equals(fault.A, a, StringComparison.OrdinalIgnoreCase) &&

@@ -152,6 +152,9 @@ public sealed class I2cDeviceRuntimeTests
         Assert.AreEqual("0x5A", registerPreview["0x01"]?.GetValue<string>());
     }
 
+    /// <summary>
+    /// Executes AssertI2cResponse.
+    /// </summary>
     private static JsonObject AssertI2cResponse(ExternalDeviceResponse response, bool expectedAcknowledged)
     {
         Assert.IsTrue(response.Ok, response.ErrorMessage);

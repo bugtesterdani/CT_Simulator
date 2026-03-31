@@ -6,6 +6,9 @@ namespace Ct3xxSimulationModelParser.Model;
 
 public abstract class SimulationElementDefinition
 {
+    /// <summary>
+    /// Initializes a new instance of SimulationElementDefinition.
+    /// </summary>
     protected SimulationElementDefinition(string id, string type, IReadOnlyDictionary<string, string?>? metadata = null)
     {
         if (string.IsNullOrWhiteSpace(id))

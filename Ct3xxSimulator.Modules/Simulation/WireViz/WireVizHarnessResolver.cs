@@ -23,6 +23,9 @@ public sealed partial class WireVizHarnessResolver
     private readonly Dictionary<string, List<ResolutionSeed>> _resolutionSeeds;
     private readonly List<SimulationElementDefinition> _simulationElements;
 
+    /// <summary>
+    /// Initializes a new instance of WireVizHarnessResolver.
+    /// </summary>
     private WireVizHarnessResolver(
         Dictionary<string, List<WireVizConnectionResolution>> resolutions,
         Dictionary<string, List<ResolutionSeed>> resolutionSeeds,
@@ -124,6 +127,9 @@ public sealed partial class WireVizHarnessResolver
         return new WireVizHarnessResolver(resolutions, resolutionSeeds, flattenedSimulationElements);
     }
 
+    /// <summary>
+    /// Executes RegisterResolutionSource.
+    /// </summary>
     private static void RegisterResolutionSource(
         Dictionary<string, List<WireVizConnectionResolution>> resolutions,
         Dictionary<string, List<ResolutionSeed>> resolutionSeeds,
@@ -497,6 +503,10 @@ public sealed partial class WireVizHarnessResolver
                 case CurrentTransformerElementDefinition currentTransformer:
                     states.Add($"{currentTransformer.Id}: current_transformer ratio {currentTransformer.Ratio.ToString("0.###", CultureInfo.InvariantCulture)} signal {currentTransformer.PrimarySignal}");
                     break;
+                case LimitElementDefinition limit:
+                    var limitMode = string.IsNullOrWhiteSpace(limit.Mode) ? "limit" : limit.Mode.Trim();
+                    states.Add($"{limit.Id}: limit {limitMode}");
+                    break;
                 case UnknownElementDefinition unknown:
                     states.Add(DescribeUnknownElementState(unknown, signalState, signalTimes, currentTimeMs, faults));
                     break;
@@ -504,6 +514,99 @@ public sealed partial class WireVizHarnessResolver
         }
 
         return states;
+    }
+
+    /// <summary>
+    /// Evaluates output limit violations for a signal.
+    /// </summary>
+    /// <param name="signalName">The logical signal name.</param>
+    /// <param name="value">The numeric value to validate.</param>
+    /// <param name="signalState">The current live signal state.</param>
+    /// <param name="signalTimes">The change timestamps of the current signal state.</param>
+    /// <param name="currentTimeMs">The current simulated time in milliseconds.</param>
+    /// <param name="faults">The currently active faults.</param>
+    /// <returns>A list of validation error messages.</returns>
+    public IReadOnlyList<string> CheckOutputLimits(
+        string signalName,
+        double value,
+        IReadOnlyDictionary<string, object?> signalState,
+        IReadOnlyDictionary<string, long>? signalTimes,
+        long currentTimeMs,
+        SimulationFaultSet faults)
+    {
+        if (_simulationElements.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var limits = _simulationElements.OfType<LimitElementDefinition>().ToList();
+        if (limits.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        if (!TryTrace(signalName, signalState, signalTimes, currentTimeMs, faults, out var traces))
+        {
+            return Array.Empty<string>();
+        }
+
+        var nodes = traces.SelectMany(trace => trace.Nodes).ToList();
+        var violations = new List<string>();
+        foreach (var limit in limits)
+        {
+            var matchedPrefix = FindMatchingPrefix(limit.NodePrefixes, nodes);
+            if (matchedPrefix == null)
+            {
+                continue;
+            }
+
+            var effective = value * (Math.Abs(limit.Gain) < double.Epsilon ? 1d : limit.Gain);
+            var absValue = Math.Abs(effective);
+            var mode = limit.Mode?.Trim() ?? string.Empty;
+            if (string.Equals(mode, "current", StringComparison.OrdinalIgnoreCase))
+            {
+                if (limit.MaxCurrent.HasValue && absValue > Math.Abs(limit.MaxCurrent.Value))
+                {
+                    violations.Add($"Limit {limit.Id} (current) verletzt: {effective.ToString("0.###", CultureInfo.InvariantCulture)} A > {limit.MaxCurrent.Value.ToString("0.###", CultureInfo.InvariantCulture)} A via {matchedPrefix}.");
+                }
+            }
+            else
+            {
+                if (limit.MaxVoltage.HasValue && absValue > Math.Abs(limit.MaxVoltage.Value))
+                {
+                    violations.Add($"Limit {limit.Id} (voltage) verletzt: {effective.ToString("0.###", CultureInfo.InvariantCulture)} V > {limit.MaxVoltage.Value.ToString("0.###", CultureInfo.InvariantCulture)} V via {matchedPrefix}.");
+                }
+            }
+        }
+
+        return violations;
+    }
+
+    /// <summary>
+    /// Executes FindMatchingPrefix.
+    /// </summary>
+    private static string? FindMatchingPrefix(IReadOnlyList<string> prefixes, IReadOnlyList<string> nodes)
+    {
+        if (prefixes == null || prefixes.Count == 0 || nodes == null || nodes.Count == 0)
+        {
+            return null;
+        }
+
+        foreach (var prefix in prefixes)
+        {
+            if (string.IsNullOrWhiteSpace(prefix))
+            {
+                continue;
+            }
+
+            if (nodes.Any(node => node.Equals(prefix, StringComparison.OrdinalIgnoreCase) ||
+                                  node.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)))
+            {
+                return prefix;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -608,6 +711,9 @@ public sealed partial class WireVizHarnessResolver
             .ToList();
     }
 
+    /// <summary>
+    /// Executes DescribeUnknownElementState.
+    /// </summary>
     private static string DescribeUnknownElementState(
         UnknownElementDefinition definition,
         IReadOnlyDictionary<string, object?> signalState,
@@ -630,11 +736,17 @@ public sealed partial class WireVizHarnessResolver
         };
     }
 
+    /// <summary>
+    /// Executes ReadMetadataValue.
+    /// </summary>
     private static string ReadMetadataValue(UnknownElementDefinition definition, string key)
     {
         return definition.Metadata.TryGetValue(key, out var value) ? value ?? string.Empty : string.Empty;
     }
 
+    /// <summary>
+    /// Executes TryResolveTesterSupplyVoltage.
+    /// </summary>
     private bool TryResolveTesterSupplyVoltage(
         string supplySignal,
         IReadOnlyDictionary<string, object?> signalState,
@@ -682,6 +794,9 @@ public sealed partial class WireVizHarnessResolver
         return true;
     }
 
+    /// <summary>
+    /// Executes LoadSimulationModel.
+    /// </summary>
     private static SimulationModelDocument? LoadSimulationModel(string programDirectory)
     {
         var path = SimulationModelFileLocator.FindCandidateFile(programDirectory);
@@ -694,6 +809,9 @@ public sealed partial class WireVizHarnessResolver
         return parser.ParseFile(path);
     }
 
+    /// <summary>
+    /// Executes MergeSimulationModel.
+    /// </summary>
     private static SimulationModelDocument? MergeSimulationModel(
         SimulationModelDocument? baseModel,
         IEnumerable<SimulationElementDefinition>? extraElements)

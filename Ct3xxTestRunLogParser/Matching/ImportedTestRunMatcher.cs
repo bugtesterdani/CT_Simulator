@@ -73,12 +73,18 @@ public sealed class ImportedTestRunMatcher
         return new ImportedTestRunMatchReport(programSteps, csvSteps, matches, unmatchedProgramSteps, unmatchedCsvSteps);
     }
 
+    /// <summary>
+    /// Executes IsRelevantCsvStep.
+    /// </summary>
     private static bool IsRelevantCsvStep(ImportedTestRunStep step)
     {
         return step.Kind != ImportedTestRunStepKind.Information &&
                step.Kind != ImportedTestRunStepKind.Unknown;
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (double score, string reason) Score(ProgramVisibleStep programStep, ImportedTestRunStep csvStep, int relativeOffset)
     {
         var programName = Normalize(programStep.DisplayName);
@@ -115,6 +121,9 @@ public sealed class ImportedTestRunMatcher
         return (score, descriptionScore >= messageScore ? "description similarity" : "message similarity");
     }
 
+    /// <summary>
+    /// Executes ScoreNormalizedText.
+    /// </summary>
     private static double ScoreNormalizedText(string left, string right)
     {
         if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
@@ -149,6 +158,9 @@ public sealed class ImportedTestRunMatcher
         return (double)intersection / union;
     }
 
+    /// <summary>
+    /// Executes Normalize.
+    /// </summary>
     private static string Normalize(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -163,6 +175,9 @@ public sealed class ImportedTestRunMatcher
         return string.Join(" ", new string(chars).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
     }
 
+    /// <summary>
+    /// Executes ContainsAny.
+    /// </summary>
     private static bool ContainsAny(string source, params string[] values)
     {
         return values.Any(value => source.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0);

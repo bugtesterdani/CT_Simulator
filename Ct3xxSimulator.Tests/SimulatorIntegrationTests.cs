@@ -828,6 +828,9 @@ public sealed class SimulatorIntegrationTests
             string.Join(Environment.NewLine, observer.Evaluations.Select(item => $"{item.StepName}: {item.Outcome} {item.Details}")));
     }
 
+    /// <summary>
+    /// Executes RunProgram.
+    /// </summary>
     private static SimulationObserverSpy RunProgram(string programRelativePath, string wireRootRelativePath, string simulationRootRelativePath, string pipePath)
     {
         var previousWire = Environment.GetEnvironmentVariable("CT3XX_WIREVIZ_ROOT");
@@ -855,6 +858,9 @@ public sealed class SimulatorIntegrationTests
         }
     }
 
+    /// <summary>
+    /// Executes AssertSmudPass.
+    /// </summary>
     private static void AssertSmudPass(SimulationObserverSpy observer, params string[] expectedStepNames)
     {
         var smudEvaluations = observer.Evaluations
@@ -874,6 +880,9 @@ public sealed class SimulatorIntegrationTests
             string.Join(Environment.NewLine, smudEvaluations.SelectMany(item => item.Traces.Select(trace => $"{item.StepName}: {trace.Title} => {string.Join(" -> ", trace.Nodes)}"))));
     }
 
+    /// <summary>
+    /// Executes AssertRuntimeTarget.
+    /// </summary>
     private static void AssertRuntimeTarget(
         WireVizHarnessResolver resolver,
         IReadOnlyDictionary<string, object?> signalState,
@@ -888,6 +897,9 @@ public sealed class SimulatorIntegrationTests
             $"Das logische Signal '{signalName}' wurde nicht bis zum DUT durchgereicht. TatsÃ¤chliche Targets: {string.Join(", ", targets.Select(item => item.SignalName))}");
     }
 
+    /// <summary>
+    /// Executes ParseNumeric.
+    /// </summary>
     private static double ParseNumeric(string value)
     {
         if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var invariant))
@@ -903,6 +915,9 @@ public sealed class SimulatorIntegrationTests
         throw new AssertFailedException($"Konnte numerischen Snapshot-Wert '{value}' nicht parsen.");
     }
 
+    /// <summary>
+    /// Executes IsTesterToDeviceTrace.
+    /// </summary>
     private static bool IsTesterToDeviceTrace(IReadOnlyList<string> nodes)
     {
         if (nodes.Count < 2)
@@ -913,6 +928,9 @@ public sealed class SimulatorIntegrationTests
         return ClassifyLane(nodes[0]) >= ClassifyLane(nodes[^1]);
     }
 
+    /// <summary>
+    /// Executes ClassifyLane.
+    /// </summary>
     private static int ClassifyLane(string node)
     {
         if (string.IsNullOrWhiteSpace(node))
@@ -937,6 +955,9 @@ public sealed class SimulatorIntegrationTests
         return 1;
     }
 
+    /// <summary>
+    /// Executes CreateAttributes.
+    /// </summary>
     private static System.Xml.XmlAttribute[] CreateAttributes(params (string Name, string Value)[] attributes)
     {
         var document = new System.Xml.XmlDocument();

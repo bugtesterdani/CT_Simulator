@@ -96,6 +96,9 @@ public static class ArbitraryWaveformLoader
         return true;
     }
 
+    /// <summary>
+    /// Executes TryLoadParameters.
+    /// </summary>
     private static bool TryLoadParameters(Ct3xxProgramFileSet? fileSet, Test test, out Dictionary<string, string> parameters, out string? error)
     {
         parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -139,6 +142,9 @@ public static class ArbitraryWaveformLoader
         return true;
     }
 
+    /// <summary>
+    /// Executes ParseParameters.
+    /// </summary>
     private static Dictionary<string, string> ParseParameters(IReadOnlyList<string> lines)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -187,6 +193,9 @@ public static class ArbitraryWaveformLoader
         return result;
     }
 
+    /// <summary>
+    /// Executes ParsePoints.
+    /// </summary>
     private static IReadOnlyList<WaveformPoint> ParsePoints(IReadOnlyDictionary<string, string> parameters, double sampleTimeMs, int channelIndex)
     {
         var samples = new SortedDictionary<int, double>();
@@ -223,6 +232,9 @@ public static class ArbitraryWaveformLoader
             .ToList();
     }
 
+    /// <summary>
+    /// Executes ResolveSignalName.
+    /// </summary>
     private static string ResolveSignalName(IReadOnlyDictionary<string, string> parameters, int channelIndex)
     {
         if (parameters.TryGetValue("TP_ARB", out var testPoint) && !string.IsNullOrWhiteSpace(testPoint))
@@ -238,6 +250,9 @@ public static class ArbitraryWaveformLoader
         return $"AM2/{channelIndex + 1} ARB";
     }
 
+    /// <summary>
+    /// Executes ParseChannelCount.
+    /// </summary>
     private static int ParseChannelCount(IReadOnlyDictionary<string, string> parameters)
     {
         if (parameters.TryGetValue("Channels", out var channelText) &&
@@ -250,6 +265,9 @@ public static class ArbitraryWaveformLoader
         return 1;
     }
 
+    /// <summary>
+    /// Executes ParseCycles.
+    /// </summary>
     private static int ParseCycles(string? burstText)
     {
         if (string.IsNullOrWhiteSpace(burstText))
@@ -268,6 +286,9 @@ public static class ArbitraryWaveformLoader
             : 1;
     }
 
+    /// <summary>
+    /// Executes IsUntilTestEnd.
+    /// </summary>
     private static bool IsUntilTestEnd(string? burstText)
     {
         return !string.IsNullOrWhiteSpace(burstText) &&

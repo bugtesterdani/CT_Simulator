@@ -12,6 +12,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
     private readonly StringBuilder _stdout = new();
     private readonly StringBuilder _stderr = new();
 
+    /// <summary>
+    /// Initializes a new instance of CliPythonDeviceProcessHost.
+    /// </summary>
     private CliPythonDeviceProcessHost(Process process, string pipePath)
     {
         _process = process;
@@ -95,6 +98,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes WaitForPipe.
+    /// </summary>
     private static void WaitForPipe(string pipePath, CliPythonDeviceProcessHost host)
     {
         var pipeName = pipePath.Split('\\', StringSplitOptions.RemoveEmptyEntries).Last();
@@ -122,6 +128,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         throw new TimeoutException($"Pipe '{pipePath}' wurde nicht rechtzeitig bereitgestellt.{host.GetOutput()}");
     }
 
+    /// <summary>
+    /// Executes GetOutput.
+    /// </summary>
     private string GetOutput()
     {
         var stdout = _stdout.ToString().Trim();
@@ -134,6 +143,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         return $"{Environment.NewLine}stdout:{Environment.NewLine}{stdout}{Environment.NewLine}stderr:{Environment.NewLine}{stderr}";
     }
 
+    /// <summary>
+    /// Executes ResolvePythonLauncher.
+    /// </summary>
     private static PythonLauncher? ResolvePythonLauncher()
     {
         var configured = Environment.GetEnvironmentVariable("CT3XX_PYTHON_EXE");
@@ -156,6 +168,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         return candidates.FirstOrDefault(CanImportPyWin32);
     }
 
+    /// <summary>
+    /// Executes CanImportPyWin32.
+    /// </summary>
     private static bool CanImportPyWin32(PythonLauncher launcher)
     {
         try
@@ -186,6 +201,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes SplitCommand.
+    /// </summary>
     private static PythonLauncher SplitCommand(string command)
     {
         var trimmed = command.Trim();
@@ -198,6 +216,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         return new PythonLauncher(trimmed[..firstSpace], trimmed[(firstSpace + 1)..].Trim());
     }
 
+    /// <summary>
+    /// Executes ResolveDeviceLaunchSpec.
+    /// </summary>
     private static DeviceLaunchSpec ResolveDeviceLaunchSpec(string modelPath)
     {
         var fullPath = Path.GetFullPath(modelPath);
@@ -232,6 +253,9 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         throw new InvalidOperationException($"Nicht unterstuetzter Geraetemodell-Typ '{extension}'.");
     }
 
+    /// <summary>
+    /// Executes FindSimtestMain.
+    /// </summary>
     private static string? FindSimtestMain(string modelPath)
     {
         var directory = Path.GetDirectoryName(modelPath);
@@ -249,6 +273,12 @@ internal sealed class CliPythonDeviceProcessHost : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Executes PythonLauncher.
+    /// </summary>
     private readonly record struct PythonLauncher(string FileName, string Arguments);
+    /// <summary>
+    /// Executes DeviceLaunchSpec.
+    /// </summary>
     private readonly record struct DeviceLaunchSpec(string Arguments, string WorkingDirectory);
 }

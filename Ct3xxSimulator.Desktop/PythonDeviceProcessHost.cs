@@ -16,6 +16,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
     private readonly StringBuilder _stderr = new();
     private readonly string _launchCommand;
 
+    /// <summary>
+    /// Initializes a new instance of PythonDeviceProcessHost.
+    /// </summary>
     private PythonDeviceProcessHost(Process process, string pipePath, string launchCommand)
     {
         _process = process;
@@ -105,6 +108,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes WaitForPipe.
+    /// </summary>
     private static void WaitForPipe(string pipePath, PythonDeviceProcessHost host)
     {
         var (_, pipeName) = SplitPipePath(pipePath);
@@ -137,6 +143,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         throw new TimeoutException($"Python-GerÃ¤tesimulation auf Pipe '{pipePath}' wurde nicht rechtzeitig gestartet. Command='{host._launchCommand}'.{host.GetProcessOutput()}");
     }
 
+    /// <summary>
+    /// Initializes a new instance of static.
+    /// </summary>
     private static (string Server, string PipeName) SplitPipePath(string pipePath)
     {
         var parts = pipePath.Split('\\', StringSplitOptions.RemoveEmptyEntries);
@@ -148,6 +157,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         return (parts[0], parts[2]);
     }
 
+    /// <summary>
+    /// Executes GetProcessOutput.
+    /// </summary>
     private string GetProcessOutput()
     {
         var stdout = _stdout.ToString().Trim();
@@ -160,6 +172,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         return $"{Environment.NewLine}stdout:{Environment.NewLine}{stdout}{Environment.NewLine}stderr:{Environment.NewLine}{stderr}";
     }
 
+    /// <summary>
+    /// Executes ResolvePythonLauncher.
+    /// </summary>
     private static PythonLauncher? ResolvePythonLauncher()
     {
         var configured = Environment.GetEnvironmentVariable("CT3XX_PYTHON_EXE");
@@ -190,6 +205,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Executes CanImportPyWin32.
+    /// </summary>
     private static bool CanImportPyWin32(PythonLauncher launcher)
     {
         try
@@ -220,6 +238,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes SplitCommand.
+    /// </summary>
     private static PythonLauncher SplitCommand(string command)
     {
         var trimmed = command.Trim();
@@ -232,6 +253,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         return new PythonLauncher(trimmed[..firstSpace], trimmed[(firstSpace + 1)..].Trim());
     }
 
+    /// <summary>
+    /// Executes ResolveDeviceLaunchSpec.
+    /// </summary>
     private static DeviceLaunchSpec ResolveDeviceLaunchSpec(string modelPath)
     {
         var fullPath = Path.GetFullPath(modelPath);
@@ -267,6 +291,9 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         throw new InvalidOperationException($"Nicht unterstuetzter Geraetemodell-Typ '{extension}'.");
     }
 
+    /// <summary>
+    /// Executes FindSimtestMain.
+    /// </summary>
     private static string? FindSimtestMain(string modelPath)
     {
         var directory = Path.GetDirectoryName(modelPath);
@@ -284,6 +311,12 @@ internal sealed class PythonDeviceProcessHost : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Executes PythonLauncher.
+    /// </summary>
     private readonly record struct PythonLauncher(string FileName, string Arguments);
+    /// <summary>
+    /// Executes DeviceLaunchSpec.
+    /// </summary>
     private readonly record struct DeviceLaunchSpec(string Arguments, string WorkingDirectory);
 }

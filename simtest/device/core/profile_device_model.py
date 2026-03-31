@@ -43,6 +43,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
     """Drive a device model from one JSON/YAML profile instead of handwritten logic."""
 
     def __init__(self, profile_path: str):
+        """Executes __init__."""
         self.profile_path = profile_path
         self.profile = load_profile_document(profile_path)
         self.device_name = str(self.profile.get("name") or Path(profile_path).stem)
@@ -327,63 +328,82 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         return None
 
     def _apply_slew(self, current: float, target: float, elapsed_ms: int, active_rule: dict[str, Any] | None, definition: dict[str, Any]) -> float:
+        """Executes _apply_slew."""
         return apply_slew(current, target, elapsed_ms, active_rule, definition)
 
     def _apply_input_curves(self) -> None:
+        """Executes _apply_input_curves."""
         apply_input_curves(self)
 
     def _apply_waveform_inputs(self) -> None:
+        """Executes _apply_waveform_inputs."""
         apply_waveform_inputs(self)
 
     def _update_timers(self) -> None:
+        """Executes _update_timers."""
         update_timers(self)
 
     def _update_state_machines(self) -> None:
+        """Executes _update_state_machines."""
         update_state_machines(self)
 
     def _apply_state_actions(self, machine_name: str, state_name: str, state_config: dict[str, Any]) -> None:
+        """Executes _apply_state_actions."""
         apply_state_actions(self, machine_name, state_name, state_config)
 
     def _set_state_flags(self, machine_name: str, active_state: str, definition: dict[str, Any]) -> None:
+        """Executes _set_state_flags."""
         set_state_flags(self, machine_name, active_state, definition)
 
     @staticmethod
     def _timer_output_signal(name: str, definition: dict[str, Any]) -> str:
+        """Executes _timer_output_signal."""
         return timer_output_signal(name, definition)
 
     def _evaluate_transfer_curve(self, definition: Any) -> float:
+        """Executes _evaluate_transfer_curve."""
         return evaluate_transfer_curve(self, definition)
 
     def _evaluate_curve_points(self, points: list[Any], x_value: float, mode: str) -> float:
+        """Executes _evaluate_curve_points."""
         return evaluate_curve_points(points, x_value, mode)
 
     def _condition_matches(self, condition: Any) -> bool:
+        """Executes _condition_matches."""
         return condition_matches(self, condition)
 
     def _interface_request_matches(self, condition: Any, payload: Any) -> bool:
+        """Executes _interface_request_matches."""
         return interface_request_matches(condition, payload)
 
     def _read_signal_value(self, signal: str) -> float:
+        """Executes _read_signal_value."""
         return read_signal_value(self, signal)
 
     def _publish_waveform_metrics(self, signal: str) -> None:
+        """Executes _publish_waveform_metrics."""
         publish_waveform_metrics(self, signal)
 
     def _are_sources_enabled(self) -> bool:
+        """Executes _are_sources_enabled."""
         return are_sources_enabled(self)
 
     def _refresh_derived_signals(self) -> None:
+        """Executes _refresh_derived_signals."""
         for signal, definition in self.derived_signal_definitions.items():
             self.internal[signal] = float(self._evaluate_derived_signal(definition))
 
     def _evaluate_derived_signal(self, definition: Any) -> float:
+        """Executes _evaluate_derived_signal."""
         return evaluate_derived_signal(self, definition)
 
     def _resolve_signal_name(self, name: str) -> str:
+        """Executes _resolve_signal_name."""
         signal = str(name).strip().upper()
         return self.signal_aliases.get(signal, signal)
 
     def _resolve_interface_name(self, name: str) -> str:
+        """Executes _resolve_interface_name."""
         interface_name = str(name).strip().upper()
         return self.interface_aliases.get(interface_name, interface_name)
 
@@ -505,6 +525,7 @@ class DeclarativeDeviceModel(BaseDeviceModel):
         index = 0
 
         def append_entry(a: str, b: str, ohms_value: float, identifier: str | None = None) -> None:
+            """Executes append_entry."""
             nonlocal index
             index += 1
             normalized.append(
@@ -597,8 +618,10 @@ class DeclarativeDeviceModel(BaseDeviceModel):
 
     @staticmethod
     def _lookup_numeric(values: dict[str, Any], key: str, default: float) -> float:
+        """Executes _lookup_numeric."""
         return lookup_numeric(values, key, default)
 
     @staticmethod
     def _compare(value: float, conditions: dict[str, Any]) -> bool:
+        """Executes _compare."""
         return compare(value, conditions)

@@ -7,6 +7,9 @@ namespace Ct3xxProgramParser.Documents;
 
 public abstract class Ct3xxFileDocument
 {
+    /// <summary>
+    /// Initializes a new instance of Ct3xxFileDocument.
+    /// </summary>
     protected Ct3xxFileDocument(string filePath, Table? tableDefinition)
     {
         if (string.IsNullOrWhiteSpace(filePath))

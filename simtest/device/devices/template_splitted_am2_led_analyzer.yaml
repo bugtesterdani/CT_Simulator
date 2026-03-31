@@ -110,47 +110,35 @@ derived_signals:
 
 outputs:
   WAVE_OUT_1:
-    default: 0.0
+    default: 0.2
     rules:
       - when:
-          all:
-            - signal: LED_ON
-              gte: 1.0
-            - signal: L1_OVERVOLTAGE
-              gte: 1.0
-        value: 1.3
-      - when:
+          signal: L1_OVERVOLTAGE
+          gte: 1.0
+        state_when:
           signal: LED_ON
           gte: 1.0
-        value: 0.2
+        value: 0.9
   WAVE_OUT_2:
-    default: 0.0
+    default: 0.2
     rules:
       - when:
-          all:
-            - signal: LED_ON
-              gte: 1.0
-            - signal: L2_OVERVOLTAGE
-              gte: 1.0
-        value: 1.3
-      - when:
+          signal: L2_OVERVOLTAGE
+          gte: 1.0
+        state_when:
           signal: LED_ON
           gte: 1.0
-        value: 0.2
+        value: 0.9
   WAVE_OUT_3:
-    default: 0.0
+    default: 0.2
     rules:
       - when:
-          all:
-            - signal: LED_ON
-              gte: 1.0
-            - signal: L3_OVERVOLTAGE
-              gte: 1.0
-        value: 1.3
-      - when:
+          signal: L3_OVERVOLTAGE
+          gte: 1.0
+        state_when:
           signal: LED_ON
           gte: 1.0
-        value: 0.2
+        value: 0.9
 
 interfaces:
   INTERFACE LED ANALYZER:

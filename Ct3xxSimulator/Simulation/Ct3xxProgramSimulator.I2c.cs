@@ -12,6 +12,9 @@ namespace Ct3xxSimulator.Simulation;
 /// </summary>
 public partial class Ct3xxProgramSimulator
 {
+    /// <summary>
+    /// Executes RunI2cInterfaceTest.
+    /// </summary>
     private TestOutcome RunI2cInterfaceTest(Test test)
     {
         var parameters = test.Parameters;
@@ -90,6 +93,9 @@ public partial class Ct3xxProgramSimulator
         return outcome;
     }
 
+    /// <summary>
+    /// Executes ExecuteI2cRecord.
+    /// </summary>
     private I2cTransactionResult ExecuteI2cRecord(I2cInterfaceRuntime runtime, I2cRecordDefinition command)
     {
         var payload = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
@@ -176,6 +182,9 @@ public partial class Ct3xxProgramSimulator
         return new I2cTransactionResult(TestOutcome.Pass, summary, actualByte);
     }
 
+    /// <summary>
+    /// Executes DetermineI2cTransferPhase.
+    /// </summary>
     private static string DetermineI2cTransferPhase(string ackMode)
     {
         var normalized = NormalizeQuotedText(ackMode) ?? string.Empty;
@@ -188,6 +197,9 @@ public partial class Ct3xxProgramSimulator
         return "master_write";
     }
 
+    /// <summary>
+    /// Executes BuildI2cOperationSummary.
+    /// </summary>
     private static string BuildI2cOperationSummary(I2cRecordDefinition command)
     {
         var phase = DetermineI2cTransferPhase(command.AckMode);
@@ -200,6 +212,9 @@ public partial class Ct3xxProgramSimulator
         return $"Master TX ({normalizedAck}): 0x{command.ToSend:X2}";
     }
 
+    /// <summary>
+    /// Executes FindInterfaceDefinition.
+    /// </summary>
     private InterfaceDefinition? FindInterfaceDefinition(string interfaceName)
     {
         if (_program == null)
@@ -212,6 +227,9 @@ public partial class Ct3xxProgramSimulator
             .FirstOrDefault(item => string.Equals(item.Name, interfaceName, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Executes EnumerateI2cRecords.
+    /// </summary>
     private IEnumerable<I2cRecordDefinition> EnumerateI2cRecords(TestParameters parameters)
     {
         foreach (var record in parameters.Records)
@@ -244,6 +262,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes BuildI2cInterfaceRuntime.
+    /// </summary>
     private I2cInterfaceRuntime BuildI2cInterfaceRuntime(InterfaceDefinition definition)
     {
         var name = NormalizeQuotedText(definition.Name) ?? "I2C";
@@ -268,6 +289,9 @@ public partial class Ct3xxProgramSimulator
         return new I2cInterfaceRuntime(name, route, module, sda, scl, gnd, supply, supplyVoltage, stimulusSignals, acquireSignals);
     }
 
+    /// <summary>
+    /// Executes ApplyI2cSupply.
+    /// </summary>
     private void ApplyI2cSupply(I2cInterfaceRuntime runtime)
     {
         if (!runtime.SupplyVoltage.HasValue)
@@ -285,6 +309,9 @@ public partial class Ct3xxProgramSimulator
         }
     }
 
+    /// <summary>
+    /// Executes BuildI2cTraces.
+    /// </summary>
     private IReadOnlyList<StepConnectionTrace> BuildI2cTraces(I2cInterfaceRuntime runtime)
     {
         var traces = new List<StepConnectionTrace>();
@@ -329,6 +356,9 @@ public partial class Ct3xxProgramSimulator
         return new[] { new StepConnectionTrace($"I2C {runtime.Name}", nodes) };
     }
 
+    /// <summary>
+    /// Executes ResolveI2cLine.
+    /// </summary>
     private string? ResolveI2cLine(string? rawSignal)
     {
         var signal = NormalizeQuotedText(rawSignal);
@@ -345,18 +375,30 @@ public partial class Ct3xxProgramSimulator
         return ExtractSignalName(signal);
     }
 
+    /// <summary>
+    /// Executes NormalizeQuotedText.
+    /// </summary>
     private static string? NormalizeQuotedText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim().Trim('\'', '"');
 
+    /// <summary>
+    /// Executes ParseOnOffFlag.
+    /// </summary>
     private static bool ParseOnOffFlag(string? value) =>
         string.Equals(NormalizeQuotedText(value), "On", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Executes ParseByteValue.
+    /// </summary>
     private static byte ParseByteValue(string? raw)
     {
         var parsed = ParseOptionalByteValue(raw);
         return parsed ?? 0;
     }
 
+    /// <summary>
+    /// Executes ParseOptionalByteValue.
+    /// </summary>
     private static byte? ParseOptionalByteValue(string? raw)
     {
         var normalized = NormalizeQuotedText(raw);
@@ -376,6 +418,9 @@ public partial class Ct3xxProgramSimulator
             : null;
     }
 
+    /// <summary>
+    /// Executes ParseInterfaceSupplyVoltage.
+    /// </summary>
     private static double? ParseInterfaceSupplyVoltage(string? raw)
     {
         var normalized = NormalizeQuotedText(raw);
@@ -393,6 +438,9 @@ public partial class Ct3xxProgramSimulator
             : null;
     }
 
+    /// <summary>
+    /// Executes ReadResponseByte.
+    /// </summary>
     private static byte? ReadResponseByte(JsonObject response, string propertyName)
     {
         if (response[propertyName] is JsonValue valueNode)
@@ -416,6 +464,9 @@ public partial class Ct3xxProgramSimulator
         return null;
     }
 
+    /// <summary>
+    /// Executes I2cInterfaceRuntime.
+    /// </summary>
     private sealed record I2cInterfaceRuntime(
         string Name,
         string? Route,
@@ -428,6 +479,9 @@ public partial class Ct3xxProgramSimulator
         IReadOnlyList<string> StimulusSignals,
         IReadOnlyList<string> AcquireSignals);
 
+    /// <summary>
+    /// Executes I2cRecordDefinition.
+    /// </summary>
     private sealed record I2cRecordDefinition(
         int Index,
         bool StartCondition,
@@ -439,6 +493,9 @@ public partial class Ct3xxProgramSimulator
         long WaitMs,
         string? RowComment);
 
+    /// <summary>
+    /// Executes I2cTransactionResult.
+    /// </summary>
     private sealed record I2cTransactionResult(
         TestOutcome Outcome,
         string Details,

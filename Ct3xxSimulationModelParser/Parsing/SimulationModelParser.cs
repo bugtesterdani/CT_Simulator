@@ -35,6 +35,9 @@ public sealed class SimulationModelParser
         return ParseRoot(raw, filePath);
     }
 
+    /// <summary>
+    /// Executes ParseRoot.
+    /// </summary>
     private static SimulationModelDocument ParseRoot(IDictionary<object, object?>? root, string sourcePath)
     {
         if (root == null)
@@ -61,6 +64,9 @@ public sealed class SimulationModelParser
         return new SimulationModelDocument(sourcePath, elements);
     }
 
+    /// <summary>
+    /// Executes ParseElement.
+    /// </summary>
     private static SimulationElementDefinition ParseElement(IDictionary<object, object?> map, string sourcePath)
     {
         var id = RequireString(map, "id", sourcePath);
@@ -99,6 +105,15 @@ public sealed class SimulationModelParser
                     RequireString(map, "secondary_b", sourcePath),
                     RequireDouble(map, "ratio", sourcePath),
                     metadata);
+            case "limit":
+                return new LimitElementDefinition(
+                    id,
+                    OptionalString(map, "mode") ?? "voltage",
+                    ParseNodePrefixes(map, sourcePath),
+                    OptionalDouble(map, "max_voltage", sourcePath),
+                    OptionalDouble(map, "max_current", sourcePath),
+                    OptionalDouble(map, "gain", sourcePath) ?? 1d,
+                    metadata);
             case "assembly":
                 return new AssemblyElementDefinition(
                     id,
@@ -111,6 +126,9 @@ public sealed class SimulationModelParser
         }
     }
 
+    /// <summary>
+    /// Executes ParseRelayCoil.
+    /// </summary>
     private static RelayCoilDefinition ParseRelayCoil(IDictionary<object, object?> map, string sourcePath)
     {
         return new RelayCoilDefinition(
@@ -118,6 +136,9 @@ public sealed class SimulationModelParser
             RequireDouble(map, "threshold_v", sourcePath));
     }
 
+    /// <summary>
+    /// Executes ParseRelayContacts.
+    /// </summary>
     private static IReadOnlyList<RelayContactDefinition> ParseRelayContacts(IEnumerable<object> nodes, string sourcePath)
     {
         var contacts = new List<RelayContactDefinition>();
@@ -137,6 +158,9 @@ public sealed class SimulationModelParser
         return contacts;
     }
 
+    /// <summary>
+    /// Executes ToFlatStringMap.
+    /// </summary>
     private static IReadOnlyDictionary<string, string?> ToFlatStringMap(IDictionary<object, object?> source)
     {
         var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -153,6 +177,9 @@ public sealed class SimulationModelParser
         return result;
     }
 
+    /// <summary>
+    /// Executes ParsePorts.
+    /// </summary>
     private static IReadOnlyDictionary<string, string> ParsePorts(IDictionary<object, object?> source)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -171,6 +198,48 @@ public sealed class SimulationModelParser
         return result;
     }
 
+    /// <summary>
+    /// Executes ParseNodePrefixes.
+    /// </summary>
+    private static IReadOnlyList<string> ParseNodePrefixes(IDictionary<object, object?> map, string sourcePath)
+    {
+        if (!TryGet(map, "nodes", out var nodes) && !TryGet(map, "node_prefixes", out nodes))
+        {
+            throw new InvalidDataException($"[{sourcePath}] Required sequence 'nodes' is missing.");
+        }
+
+        var result = new List<string>();
+        if (nodes is IEnumerable<object> sequence)
+        {
+            foreach (var item in sequence)
+            {
+                var text = item?.ToString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    result.Add(text);
+                }
+            }
+        }
+        else
+        {
+            var single = nodes?.ToString()?.Trim();
+            if (!string.IsNullOrWhiteSpace(single))
+            {
+                result.Add(single);
+            }
+        }
+
+        if (result.Count == 0)
+        {
+            throw new InvalidDataException($"[{sourcePath}] Required sequence 'nodes' is empty.");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Executes TryGet.
+    /// </summary>
     private static bool TryGet(IDictionary<object, object?> map, string key, out object? value)
     {
         foreach (var pair in map)
@@ -186,6 +255,9 @@ public sealed class SimulationModelParser
         return false;
     }
 
+    /// <summary>
+    /// Executes RequireString.
+    /// </summary>
     private static string RequireString(IDictionary<object, object?> map, string key, string sourcePath)
     {
         if (!TryGet(map, key, out var value) || string.IsNullOrWhiteSpace(value?.ToString()))
@@ -196,6 +268,9 @@ public sealed class SimulationModelParser
         return value!.ToString()!.Trim();
     }
 
+    /// <summary>
+    /// Executes OptionalString.
+    /// </summary>
     private static string? OptionalString(IDictionary<object, object?> map, string key)
     {
         return TryGet(map, key, out var value) && !string.IsNullOrWhiteSpace(value?.ToString())
@@ -203,6 +278,9 @@ public sealed class SimulationModelParser
             : null;
     }
 
+    /// <summary>
+    /// Executes RequireDouble.
+    /// </summary>
     private static double RequireDouble(IDictionary<object, object?> map, string key, string sourcePath)
     {
         var text = RequireString(map, key, sourcePath).Replace(',', '.');
@@ -214,6 +292,28 @@ public sealed class SimulationModelParser
         return value;
     }
 
+    /// <summary>
+    /// Executes OptionalDouble.
+    /// </summary>
+    private static double? OptionalDouble(IDictionary<object, object?> map, string key, string sourcePath)
+    {
+        if (!TryGet(map, key, out var value) || string.IsNullOrWhiteSpace(value?.ToString()))
+        {
+            return null;
+        }
+
+        var text = value!.ToString()!.Trim().Replace(',', '.');
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+        {
+            throw new InvalidDataException($"[{sourcePath}] '{key}' is not a valid number.");
+        }
+
+        return parsed;
+    }
+
+    /// <summary>
+    /// Executes RequireMap.
+    /// </summary>
     private static IDictionary<object, object?> RequireMap(IDictionary<object, object?> map, string key, string sourcePath)
     {
         if (!TryGet(map, key, out var value) || value is not IDictionary<object, object?> nested)
@@ -224,6 +324,9 @@ public sealed class SimulationModelParser
         return nested;
     }
 
+    /// <summary>
+    /// Executes RequireSequence.
+    /// </summary>
     private static IEnumerable<object> RequireSequence(IDictionary<object, object?> map, string key, string sourcePath)
     {
         if (!TryGet(map, key, out var value) || value is not IEnumerable<object> sequence)

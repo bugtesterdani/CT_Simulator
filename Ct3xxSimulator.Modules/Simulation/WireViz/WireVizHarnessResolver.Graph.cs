@@ -353,6 +353,9 @@ public sealed partial class WireVizHarnessResolver
                 SourcePath);
         }
 
+        /// <summary>
+        /// Executes Traverse.
+        /// </summary>
         private TraversalResult Traverse(
             string sourceKey,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -407,6 +410,9 @@ public sealed partial class WireVizHarnessResolver
             return new TraversalResult(visited, parents, scales, syntheticTargets.Values.ToList());
         }
 
+        /// <summary>
+        /// Executes EnumerateAdjacentNodes.
+        /// </summary>
         private IEnumerable<TraversalEdge> EnumerateAdjacentNodes(
             string current,
             IReadOnlyDictionary<string, object?>? signalState,
@@ -448,6 +454,9 @@ public sealed partial class WireVizHarnessResolver
             }
         }
 
+        /// <summary>
+        /// Executes SelectPreferredTargets.
+        /// </summary>
         private IReadOnlyList<WireVizEndpoint> SelectPreferredTargets(
             WireVizEndpoint source,
             IReadOnlyList<WireVizEndpoint> resolved,
@@ -484,6 +493,9 @@ public sealed partial class WireVizHarnessResolver
                 .ToList();
         }
 
+        /// <summary>
+        /// Executes GetTargetSpecificityScore.
+        /// </summary>
         private static int GetTargetSpecificityScore(WireVizEndpoint endpoint)
         {
             var score = 0;
@@ -513,8 +525,18 @@ public sealed partial class WireVizHarnessResolver
             return score;
         }
 
+        /// <summary>
+        /// Executes GetRuntimeSignalName.
+        /// </summary>
         private static string GetRuntimeSignalName(WireVizEndpoint source, WireVizEndpoint target, bool preserveSourceSignalName)
         {
+            if (preserveSourceSignalName &&
+                !string.IsNullOrWhiteSpace(source.PinLabel) &&
+                !IsGenericBoundaryLabel(source.PinLabel))
+            {
+                return source.PinLabel!;
+            }
+
             if (IsDeviceLikeEndpoint(target) &&
                 !string.IsNullOrWhiteSpace(target.PinLabel) &&
                 !IsGenericBoundaryLabel(target.PinLabel))
@@ -535,17 +557,26 @@ public sealed partial class WireVizHarnessResolver
             return target.Key;
         }
 
+        /// <summary>
+        /// Executes IsGenericBoundaryLabel.
+        /// </summary>
         private static bool IsGenericBoundaryLabel(string? label)
         {
             return !string.IsNullOrWhiteSpace(label) && GenericBoundaryLabels.Contains(label.Trim());
         }
 
+        /// <summary>
+        /// Executes IsDeviceLikeEndpoint.
+        /// </summary>
         private static bool IsDeviceLikeEndpoint(WireVizEndpoint endpoint)
         {
             return endpoint.Role == WireVizConnectorRole.Device ||
                    endpoint.Designator.Contains("DevicePort", StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Executes TryReconstructPath.
+        /// </summary>
         private static bool TryReconstructPath(
             string sourceKey,
             string targetKey,
@@ -581,6 +612,9 @@ public sealed partial class WireVizHarnessResolver
             return true;
         }
 
+        /// <summary>
+        /// Executes FormatNode.
+        /// </summary>
         private string FormatNode(string key)
         {
             if (key.StartsWith("@signal:", StringComparison.OrdinalIgnoreCase))
@@ -592,6 +626,9 @@ public sealed partial class WireVizHarnessResolver
             return endpoint?.DisplayName ?? key;
         }
 
+        /// <summary>
+        /// Executes ResolveEndpointByKey.
+        /// </summary>
         private IEnumerable<WireVizEndpoint> ResolveEndpointByKey(string key)
         {
             var dot = key.LastIndexOf('.');
@@ -653,6 +690,9 @@ public sealed partial class WireVizHarnessResolver
 
         private sealed class TraversalEdge
         {
+            /// <summary>
+            /// Initializes a new instance of TraversalEdge.
+            /// </summary>
             private TraversalEdge(string target, double scale, double resistanceOhms, string? description, bool isSyntheticSignal, bool writeOnly, bool readOnly)
             {
                 Target = target;

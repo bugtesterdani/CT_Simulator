@@ -30,6 +30,9 @@ public partial class ScenarioPresetUpgradeWindow : Window
             .Where(item => item.SelectedTarget != null)
             .ToDictionary(item => item.OriginalKey, item => item.SelectedTarget!.NodeKey);
 
+    /// <summary>
+    /// Executes OnApply.
+    /// </summary>
     private void OnApply(object sender, RoutedEventArgs e)
     {
         DialogResult = true;

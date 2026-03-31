@@ -8,10 +8,43 @@ from core import BaseDeviceModel
 class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
     """Three-phase LED analyzer DUT used by AM2 waveform reference tests."""
     LOW_LEVEL = 0.2
-    HIGH_LEVEL = 1.3
+    HIGH_LEVEL = 0.9
     ERROR_THRESHOLD = 0.2
     DOMINANCE_WINDOW_MS = 40
     DOMINANCE_EPSILON = 0.01
+    PHASE_INPUT_ALIASES = {
+        1: {
+            "WAVE_IN",
+            "WAVE_IN_1",
+            "WAVE_IN_A",
+            "ARB_IN",
+            "ARB_IN_1",
+            "ARB_IN_A",
+            "AM2/1 BNC + A-IO 3",
+            "AM2/1 AM2_ARB_3",
+            "BNC + A-IO 3",
+            "AM2_ARB_3",
+            "DEVICE.ARB_IN_1",
+        },
+        2: {
+            "WAVE_IN_2",
+            "WAVE_IN_B",
+            "ARB_IN_2",
+            "ARB_IN_B",
+            "AM2/2 BNC + A-IO 3",
+            "AM2/2 AM2_ARB_3",
+            "DEVICE.ARB_IN_2",
+        },
+        3: {
+            "WAVE_IN_3",
+            "WAVE_IN_C",
+            "ARB_IN_3",
+            "ARB_IN_C",
+            "AM2/3 BNC + A-IO 3",
+            "AM2/3 AM2_ARB_3",
+            "DEVICE.ARB_IN_3",
+        },
+    }
 
     def reset(self) -> None:
         """Reset the model to its power-up defaults."""
@@ -31,29 +64,25 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
         signal = name.strip().upper()
         numeric = float(value)
 
-        if signal in {"DUT_HV", "DUT_HV_IN", "HV_IN", "SM4_10_0"}:
+        if signal in {"DUT_HV", "DUT_HV_IN", "HV_IN", "SM4_10_0", "DEVICE.HV_IN"}:
             self.dut_hv_voltage = numeric
             return
 
-        if signal in {"GND", "SM4_34_0"}:
+        if signal in {"GND", "SM4_34_0", "DEVICE.GND"}:
             self.gnd_voltage = numeric
             return
 
-        phase_1_inputs = {"WAVE_IN", "WAVE_IN_1", "WAVE_IN_A", "ARB_IN", "ARB_IN_1", "ARB_IN_A", "AM2/1 BNC + A-IO 3", "AM2/1 AM2_ARB_3", "BNC + A-IO 3", "AM2_ARB_3"}
-        phase_2_inputs = {"WAVE_IN_2", "WAVE_IN_B", "ARB_IN_2", "ARB_IN_B", "AM2/2 BNC + A-IO 3", "AM2/2 AM2_ARB_3"}
-        phase_3_inputs = {"WAVE_IN_3", "WAVE_IN_C", "ARB_IN_3", "ARB_IN_C", "AM2/3 BNC + A-IO 3", "AM2/3 AM2_ARB_3"}
-
-        if signal in phase_1_inputs:
+        if signal in self._phase_input_aliases(1):
             self.wave_in_1 = numeric
             self.wave_out_1 = numeric
             return
 
-        if signal in phase_2_inputs:
+        if signal in self._phase_input_aliases(2):
             self.wave_in_2 = numeric
             self.wave_out_2 = numeric
             return
 
-        if signal in phase_3_inputs:
+        if signal in self._phase_input_aliases(3):
             self.wave_in_3 = numeric
             self.wave_out_3 = numeric
             return
@@ -64,27 +93,30 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
         """Resolve one DUT signal for waveform outputs or monitoring."""
         signal = name.strip().upper()
 
-        if signal in {"WAVE_OUT", "WAVE_OUT_1", "WAVE_OUT_A", "SCO_OUT", "SCO_OUT_1", "SCO_OUT_A", "AM2/1 BNC + A-IO 8", "AM2/1 AM2_SCO_8", "BNC + A-IO 8", "AM2_SCO_8"}:
-            return self._phase_output(1)
-        if signal in {"WAVE_OUT_2", "WAVE_OUT_B", "SCO_OUT_2", "SCO_OUT_B", "AM2/2 BNC + A-IO 8", "AM2/2 AM2_SCO_8"}:
-            return self._phase_output(2)
-        if signal in {"WAVE_OUT_3", "WAVE_OUT_C", "SCO_OUT_3", "SCO_OUT_C", "AM2/3 BNC + A-IO 8", "AM2/3 AM2_SCO_8"}:
-            return self._phase_output(3)
-        if signal in {"WAVE_IN", "WAVE_IN_1", "WAVE_IN_A", "ARB_IN", "ARB_IN_1", "ARB_IN_A", "AM2/1 BNC + A-IO 3", "AM2/1 AM2_ARB_3", "BNC + A-IO 3", "AM2_ARB_3"}:
-            return self.wave_in_1
-        if signal in {"WAVE_IN_2", "WAVE_IN_B", "ARB_IN_2", "ARB_IN_B", "AM2/2 BNC + A-IO 3", "AM2/2 AM2_ARB_3"}:
-            return self.wave_in_2
-        if signal in {"WAVE_IN_3", "WAVE_IN_C", "ARB_IN_3", "ARB_IN_C", "AM2/3 BNC + A-IO 3", "AM2/3 AM2_ARB_3"}:
-            return self.wave_in_3
-        if signal in {"DUT_HV", "DUT_HV_IN", "HV_IN", "SM4_10_0"}:
+        if signal in {"DUT_HV", "DUT_HV_IN", "HV_IN", "SM4_10_0", "DEVICE.HV_IN"}:
             return self.dut_hv_voltage
+        if signal in {"WAVE_OUT", "WAVE_OUT_1", "WAVE_OUT_A", "SCO_OUT", "SCO_OUT_1", "SCO_OUT_A", "AM2/1 BNC + A-IO 8", "AM2/1 AM2_SCO_8", "BNC + A-IO 8", "AM2_SCO_8", "DEVICE.SCO_OUT_1"}:
+            if self.dut_hv_voltage < 12.0:
+                return 0.0
+            return self._phase_output(1)
+        if signal in {"WAVE_OUT_2", "WAVE_OUT_B", "SCO_OUT_2", "SCO_OUT_B", "AM2/2 BNC + A-IO 8", "AM2/2 AM2_SCO_8", "DEVICE.SCO_OUT_2"}:
+            if self.dut_hv_voltage < 12.0:
+                return 0.0
+            return self._phase_output(2)
+        if signal in {"WAVE_OUT_3", "WAVE_OUT_C", "SCO_OUT_3", "SCO_OUT_C", "AM2/3 BNC + A-IO 8", "AM2/3 AM2_SCO_8", "DEVICE.SCO_OUT_3"}:
+            if self.dut_hv_voltage < 12.0:
+                return 0.0
+            return self._phase_output(3)
+        if signal in {"WAVE_IN", "WAVE_IN_1", "WAVE_IN_A", "ARB_IN", "ARB_IN_1", "ARB_IN_A", "AM2/1 BNC + A-IO 3", "AM2/1 AM2_ARB_3", "BNC + A-IO 3", "AM2_ARB_3", "DEVICE.ARB_IN_1"}:
+            return self.wave_in_1
+        if signal in {"WAVE_IN_2", "WAVE_IN_B", "ARB_IN_2", "ARB_IN_B", "AM2/2 BNC + A-IO 3", "AM2/2 AM2_ARB_3", "DEVICE.ARB_IN_2"}:
+            return self.wave_in_2
+        if signal in {"WAVE_IN_3", "WAVE_IN_C", "ARB_IN_3", "ARB_IN_C", "AM2/3 BNC + A-IO 3", "AM2/3 AM2_ARB_3", "DEVICE.ARB_IN_3"}:
+            return self.wave_in_3
         raise KeyError(f"Unknown signal '{name}'.")
 
     def _phase_output(self, phase_index: int) -> float:
         """Compute the output level for the requested phase."""
-        if self.dut_hv_voltage < 12.0:
-            return 0.0
-
         detected_phase = self._detect_fault_phase()
         return self.HIGH_LEVEL if detected_phase == phase_index else self.LOW_LEVEL
 
@@ -126,8 +158,7 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
 
     def _phase_value_at(self, phase_index: int, sample_time_ms: int) -> float:
         """Resolve the phase input value at the specified time."""
-        signal = f"WAVE_IN_{phase_index}"
-        waveform = self.input_waveforms.get(signal)
+        waveform = self._find_phase_waveform(phase_index)
         if waveform is not None:
             return float(self._waveform_value_at(waveform, sample_time_ms))
 
@@ -137,8 +168,28 @@ class TemplateSplittedAm2LedAnalyzerModel(BaseDeviceModel):
             return self.wave_in_2
         return self.wave_in_3
 
+    def _phase_input_aliases(self, phase_index: int) -> set[str]:
+        """Return the set of input aliases for the selected phase."""
+        aliases = self.PHASE_INPUT_ALIASES.get(phase_index, set())
+        return {alias.upper() for alias in aliases}
+
+    def _find_phase_waveform(self, phase_index: int) -> dict[str, Any] | None:
+        """Return the waveform payload for the selected phase if available."""
+        for alias in self._phase_input_aliases(phase_index):
+            waveform = self.input_waveforms.get(alias)
+            if waveform is not None:
+                return waveform
+        return None
+
     def _phase_window_metric(self, phase_index: int, sample_times: list[int]) -> float:
         """Compute a peak/RMS metric used for dominance detection."""
+        waveform = self._find_phase_waveform(phase_index)
+        if waveform is not None:
+            metrics = waveform.get("metrics") or {}
+            peak = float(metrics.get("peak", 0.0) or 0.0)
+            rms = float(metrics.get("rms", 0.0) or 0.0)
+            return max(abs(peak), abs(rms))
+
         samples = [abs(self._phase_value_at(phase_index, sample_time)) for sample_time in sample_times]
         if not samples:
             return 0.0

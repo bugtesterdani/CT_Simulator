@@ -8,6 +8,9 @@ namespace Ct3xxSimulator.Desktop;
 
 public partial class MainWindow
 {
+    /// <summary>
+    /// Executes OnContinueStep.
+    /// </summary>
     private void OnContinueStep(object sender, System.Windows.RoutedEventArgs e)
     {
         if (CanStepForward)
@@ -19,6 +22,9 @@ public partial class MainWindow
         _stepGate.Set();
     }
 
+    /// <summary>
+    /// Executes OnResumeAutomaticRun.
+    /// </summary>
     private void OnResumeAutomaticRun(object sender, System.Windows.RoutedEventArgs e)
     {
         IsStepModeEnabled = false;
@@ -26,12 +32,18 @@ public partial class MainWindow
         _stepGate.Set();
     }
 
+    /// <summary>
+    /// Executes OnPauseAtNextStep.
+    /// </summary>
     private void OnPauseAtNextStep(object sender, System.Windows.RoutedEventArgs e)
     {
         _pauseAtNextStep = true;
         AddLog("Simulation pausiert am naechsten Snapshot.");
     }
 
+    /// <summary>
+    /// Executes OnStepBack.
+    /// </summary>
     private void OnStepBack(object sender, System.Windows.RoutedEventArgs e)
     {
         if (!CanStepBackward)
@@ -42,6 +54,9 @@ public partial class MainWindow
         SelectTimelineIndex(_timelineIndex - 1);
     }
 
+    /// <summary>
+    /// Executes AppendTimelineSnapshot.
+    /// </summary>
     private void AppendTimelineSnapshot(SimulationStateSnapshot snapshot)
     {
         var last = _timeline.Count == 0 ? null : _timeline[^1].Snapshot;
@@ -66,6 +81,9 @@ public partial class MainWindow
         RaiseTimelineNavigationChanged();
     }
 
+    /// <summary>
+    /// Executes AppendSignalHistory.
+    /// </summary>
     private void AppendSignalHistory(SimulationStateSnapshot snapshot)
     {
         foreach (var sample in EnumerateSignalHistoryPoints(snapshot))
@@ -85,6 +103,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes EnumerateSignalHistoryPoints.
+    /// </summary>
     private IEnumerable<MeasurementCurvePoint> EnumerateSignalHistoryPoints(SimulationStateSnapshot snapshot)
     {
         foreach (var item in snapshot.Signals)
@@ -128,12 +149,18 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Executes TryParseNumeric.
+    /// </summary>
     private static bool TryParseNumeric(string? text, out double value)
     {
         return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) ||
                double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value);
     }
 
+    /// <summary>
+    /// Executes AreMapsEqual.
+    /// </summary>
     private static bool AreMapsEqual(IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right)
     {
         if (left.Count != right.Count)
@@ -152,12 +179,18 @@ public partial class MainWindow
         return true;
     }
 
+    /// <summary>
+    /// Executes RaiseTimelineNavigationChanged.
+    /// </summary>
     private void RaiseTimelineNavigationChanged()
     {
         OnPropertyChanged(nameof(CanStepBackward));
         OnPropertyChanged(nameof(CanStepForward));
     }
 
+    /// <summary>
+    /// Executes BuildSignalHistoryUpToTimelineIndex.
+    /// </summary>
     private IReadOnlyDictionary<string, List<MeasurementCurvePoint>> BuildSignalHistoryUpToTimelineIndex(int index)
     {
         var history = new Dictionary<string, List<MeasurementCurvePoint>>(StringComparer.OrdinalIgnoreCase);
@@ -189,6 +222,9 @@ public partial class MainWindow
         return history;
     }
 
+    /// <summary>
+    /// Executes SelectTimelineIndex.
+    /// </summary>
     private void SelectTimelineIndex(int index, bool keepSelection = false)
     {
         if (index < 0 || index >= _timeline.Count)
@@ -215,6 +251,9 @@ public partial class MainWindow
         UpdateLiveStateWindow();
     }
 
+    /// <summary>
+    /// Executes RefreshTimelineAnnotations.
+    /// </summary>
     private void RefreshTimelineAnnotations()
     {
         foreach (var entry in _timeline)

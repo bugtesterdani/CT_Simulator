@@ -26,6 +26,9 @@ public partial class SelectionDialog : Window
     /// </summary>
     public string SelectedOption => OptionsList.SelectedItem as string ?? string.Empty;
 
+    /// <summary>
+    /// Executes OnOk.
+    /// </summary>
     private void OnOk(object sender, RoutedEventArgs e)
     {
         if (OptionsList.SelectedItem == null)

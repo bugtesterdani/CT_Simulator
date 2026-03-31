@@ -14,6 +14,9 @@ internal static class Program
     /// </summary>
     public static int Main(string[] args)
     {
+        const int ExitValidationFailed = 2;
+        const int ExitLimitViolation = 3;
+        const int ExitMissingCards = 4;
         try
         {
             var options = CliOptions.Parse(args);
@@ -38,7 +41,7 @@ internal static class Program
                     Console.Error.WriteLine($"- {issue}");
                 }
 
-                return 2;
+                return ExitValidationFailed;
             }
 
             if (options.ValidateOnly)
@@ -70,6 +73,31 @@ internal static class Program
 
                 var parser = new Ct3xxProgramFileParser();
                 var fileSet = parser.Load(configuration.ProgramFile!);
+                if (configuration.Preset != null)
+                {
+                    var definition = new CardInventoryDefinition
+                    {
+                        InstalledCards = configuration.Preset.InstalledCards ?? new System.Collections.Generic.Dictionary<string, int>(),
+                        TestTypeCards = configuration.Preset.TestTypeCards ?? new System.Collections.Generic.Dictionary<string, string>(),
+                        TestTypeCardRules = configuration.Preset.TestTypeCardRules ?? new System.Collections.Generic.List<TestTypeCardRule>(),
+                        CardIndexPatterns = configuration.Preset.CardIndexPatterns ?? new System.Collections.Generic.Dictionary<string, string>()
+                    };
+
+                    if (CardInventoryValidator.HasCardConfiguration(definition))
+                    {
+                        var cardIssues = CardInventoryValidator.Validate(fileSet.Program, definition);
+                        if (cardIssues.Count > 0)
+                        {
+                            Console.Error.WriteLine("Validierungsfehler (Kartenbestand):");
+                            foreach (var issue in cardIssues)
+                            {
+                                Console.Error.WriteLine($"- {issue}");
+                            }
+
+                            return ExitMissingCards;
+                        }
+                    }
+                }
                 var observer = new CliSimulationObserver();
                 var simulator = new Ct3xxProgramSimulator(new ConsoleInteractionProvider(), observer, new NullSimulationExecutionController());
                 simulator.Run(fileSet, options.DutLoopIterations);
@@ -94,13 +122,23 @@ internal static class Program
                 Environment.SetEnvironmentVariable("CT3XX_PY_DEVICE_PIPE", previousPipe, EnvironmentVariableTarget.Process);
             }
         }
+        catch (SimulationAbortException abort)
+        {
+            Console.Error.WriteLine(abort.Message);
+            return abort.Reason == SimulationAbortReason.OutputLimitViolation
+                ? ExitLimitViolation
+                : ExitValidationFailed;
+        }
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex.Message);
-            return 2;
+            return ExitValidationFailed;
         }
     }
 
+    /// <summary>
+    /// Executes ResolveConfiguration.
+    /// </summary>
     private static ResolvedConfiguration ResolveConfiguration(CliOptions options)
     {
         if (!string.IsNullOrWhiteSpace(options.PresetFile) || !string.IsNullOrWhiteSpace(options.PresetName))
@@ -121,16 +159,21 @@ internal static class Program
                 ResolveProgramFile(options.ProgramFile, preset.TestProgramFolderPath),
                 preset.WiringFolderPath,
                 preset.SimulationModelFolderPath,
-                preset.PythonScriptPath);
+                preset.PythonScriptPath,
+                preset);
         }
 
         return new ResolvedConfiguration(
             ResolveProgramFile(options.ProgramFile, options.ProgramFolder),
             options.WiringFolder,
             options.SimulationFolder,
-            options.DutModelPath);
+            options.DutModelPath,
+            null);
     }
 
+    /// <summary>
+    /// Executes ResolveProgramFile.
+    /// </summary>
     private static string? ResolveProgramFile(string? programFile, string? programFolder)
     {
         if (!string.IsNullOrWhiteSpace(programFile))
@@ -155,15 +198,22 @@ internal static class Program
         };
     }
 
+    /// <summary>
+    /// Executes BuildConfigurationSummary.
+    /// </summary>
     private static string BuildConfigurationSummary(ResolvedConfiguration configuration, CliOptions options)
     {
         return
             $"Programm={configuration.ProgramFile}; Verdrahtung={configuration.WiringFolder}; Simulation={configuration.SimulationFolder}; DUT={configuration.DutModelPath}; DutLoop={options.DutLoopIterations}";
     }
 
+    /// <summary>
+    /// Executes ResolvedConfiguration.
+    /// </summary>
     private sealed record ResolvedConfiguration(
         string? ProgramFile,
         string? WiringFolder,
         string? SimulationFolder,
-        string? DutModelPath);
+        string? DutModelPath,
+        CliScenarioPreset? Preset);
 }

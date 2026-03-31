@@ -34,6 +34,9 @@ public partial class ConnectionGraphWindow : Window
         public string? ModuleRoot { get; init; }
     }
 
+    /// <summary>
+    /// Defines NodeGroup.
+    /// </summary>
     private enum NodeGroup
     {
         Device,
@@ -77,11 +80,17 @@ public partial class ConnectionGraphWindow : Window
         UpdateStatus();
     }
 
+    /// <summary>
+    /// Executes OnTraceSelectionChanged.
+    /// </summary>
     private void OnTraceSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         RenderSelectedTrace(TraceListBox.SelectedItem as StepConnectionTrace);
     }
 
+    /// <summary>
+    /// Executes RenderSelectedTrace.
+    /// </summary>
     private void RenderSelectedTrace(StepConnectionTrace? trace)
     {
         var normalizedRawTrace = NormalizeTraceDirection(trace);
@@ -171,6 +180,9 @@ public partial class ConnectionGraphWindow : Window
         UpdateStatus();
     }
 
+    /// <summary>
+    /// Executes RenderDisplayBlocks.
+    /// </summary>
     private void RenderDisplayBlocks(
         IReadOnlyList<DisplayBlock> displayBlocks,
         bool sourceIsTestSystem,
@@ -261,6 +273,9 @@ public partial class ConnectionGraphWindow : Window
         }
     }
 
+    /// <summary>
+    /// Executes NormalizeTraceDirection.
+    /// </summary>
     private StepConnectionTrace? NormalizeTraceDirection(StepConnectionTrace? trace)
     {
         if (trace == null || trace.Nodes.Count <= 1)
@@ -281,6 +296,9 @@ public partial class ConnectionGraphWindow : Window
         return trace;
     }
 
+    /// <summary>
+    /// Executes OrderTraces.
+    /// </summary>
     private static IReadOnlyList<StepConnectionTrace> OrderTraces(IReadOnlyList<StepConnectionTrace>? traces)
     {
         if (traces == null || traces.Count == 0)
@@ -294,6 +312,9 @@ public partial class ConnectionGraphWindow : Window
             .ToList();
     }
 
+    /// <summary>
+    /// Executes GetTracePriority.
+    /// </summary>
     private static int GetTracePriority(StepConnectionTrace trace)
     {
         var title = trace.Title ?? string.Empty;
@@ -317,6 +338,9 @@ public partial class ConnectionGraphWindow : Window
         return 3;
     }
 
+    /// <summary>
+    /// Executes DrawDisplayBlock.
+    /// </summary>
     private Point DrawDisplayBlock(
         DisplayBlock block,
         int stepNumber,
@@ -391,6 +415,9 @@ public partial class ConnectionGraphWindow : Window
         return new Point(left + width / 2d, top + height / 2d);
     }
 
+    /// <summary>
+    /// Executes OnNodeClicked.
+    /// </summary>
     private void OnNodeClicked(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
@@ -416,6 +443,9 @@ public partial class ConnectionGraphWindow : Window
         window.ShowDialog();
     }
 
+    /// <summary>
+    /// Executes DrawConnector.
+    /// </summary>
     private void DrawConnector(Point from, Point to)
     {
         var pathFigure = new PathFigure { StartPoint = from };
@@ -449,11 +479,17 @@ public partial class ConnectionGraphWindow : Window
         GraphCanvas.Children.Add(arrow);
     }
 
+    /// <summary>
+    /// Executes GetLaneIndex.
+    /// </summary>
     private static int GetLaneIndex(string node, bool sourceIsTestSystem)
     {
         return GetLaneIndex(ClassifyNodeGroup(node), sourceIsTestSystem);
     }
 
+    /// <summary>
+    /// Executes GetLaneIndex.
+    /// </summary>
     private static int GetLaneIndex(NodeGroup group, bool sourceIsTestSystem)
     {
         return (group, sourceIsTestSystem) switch
@@ -468,6 +504,9 @@ public partial class ConnectionGraphWindow : Window
         };
     }
 
+    /// <summary>
+    /// Executes ClassifyNodeGroup.
+    /// </summary>
     private static NodeGroup ClassifyNodeGroup(string node)
     {
         if (string.IsNullOrWhiteSpace(node))
@@ -489,6 +528,9 @@ public partial class ConnectionGraphWindow : Window
         return NodeGroup.Wiring;
     }
 
+    /// <summary>
+    /// Executes IsTestSystemLabel.
+    /// </summary>
     private static bool IsTestSystemLabel(string text)
     {
         foreach (var line in SplitLabelLines(text))
@@ -506,6 +548,9 @@ public partial class ConnectionGraphWindow : Window
         return false;
     }
 
+    /// <summary>
+    /// Executes IsDeviceEndpointLabel.
+    /// </summary>
     private static bool IsDeviceEndpointLabel(string text)
     {
         foreach (var line in SplitLabelLines(text))
@@ -522,10 +567,16 @@ public partial class ConnectionGraphWindow : Window
         return false;
     }
 
+    /// <summary>
+    /// Executes SplitLabelLines.
+    /// </summary>
     private static IEnumerable<string> SplitLabelLines(string text) =>
         text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
             .Select(item => item.Trim());
 
+    /// <summary>
+    /// Executes BuildDisplayBlocks.
+    /// </summary>
     private static IReadOnlyList<DisplayBlock> BuildDisplayBlocks(StepConnectionTrace trace, bool sourceIsTestSystem)
     {
         if (trace.Nodes.Count == 0)
@@ -571,6 +622,9 @@ public partial class ConnectionGraphWindow : Window
         return result;
     }
 
+    /// <summary>
+    /// Executes BuildWiringBlocks.
+    /// </summary>
     private static IReadOnlyList<DisplayBlock> BuildWiringBlocks(IReadOnlyList<string> middleNodes)
     {
         if (middleNodes.Count == 0)
@@ -630,6 +684,9 @@ public partial class ConnectionGraphWindow : Window
         };
     }
 
+    /// <summary>
+    /// Executes CreateWiringBlock.
+    /// </summary>
     private static DisplayBlock CreateWiringBlock(IReadOnlyList<string> nodes, string? moduleRoot)
     {
         var entryNode = SelectInterestingNode(nodes, moduleRoot, fromStart: true);
@@ -645,6 +702,9 @@ public partial class ConnectionGraphWindow : Window
         };
     }
 
+    /// <summary>
+    /// Executes SelectInterestingNode.
+    /// </summary>
     private static string SelectInterestingNode(IReadOnlyList<string> nodes, string? moduleRoot, bool fromStart)
     {
         if (nodes.Count == 0)
@@ -672,12 +732,18 @@ public partial class ConnectionGraphWindow : Window
         return fromStart ? nodes[0] : nodes[^1];
     }
 
+    /// <summary>
+    /// Executes IsBoundaryNode.
+    /// </summary>
     private static bool IsBoundaryNode(string node)
     {
         return node.Contains(".BoardPort.", StringComparison.OrdinalIgnoreCase) ||
                node.Contains(".DevicePort.", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes IsComponentTerminalNode.
+    /// </summary>
     private static bool IsComponentTerminalNode(string node, string? moduleRoot)
     {
         if (string.IsNullOrWhiteSpace(node) || string.IsNullOrWhiteSpace(moduleRoot))
@@ -708,6 +774,9 @@ public partial class ConnectionGraphWindow : Window
         return designator.Any(char.IsDigit);
     }
 
+    /// <summary>
+    /// Executes ExtractPrimaryPinLabel.
+    /// </summary>
     private static string ExtractPrimaryPinLabel(string node)
     {
         if (string.IsNullOrWhiteSpace(node))
@@ -724,6 +793,9 @@ public partial class ConnectionGraphWindow : Window
             : key;
     }
 
+    /// <summary>
+    /// Executes ExtractEndpointDetail.
+    /// </summary>
     private static string? ExtractEndpointDetail(string node)
     {
         if (string.IsNullOrWhiteSpace(node))
@@ -755,6 +827,9 @@ public partial class ConnectionGraphWindow : Window
         return key;
     }
 
+    /// <summary>
+    /// Executes IsActuationTrace.
+    /// </summary>
     private static bool IsActuationTrace(StepConnectionTrace trace)
     {
         var title = trace.Title ?? string.Empty;
@@ -763,6 +838,9 @@ public partial class ConnectionGraphWindow : Window
                title.Contains("Pruefsystem", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes ResolveSourceIsTestSystem.
+    /// </summary>
     private bool ResolveSourceIsTestSystem(StepConnectionTrace? trace)
     {
         if (_forcedSourceIsTestSystem.HasValue)
@@ -773,6 +851,9 @@ public partial class ConnectionGraphWindow : Window
         return trace != null && IsActuationTrace(trace);
     }
 
+    /// <summary>
+    /// Executes CanOpenModule.
+    /// </summary>
     private bool CanOpenModule(string? moduleRoot)
     {
         if (string.IsNullOrWhiteSpace(moduleRoot) || _selectedRawTrace == null)
@@ -787,6 +868,9 @@ public partial class ConnectionGraphWindow : Window
         return IsExpandableSubmodule(moduleNodes);
     }
 
+    /// <summary>
+    /// Executes BuildSubmoduleTrace.
+    /// </summary>
     private StepConnectionTrace? BuildSubmoduleTrace(string moduleRoot)
     {
         if (_selectedRawTrace == null)
@@ -838,12 +922,18 @@ public partial class ConnectionGraphWindow : Window
         return new StepConnectionTrace($"{moduleRoot} intern", nodes);
     }
 
+    /// <summary>
+    /// Executes NodeBelongsToModule.
+    /// </summary>
     private static bool NodeBelongsToModule(string node, string moduleRoot)
     {
         return !string.IsNullOrWhiteSpace(node) &&
                node.StartsWith(moduleRoot + ".", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Executes IsExpandableSubmodule.
+    /// </summary>
     private static bool IsExpandableSubmodule(IReadOnlyList<string> moduleNodes)
     {
         if (moduleNodes.Count < 2)
@@ -861,6 +951,9 @@ public partial class ConnectionGraphWindow : Window
         return hasInternalNodes;
     }
 
+    /// <summary>
+    /// Executes GetModuleRootFromLabel.
+    /// </summary>
     private static string? GetModuleRootFromLabel(string label)
     {
         if (string.IsNullOrWhiteSpace(label))
@@ -892,6 +985,9 @@ public partial class ConnectionGraphWindow : Window
         return null;
     }
 
+    /// <summary>
+    /// Executes RenderCurve.
+    /// </summary>
     private void RenderCurve()
     {
         CurveCanvas.Children.Clear();
@@ -954,6 +1050,9 @@ public partial class ConnectionGraphWindow : Window
         AddCurveLabel(left + width - 40, top + height + 6, $"{maxTime} ms");
     }
 
+    /// <summary>
+    /// Executes AddCurveLabel.
+    /// </summary>
     private void AddCurveLabel(double left, double top, string text)
     {
         var label = new TextBlock
@@ -967,6 +1066,9 @@ public partial class ConnectionGraphWindow : Window
         CurveCanvas.Children.Add(label);
     }
 
+    /// <summary>
+    /// Executes OnViewportMouseWheel.
+    /// </summary>
     private void OnViewportMouseWheel(object sender, MouseWheelEventArgs e)
     {
         var factor = e.Delta > 0 ? 1.12 : 1d / 1.12;
@@ -976,6 +1078,9 @@ public partial class ConnectionGraphWindow : Window
         UpdateStatus();
     }
 
+    /// <summary>
+    /// Executes OnViewportMouseLeftButtonDown.
+    /// </summary>
     private void OnViewportMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (FindClickableModuleBorder(e.OriginalSource as DependencyObject) != null)
@@ -988,6 +1093,9 @@ public partial class ConnectionGraphWindow : Window
         Mouse.Capture((UIElement)sender);
     }
 
+    /// <summary>
+    /// Executes OnViewportMouseMove.
+    /// </summary>
     private void OnViewportMouseMove(object sender, MouseEventArgs e)
     {
         if (_dragStart == null || e.LeftButton != MouseButtonState.Pressed)
@@ -1001,6 +1109,9 @@ public partial class ConnectionGraphWindow : Window
         GraphTranslateTransform.Y = _dragOrigin.Y + delta.Y;
     }
 
+    /// <summary>
+    /// Executes OnViewportMouseLeftButtonUp.
+    /// </summary>
     private void OnViewportMouseLeftButtonUp(object sender, MouseEventArgs e)
     {
         _dragStart = null;
@@ -1011,17 +1122,26 @@ public partial class ConnectionGraphWindow : Window
         UpdateStatus();
     }
 
+    /// <summary>
+    /// Executes UpdateStatus.
+    /// </summary>
     private void UpdateStatus()
     {
         StatusTextBlock.Text =
             $"Pfade: {_traces.Count.ToString(CultureInfo.InvariantCulture)} | Ausgewaehlt: {_selectedTrace?.Nodes.Count.ToString(CultureInfo.InvariantCulture) ?? "0"} Stationen | Kurvenpunkte: {_curvePoints.Count.ToString(CultureInfo.InvariantCulture)} | Zoom: {(GraphScaleTransform.ScaleX * 100d).ToString("0", CultureInfo.InvariantCulture)} %";
     }
 
+    /// <summary>
+    /// Executes OnClose.
+    /// </summary>
     private void OnClose(object sender, RoutedEventArgs e)
     {
         Close();
     }
 
+    /// <summary>
+    /// Executes FindClickableModuleBorder.
+    /// </summary>
     private static Border? FindClickableModuleBorder(DependencyObject? source)
     {
         var current = source;
@@ -1038,6 +1158,9 @@ public partial class ConnectionGraphWindow : Window
         return null;
     }
 
+    /// <summary>
+    /// Executes Brush.
+    /// </summary>
     private static SolidColorBrush Brush(string color) =>
         new((Color)ColorConverter.ConvertFromString(color));
 }

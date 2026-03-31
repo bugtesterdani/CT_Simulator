@@ -39,5 +39,8 @@ public abstract class BinaryFileParser<TDocument> : ICt3xxFileParser where TDocu
         return CreateDocument(filePath, tableDefinition, content);
     }
 
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected abstract TDocument CreateDocument(string filePath, Table? tableDefinition, byte[] content);
 }

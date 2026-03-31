@@ -130,6 +130,9 @@ public sealed class WireVizDocument
         return null;
     }
 
+    /// <summary>
+    /// Executes BuildConnectorDefinitions.
+    /// </summary>
     private IReadOnlyDictionary<string, WireVizConnectorDefinition> BuildConnectorDefinitions()
     {
         var definitions = new Dictionary<string, WireVizConnectorDefinition>(StringComparer.OrdinalIgnoreCase);

@@ -39,6 +39,9 @@ public static class WireVizYamlWriter
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Executes Quote.
+    /// </summary>
     private static string Quote(string text)
     {
         var escaped = text.Replace("\\", "\\\\", StringComparison.Ordinal)

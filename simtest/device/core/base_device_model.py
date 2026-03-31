@@ -12,6 +12,7 @@ class BaseDeviceModel(ABC):
     """Abstrakte Basis-Klasse für alle Device-Models."""
 
     def __init__(self) -> None:
+        """Executes __init__."""
         self.now_ms = 0
         self.input_waveforms: dict[str, dict[str, Any]] = {}
         self.waveform_captures: dict[str, dict[str, Any]] = {}
@@ -69,26 +70,32 @@ class BaseDeviceModel(ABC):
 
     @abstractmethod
     def reset(self) -> None:
+        """Executes reset."""
         pass
 
     @abstractmethod
     def set_input(self, name: str, value: Any) -> None:
+        """Executes set_input."""
         pass
 
     @abstractmethod
     def get_signal(self, name: str) -> float:
+        """Executes get_signal."""
         pass
 
     @abstractmethod
     def read_state(self) -> dict[str, Any]:
+        """Executes read_state."""
         pass
 
     @abstractmethod
     def state_marker(self) -> dict[str, Any]:
+        """Executes state_marker."""
         pass
 
     @abstractmethod
     def get_device_info(self) -> dict[str, Any]:
+        """Executes get_device_info."""
         pass
 
     def get_ctct_resistances(self) -> list[dict[str, Any]]:

@@ -94,6 +94,9 @@ public sealed class ScriptExecutionTests
         }
     }
 
+    /// <summary>
+    /// Executes RunSingleExecutableTest.
+    /// </summary>
     private static SimulationObserverSpy RunSingleExecutableTest(
         string workspace,
         string scriptPath,
@@ -133,6 +136,9 @@ public sealed class ScriptExecutionTests
         return observer;
     }
 
+    /// <summary>
+    /// Executes BuildAttributes.
+    /// </summary>
     private static XmlAttribute[] BuildAttributes(params (string Name, string Value)[] values)
     {
         var document = new XmlDocument();
@@ -144,6 +150,9 @@ public sealed class ScriptExecutionTests
         }).ToArray();
     }
 
+    /// <summary>
+    /// Executes CreateTempWorkspace.
+    /// </summary>
     private static string CreateTempWorkspace()
     {
         var path = Path.Combine(Path.GetTempPath(), $"ct3xx-script-tests-{Guid.NewGuid():N}");

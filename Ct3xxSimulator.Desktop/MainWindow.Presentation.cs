@@ -19,6 +19,9 @@ namespace Ct3xxSimulator.Desktop;
 
 public partial class MainWindow
 {
+    /// <summary>
+    /// Executes AddLog.
+    /// </summary>
     private void AddLog(string message)
     {
         Dispatcher.Invoke(() =>
@@ -127,11 +130,17 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>
+    /// Executes OnStepTreeSelected.
+    /// </summary>
     private void OnStepTreeSelected(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         SelectedStepTreeNode = e.NewValue as StepTreeNodeViewModel;
     }
 
+    /// <summary>
+    /// Executes OnStepTreeDoubleClick.
+    /// </summary>
     private void OnStepTreeDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (e.Handled)
@@ -199,6 +208,9 @@ public partial class MainWindow
         return null;
     }
 
+    /// <summary>
+    /// Executes ResolveTraceResultForNode.
+    /// </summary>
     private StepResultViewModel? ResolveTraceResultForNode(StepTreeNodeViewModel node)
     {
         if (node.Result != null && node.Result.Traces.Count > 0)
@@ -224,6 +236,9 @@ public partial class MainWindow
         return childWithTrace;
     }
 
+    /// <summary>
+    /// Executes BuildFallbackTracesForNode.
+    /// </summary>
     private IReadOnlyList<StepConnectionTrace>? BuildFallbackTracesForNode(StepTreeNodeViewModel node, out string? reason)
     {
         reason = null;
@@ -296,6 +311,9 @@ public partial class MainWindow
         return fallback;
     }
 
+    /// <summary>
+    /// Executes BuildResolverFailureReason.
+    /// </summary>
     private string BuildResolverFailureReason()
     {
         if (_fileSet == null)

@@ -55,6 +55,9 @@ internal static class SimulationModelDeepValidator
         return issues;
     }
 
+    /// <summary>
+    /// Executes ValidateWireVizDocument.
+    /// </summary>
     private static void ValidateWireVizDocument(WireVizDocument document, List<string> issues)
     {
         var connectorPins = BuildConnectorPins(document);
@@ -138,6 +141,9 @@ internal static class SimulationModelDeepValidator
         }
     }
 
+    /// <summary>
+    /// Executes ValidateSimulationRecursive.
+    /// </summary>
     private static void ValidateSimulationRecursive(string simulationPath, List<string> issues, Stack<string> stack, WireVizDocument? parentWireViz)
     {
         var fullPath = Path.GetFullPath(simulationPath);
@@ -238,6 +244,29 @@ internal static class SimulationModelDeepValidator
                         issues.Add($"Simulation '{Path.GetFileName(fullPath)}': current_transformer '{currentTransformer.Id}' ohne primary_signal.");
                     }
                     break;
+                case LimitElementDefinition limit:
+                    if (limit.NodePrefixes.Count == 0)
+                    {
+                        issues.Add($"Simulation '{Path.GetFileName(fullPath)}': limit '{limit.Id}' hat keine nodes.");
+                        break;
+                    }
+
+                    foreach (var prefix in limit.NodePrefixes)
+                    {
+                        if (string.IsNullOrWhiteSpace(prefix))
+                        {
+                            issues.Add($"Simulation '{Path.GetFileName(fullPath)}': limit '{limit.Id}' enthaelt leeren node-prefix.");
+                            continue;
+                        }
+
+                        ValidateName(prefix, $"limit {limit.Id}.nodes", issues, fullPath, allowHierarchy: true);
+                        if (!knownNodes.Any(node => node.Equals(prefix, StringComparison.OrdinalIgnoreCase) ||
+                                                    node.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            issues.Add($"Simulation '{Path.GetFileName(fullPath)}': limit '{limit.Id}' verweist auf unbekannten node-prefix '{prefix}'.");
+                        }
+                    }
+                    break;
                 case AssemblyElementDefinition assembly:
                     if (localWireViz == null || !localWireViz.Connectors.ContainsKey(assembly.Id))
                     {
@@ -318,6 +347,9 @@ internal static class SimulationModelDeepValidator
         stack.Pop();
     }
 
+    /// <summary>
+    /// Executes ValidateUnknownElement.
+    /// </summary>
     private static void ValidateUnknownElement(UnknownElementDefinition definition, List<string> issues, string sourcePath, HashSet<string> knownNodes)
     {
         foreach (var key in new[] { "a", "b", "anode", "cathode", "collector", "emitter", "drain", "source", "input", "output", "output_a", "output_b" })
@@ -329,6 +361,9 @@ internal static class SimulationModelDeepValidator
         }
     }
 
+    /// <summary>
+    /// Executes ValidateNode.
+    /// </summary>
     private static void ValidateNode(string node, string label, List<string> issues, string sourcePath, HashSet<string> knownNodes, bool allowSignalOnly = false)
     {
         if (string.IsNullOrWhiteSpace(node))
@@ -350,6 +385,9 @@ internal static class SimulationModelDeepValidator
         }
     }
 
+    /// <summary>
+    /// Executes BuildConnectorPins.
+    /// </summary>
     private static Dictionary<string, WireVizValue> BuildConnectorPins(WireVizDocument document)
     {
         var result = new Dictionary<string, WireVizValue>(StringComparer.OrdinalIgnoreCase);
@@ -364,6 +402,9 @@ internal static class SimulationModelDeepValidator
         return result;
     }
 
+    /// <summary>
+    /// Executes ExpandPins.
+    /// </summary>
     private static List<string> ExpandPins(WireVizValue connector)
     {
         if (connector.TryGetProperty("pins", out var pins))
@@ -385,6 +426,9 @@ internal static class SimulationModelDeepValidator
         return new List<string>();
     }
 
+    /// <summary>
+    /// Executes ExpandValue.
+    /// </summary>
     private static List<string> ExpandValue(WireVizValue value)
     {
         if (value.Kind == WireVizValueKind.Sequence)
@@ -396,6 +440,9 @@ internal static class SimulationModelDeepValidator
         return string.IsNullOrWhiteSpace(text) ? new List<string>() : ExpandToken(text.Trim());
     }
 
+    /// <summary>
+    /// Executes ParseConnectionSegment.
+    /// </summary>
     private static ConnectionSegment? ParseConnectionSegment(WireVizValue value)
     {
         var properties = value.AsMappingOrEmpty();
@@ -408,6 +455,9 @@ internal static class SimulationModelDeepValidator
         return new ConnectionSegment(pair.Key, ExpandValue(pair.Value));
     }
 
+    /// <summary>
+    /// Executes ResolvePath.
+    /// </summary>
     private static string ResolvePath(string baseDirectory, string relativeOrAbsolute)
     {
         return Path.GetFullPath(Path.IsPathRooted(relativeOrAbsolute)
@@ -415,6 +465,9 @@ internal static class SimulationModelDeepValidator
             : Path.Combine(baseDirectory, relativeOrAbsolute));
     }
 
+    /// <summary>
+    /// Executes ValidateName.
+    /// </summary>
     private static void ValidateName(string value, string label, List<string> issues, string sourcePath, bool allowHierarchy = false)
     {
         var candidate = value.Trim();
@@ -431,6 +484,9 @@ internal static class SimulationModelDeepValidator
         }
     }
 
+    /// <summary>
+    /// Executes AddIfNode.
+    /// </summary>
     private static void AddIfNode(HashSet<string> nodes, string candidate)
     {
         if (!string.IsNullOrWhiteSpace(candidate) && candidate.Contains(".", StringComparison.Ordinal))
@@ -439,6 +495,9 @@ internal static class SimulationModelDeepValidator
         }
     }
 
+    /// <summary>
+    /// Executes ValidateSimulationConnectivity.
+    /// </summary>
     private static IReadOnlyList<string> ValidateSimulationConnectivity(
         string sourcePath,
         IReadOnlyDictionary<string, HashSet<string>> elementNodeMap,
@@ -449,7 +508,8 @@ internal static class SimulationModelDeepValidator
         {
             if (elementTypeMap.TryGetValue(item.Key, out var elementType) &&
                 (string.Equals(elementType, "tester_supply", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(elementType, "tester_output", StringComparison.OrdinalIgnoreCase)))
+                 string.Equals(elementType, "tester_output", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(elementType, "limit", StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
@@ -460,6 +520,9 @@ internal static class SimulationModelDeepValidator
         return issues;
     }
 
+    /// <summary>
+    /// Executes ExpandToken.
+    /// </summary>
     private static List<string> ExpandToken(string token)
     {
         var dashIndex = token.IndexOf('-', StringComparison.Ordinal);
@@ -486,6 +549,9 @@ internal static class SimulationModelDeepValidator
         return result;
     }
 
+    /// <summary>
+    /// Executes AddGraphEdge.
+    /// </summary>
     private static void AddGraphEdge(Dictionary<string, HashSet<string>> graph, string from, string to)
     {
         if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to))
@@ -502,6 +568,9 @@ internal static class SimulationModelDeepValidator
         targets.Add(to);
     }
 
+    /// <summary>
+    /// Executes FindCycles.
+    /// </summary>
     private static IEnumerable<string> FindCycles(Dictionary<string, HashSet<string>> graph)
     {
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -517,6 +586,9 @@ internal static class SimulationModelDeepValidator
         }
     }
 
+    /// <summary>
+    /// Executes FindCycles.
+    /// </summary>
     private static IEnumerable<string> FindCycles(
         string node,
         string? parent,

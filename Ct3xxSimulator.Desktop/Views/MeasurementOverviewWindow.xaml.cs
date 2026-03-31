@@ -32,6 +32,9 @@ public partial class MeasurementOverviewWindow : Window
         };
     }
 
+    /// <summary>
+    /// Executes OnFilterChanged.
+    /// </summary>
     private void OnFilterChanged(object sender, RoutedEventArgs e)
     {
         if (_suppressFilterChanged)
@@ -42,6 +45,9 @@ public partial class MeasurementOverviewWindow : Window
         ApplyFilter();
     }
 
+    /// <summary>
+    /// Executes ApplyForcedFilter.
+    /// </summary>
     private void ApplyForcedFilter()
     {
         if (_forcedTestType == null)
@@ -56,6 +62,9 @@ public partial class MeasurementOverviewWindow : Window
         _suppressFilterChanged = false;
     }
 
+    /// <summary>
+    /// Executes ApplyFilter.
+    /// </summary>
     private void ApplyFilter()
     {
         if (IctCheckBox == null || CtctCheckBox == null || ShrtCheckBox == null || MeasurementsDataGrid == null || SummaryTextBlock == null || StatusTextBlock == null)
@@ -112,6 +121,9 @@ public partial class MeasurementOverviewWindow : Window
         }
     }
 
+    /// <summary>
+    /// Executes OnRowDoubleClick.
+    /// </summary>
     private void OnRowDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (MeasurementsDataGrid.SelectedItem is not MeasurementEntryViewModel entry)
@@ -135,6 +147,9 @@ public partial class MeasurementOverviewWindow : Window
         window.ShowDialog();
     }
 
+    /// <summary>
+    /// Executes OnClose.
+    /// </summary>
     private void OnClose(object sender, RoutedEventArgs e)
     {
         Close();

@@ -8,6 +8,9 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
 {
     private readonly Process _process;
 
+    /// <summary>
+    /// Initializes a new instance of PythonDeviceProcessFixture.
+    /// </summary>
     private PythonDeviceProcessFixture(Process process, string pipePath)
     {
         _process = process;
@@ -108,6 +111,9 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes WaitForPipe.
+    /// </summary>
     private static void WaitForPipe(string pipePath, Process process)
     {
         var parts = pipePath.Split('\\', StringSplitOptions.RemoveEmptyEntries);
@@ -142,6 +148,9 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         throw new AssertFailedException($"Python-DUT Pipe '{pipePath}' wurde nicht rechtzeitig erreichbar.");
     }
 
+    /// <summary>
+    /// Executes ResolvePythonLauncher.
+    /// </summary>
     private static PythonLauncher? ResolvePythonLauncher()
     {
         var candidates = new[]
@@ -162,6 +171,9 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Executes CanImportPyWin32.
+    /// </summary>
     private static bool CanImportPyWin32(PythonLauncher launcher)
     {
         try
@@ -192,5 +204,8 @@ internal sealed class PythonDeviceProcessFixture : IDisposable
         }
     }
 
+    /// <summary>
+    /// Executes PythonLauncher.
+    /// </summary>
     private readonly record struct PythonLauncher(string FileName, string Arguments);
 }

@@ -67,6 +67,9 @@ public sealed class AltiumConnectivityCsvReader
         return records;
     }
 
+    /// <summary>
+    /// Executes BuildHeaderMap.
+    /// </summary>
     private static Dictionary<string, int> BuildHeaderMap(IReadOnlyList<string> header)
     {
         var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -82,6 +85,9 @@ public sealed class AltiumConnectivityCsvReader
         return map;
     }
 
+    /// <summary>
+    /// Executes RequireColumn.
+    /// </summary>
     private static void RequireColumn(IReadOnlyDictionary<string, int> map, string columnName)
     {
         if (!map.ContainsKey(columnName))
@@ -90,6 +96,9 @@ public sealed class AltiumConnectivityCsvReader
         }
     }
 
+    /// <summary>
+    /// Executes ReadValue.
+    /// </summary>
     private static string? ReadValue(IReadOnlyList<string> values, IReadOnlyDictionary<string, int> map, string key)
     {
         if (!map.TryGetValue(key, out var index))
@@ -100,6 +109,9 @@ public sealed class AltiumConnectivityCsvReader
         return index < values.Count ? values[index] : null;
     }
 
+    /// <summary>
+    /// Executes ParseCsvLine.
+    /// </summary>
     private static List<string> ParseCsvLine(string line)
     {
         var result = new List<string>();

@@ -14,6 +14,9 @@ public sealed class CadBoardFileParser : TextFileParser<CadBoardDocument>
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctbrd";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override CadBoardDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -27,6 +30,9 @@ public sealed class AlgorithmFileParser : TextFileParser<AlgorithmDocument>
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctalg";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override AlgorithmDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -40,6 +46,9 @@ public sealed class ArbitraryWaveformFileParser : TextFileParser<ArbitraryWavefo
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctarb";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override ArbitraryWaveformDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -53,6 +62,9 @@ public sealed class CookbookFileParser : TextFileParser<CookbookDocument>
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctcok";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override CookbookDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -66,6 +78,9 @@ public sealed class DigitalPatternFileParser : TextFileParser<DigitalPatternDocu
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctdig";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override DigitalPatternDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -79,6 +94,9 @@ public sealed class FixtureLoopFileParser : TextFileParser<FixtureLoopDocument>
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctflc";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override FixtureLoopDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -92,6 +110,9 @@ public sealed class IctFileParser : TextFileParser<IctDocument>
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctict";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override IctDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -105,6 +126,9 @@ public sealed class SheetFileParser : TextFileParser<SheetDocument>
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctsht";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override SheetDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -118,6 +142,9 @@ public sealed class RepairLogFileParser : TextFileParser<RepairLogDocument>
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctrlg";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override RepairLogDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }
@@ -131,6 +158,9 @@ public sealed class RepairSummaryFileParser : TextFileParser<RepairSummaryDocume
     /// Gets the extension.
     /// </summary>
     public override string Extension => ".ctrsf";
+    /// <summary>
+    /// Executes CreateDocument.
+    /// </summary>
     protected override RepairSummaryDocument CreateDocument(string filePath, Table? tableDefinition, IReadOnlyList<string> lines) =>
         new(filePath, tableDefinition, lines);
 }

@@ -46,6 +46,9 @@ internal static class SimulationModelFileLocator
         return candidates;
     }
 
+    /// <summary>
+    /// Executes EnumerateSearchRoots.
+    /// </summary>
     private static IEnumerable<string> EnumerateSearchRoots(string programDirectory)
     {
         yield return programDirectory;
