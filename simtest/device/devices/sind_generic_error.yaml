@@ -1,0 +1,13 @@
+name: sind_generic_error
+
+signals:
+  inputs: []
+  outputs: []
+
+interfaces:
+  SIND MODULE 1:
+    protocol: dnis
+    measurements:
+      - when:
+          signal: SIND_CHANNEL1
+        error: "SIND not responding"

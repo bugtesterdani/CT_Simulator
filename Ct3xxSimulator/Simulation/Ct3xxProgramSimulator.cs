@@ -49,6 +49,7 @@ public partial class Ct3xxProgramSimulator
     private readonly List<ConcurrentBranchRuntimeState> _concurrentBranchStates = new();
     private int? _activeConcurrentBranchIndex;
     private ActiveWaveformSession? _activeWaveformSession;
+    private readonly List<Group> _groupStack = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Ct3xxProgramSimulator"/> class.
@@ -135,7 +136,15 @@ public partial class Ct3xxProgramSimulator
             _observer.OnMessage($"Faults loaded: {string.Join(", ", _faults.DescribeActiveFaults())}");
         }
 
-        _context.ApplyTables(program.Tables, _evaluator);
+        try
+        {
+            _context.ApplyTables(program.Tables, _evaluator);
+        }
+        catch (UndefinedVariableException ex)
+        {
+            _observer.OnMessage($"Variablenfehler in Programmtabellen: {ex.Message}");
+            _context.MarkOutcome(TestOutcome.Error);
+        }
 
         var loopExecuted = false;
         foreach (var item in program.RootItems)
@@ -153,7 +162,15 @@ public partial class Ct3xxProgramSimulator
             switch (item)
             {
                 case Table table:
-                    _context.ApplyTable(table, _evaluator);
+                    try
+                    {
+                        _context.ApplyTable(table, _evaluator);
+                    }
+                    catch (UndefinedVariableException ex)
+                    {
+                        _observer.OnMessage($"Variablenfehler in Tabelle {table.Id}: {ex.Message}");
+                        _context.MarkOutcome(TestOutcome.Error);
+                    }
                     break;
                 case Test test:
                     ExecuteTest(test);
@@ -182,14 +199,25 @@ public partial class Ct3xxProgramSimulator
             return;
         }
 
-        EnsureConditionContext(group.ExecCondition);
-        if (!_evaluator.EvaluateCondition(group.ExecCondition))
+        try
         {
-            _observer.OnGroupSkipped(group, $"condition '{group.ExecCondition}' is FALSE");
+            EnsureConditionContext(group.ExecCondition);
+            if (!_evaluator.EvaluateCondition(group.ExecCondition))
+            {
+                _observer.OnGroupSkipped(group, $"condition '{group.ExecCondition}' is FALSE");
+                return;
+            }
+        }
+        catch (UndefinedVariableException ex)
+        {
+            _observer.OnMessage($"Gruppe '{group.Name ?? group.Id}' uebersprungen: {ex.Message}");
+            _context.MarkOutcome(TestOutcome.Error);
             return;
         }
 
         _observer.OnGroupStarted(group);
+        _groupStack.Add(group);
+        using var scope = _context.PushScope();
         var repeatEnabled = !string.IsNullOrWhiteSpace(group.RepeatCondition);
         var iteration = 0;
         var previousConcurrentGroupName = _activeConcurrentGroupName;
@@ -197,6 +225,7 @@ public partial class Ct3xxProgramSimulator
         {
             CheckCancellation();
             iteration++;
+            _context.SetValue("$LoopCounter", iteration);
             if (string.Equals(group.ExecMode, "concurrent", StringComparison.OrdinalIgnoreCase))
             {
                 _activeConcurrentGroupName = group.Name ?? group.Id ?? "concurrent";
@@ -208,13 +237,14 @@ public partial class Ct3xxProgramSimulator
                 ExecuteSequenceItems(group.Items);
             }
         }
-        while (repeatEnabled && iteration < 10 && _evaluator.EvaluateCondition(group.RepeatCondition));
+        while (repeatEnabled && iteration < 10 && SafeEvaluateRepeatCondition(group.RepeatCondition));
 
-        if (repeatEnabled && iteration >= 10 && _evaluator.EvaluateCondition(group.RepeatCondition))
+        if (repeatEnabled && iteration >= 10 && SafeEvaluateRepeatCondition(group.RepeatCondition))
         {
             _observer.OnMessage("Repeat condition still TRUE after 10 iterations, aborting group.");
         }
 
+        _groupStack.RemoveAt(_groupStack.Count - 1);
         _observer.OnGroupCompleted(group);
         _executionController.WaitAfterGroup(group, _cancellationToken);
     }
@@ -230,7 +260,15 @@ public partial class Ct3xxProgramSimulator
             switch (item)
             {
                 case Table table:
-                    _context.ApplyTable(table, _evaluator);
+                    try
+                    {
+                        _context.ApplyTable(table, _evaluator);
+                    }
+                    catch (UndefinedVariableException ex)
+                    {
+                        _observer.OnMessage($"Variablenfehler in Tabelle {table.Id}: {ex.Message}");
+                        _context.MarkOutcome(TestOutcome.Error);
+                    }
                     break;
                 case Test test:
                     ExecuteTest(test);
@@ -239,6 +277,20 @@ public partial class Ct3xxProgramSimulator
                     ExecuteGroup(nested);
                     break;
             }
+        }
+    }
+
+    private bool SafeEvaluateRepeatCondition(string? condition)
+    {
+        try
+        {
+            return _evaluator.EvaluateCondition(condition);
+        }
+        catch (UndefinedVariableException ex)
+        {
+            _observer.OnMessage($"Repeat-Condition Fehler: {ex.Message}");
+            _context.MarkOutcome(TestOutcome.Error);
+            return false;
         }
     }
 
@@ -260,17 +312,28 @@ public partial class Ct3xxProgramSimulator
             return;
         }
 
-        EnsureConditionContext(loop.ExecCondition);
-        if (!_evaluator.EvaluateCondition(loop.ExecCondition))
+        try
         {
-            _observer.OnMessage("DUT loop skipped because condition is FALSE");
+            EnsureConditionContext(loop.ExecCondition);
+            if (!_evaluator.EvaluateCondition(loop.ExecCondition))
+            {
+                _observer.OnMessage("DUT loop skipped because condition is FALSE");
+                return;
+            }
+        }
+        catch (UndefinedVariableException ex)
+        {
+            _observer.OnMessage($"DUT loop skipped: {ex.Message}");
+            _context.MarkOutcome(TestOutcome.Error);
             return;
         }
 
+        using var scope = _context.PushScope();
         var runs = iterations <= 0 ? 1 : iterations;
         for (var run = 1; run <= runs; run++)
         {
             CheckCancellation();
+            _context.SetValue("$LoopCounter", run);
             _observer.OnLoopIteration(run, runs);
             foreach (var item in loop.Items)
             {
@@ -278,7 +341,15 @@ public partial class Ct3xxProgramSimulator
                 switch (item)
                 {
                     case Table table:
-                        _context.ApplyTable(table, _evaluator);
+                        try
+                        {
+                            _context.ApplyTable(table, _evaluator);
+                        }
+                        catch (UndefinedVariableException ex)
+                        {
+                            _observer.OnMessage($"Variablenfehler in Tabelle {table.Id}: {ex.Message}");
+                            _context.MarkOutcome(TestOutcome.Error);
+                        }
                         break;
                     case Test test:
                         ExecuteTest(test);
@@ -328,29 +399,44 @@ public partial class Ct3xxProgramSimulator
         _currentStepName = test.Parameters?.Name ?? test.Name ?? test.Id ?? "Test";
         PublishStateSnapshot();
 
-        var outcome = test.Id?.ToUpperInvariant() switch
+        TestOutcome outcome;
+        try
         {
-            "GSD^" => RunAssignmentTest(test),
-            "IOXX" => RunDigitalIoControlTest(test),
-            "2C2I" => RunI2cInterfaceTest(test),
-            "SPIX" => RunSpiIoControlTest(test),
-            "SMUD" => RunSmudPowerSupplyTest(test),
-            "CTCT" => RunConnectionContactTest(test),
-            "ICT " => RunIctTest(test),
-            "SHRT" => RunShortcutTest(test),
-            "E488" => RunInterfaceTest(test),
-            "PET$" => RunEvaluationTest(test),
-            "PRT^" => RunOperatorTest(test),
-            "ECLL" => RunExecutableCallTest(test),
-            "PWT$" => RunWaitTest(test),
-            "SC2C" => RunScannerConnectTest(test),
-            "CDMA" => RunCdmaTest(test),
-            "DM30" => RunDm30Test(test),
-            "2ARB" => RunWaveformTest(test),
-            "SA1T" => RunWaveformTest(test),
-            "TRGA" => RunWaveformTest(test),
-            _ => RunGenericTest(test)
-        };
+            outcome = test.Id?.ToUpperInvariant() switch
+            {
+                "GSD^" => RunAssignmentTest(test),
+                "IOXX" => RunDigitalIoControlTest(test),
+                "2C2I" => RunI2cInterfaceTest(test),
+                "SPIX" => RunSpiIoControlTest(test),
+                "SMUD" => RunSmudPowerSupplyTest(test),
+                "CTCT" => RunConnectionContactTest(test),
+                "ICT " => RunIctTest(test),
+                "SHRT" => RunShortcutTest(test),
+                "E488" => RunInterfaceTest(test),
+                "PET$" => RunEvaluationTest(test),
+                "PRT^" => RunOperatorTest(test),
+                "ECLL" => RunExecutableCallTest(test),
+                "PWT$" => RunWaitTest(test),
+                "SC2C" => RunScannerConnectTest(test),
+                "CDMA" => RunCdmaTest(test),
+                "DM30" => RunDm30Test(test),
+                "2ARB" => RunWaveformTest(test),
+                "SA1T" => RunWaveformTest(test),
+                "TRGA" => RunWaveformTest(test),
+                "AM4N" => RunAm4nTest(test),
+                "AM2A" => RunAm2aTest(test),
+                "DNIS" => RunDnisTest(test),
+                "BSC1" => RunBoundaryScanTest(test),
+                "ODBC" => RunOdbcTest(test),
+                "FCA^" => RunFunctionCallTest(test),
+                _ => RunGenericTest(test)
+            };
+        }
+        catch (UndefinedVariableException ex)
+        {
+            PublishStepEvaluation(test, TestOutcome.Error, details: ex.Message);
+            outcome = TestOutcome.Error;
+        }
 
         _context.MarkOutcome(outcome);
         _observer.OnTestCompleted(test, outcome);

@@ -42,6 +42,11 @@ public sealed partial class WireVizHarnessResolver
     public int SignalCount => _resolutions.Count;
 
     /// <summary>
+    /// Gets the simulation elements loaded from simulation.yaml.
+    /// </summary>
+    public IReadOnlyList<SimulationElementDefinition> SimulationElements => _simulationElements;
+
+    /// <summary>
     /// Creates a resolver from the program directory referenced by a loaded file set.
     /// </summary>
     /// <param name="fileSet">The loaded CT3xx program file set.</param>

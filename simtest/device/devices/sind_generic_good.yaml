@@ -1,0 +1,25 @@
+name: sind_generic_good
+
+signals:
+  inputs: []
+  outputs: []
+
+interfaces:
+  SIND MODULE 1:
+    protocol: dnis
+    measurements:
+      - when:
+          signal: SIND_CHANNEL1
+        inductance: 95e-6
+        serial_ohms: 9.7
+        details: "SIND CH1 nominal"
+      - when:
+          signal: SIND_CHANNEL2
+        inductance: 221e-6
+        serial_ohms: 7.4
+        details: "SIND CH2 nominal"
+      - when:
+          signal: SIND_CHANNEL3
+        inductance: 339e-6
+        serial_ohms: 0.8
+        details: "SIND CH3 nominal"

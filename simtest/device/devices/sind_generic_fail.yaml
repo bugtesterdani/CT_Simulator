@@ -1,0 +1,20 @@
+name: sind_generic_fail
+
+signals:
+  inputs: []
+  outputs: []
+
+interfaces:
+  SIND MODULE 1:
+    protocol: dnis
+    measurements:
+      - when:
+          signal: SIND_CHANNEL1
+        inductance: 120e-6
+        serial_ohms: 12.5
+        details: "SIND CH1 drift"
+      - when:
+          signal: SIND_CHANNEL2
+        inductance: 260e-6
+        serial_ohms: 8.9
+        details: "SIND CH2 drift"

@@ -1,0 +1,15 @@
+name: bsc1_generic_fail
+
+signals:
+  inputs: []
+  outputs: []
+
+interfaces:
+  BSC1:
+    protocol: bsc1
+    default_outcome: pass
+    details: "BSC1 mit Fehlern"
+    partials:
+      - index: 3
+        outcome: fail
+        details: "BSC1 Teiltest 3 mismatch"

@@ -1,0 +1,14 @@
+stages:
+  - diff
+
+ctxprg_diff:
+  stage: diff
+  image: mcr.microsoft.com/dotnet/sdk:9.0
+  script:
+    - dotnet restore
+    - dotnet build Ct3xxProgramDiff/Ct3xxProgramDiff.csproj -c Release
+    - bash Ct3xxProgramDiff/ci/ctxprg-diff.sh
+  artifacts:
+    when: always
+    paths:
+      - artifacts/ctxprg-diff

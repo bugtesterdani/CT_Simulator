@@ -1,0 +1,18 @@
+name: bsc1_generic_good
+
+signals:
+  inputs: []
+  outputs: []
+
+interfaces:
+  BSC1:
+    protocol: bsc1
+    default_outcome: pass
+    details: "BSC1 nominal"
+    partials:
+      - index: 1
+        outcome: pass
+        details: "BSC1 Teiltest 1 ok"
+      - index: 2
+        outcome: pass
+        details: "BSC1 Teiltest 2 ok"

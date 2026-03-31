@@ -15,6 +15,7 @@ Parser library for simulation-side YAML models that complement WireViz.
 
 - `relay`
 - `resistor`
+- `inductor`
 - `transformer`
 - `current_transformer`
 - `limit`
@@ -54,6 +55,12 @@ elements:
     a: R1.A
     b: R1.B
     ohms: 1000
+
+  - id: L1
+    type: inductor
+    a: L1.A
+    b: L1.B
+    henry: 95e-6
 
   - id: UEM3_1
     type: limit

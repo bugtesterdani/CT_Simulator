@@ -11,3 +11,23 @@ Noch nicht in `Welle 1D` umgesetzt, aber als naechste Ausbaupunkte vorgesehen:
 - zusaetzliche Parallelverbindungen mit gesonderter Bewertung
 - mehrere konkurrierende aktive Pfade mit Priorisierung und UI-Vergleich
 - gruppierte DUT-Widerstandsnetze mit expliziten Bundle-Diagnosen
+
+## AM2A
+
+Noch nicht umgesetzt:
+
+- funktionale Bedeutung der Parameter `Scanner`, `Wires` und `Guard1`
+- konkrete Abbildung dieser Parameter auf Messpfade und Guard-Verhalten
+- funktionale Bedeutung von `Filter50` und `SeriesResistor`
+
+## DNIS
+
+Noch nicht umgesetzt:
+
+- erweiterte SIND-Ersatzsemantik ausserhalb der reinen Induktivitaetsbewertung
+
+## FCA^
+
+Noch nicht umgesetzt:
+
+- externe Bibliotheken (`LGR$`) und Pfadangaben ausserhalb `<Use local function group>`

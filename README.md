@@ -35,6 +35,8 @@ Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fue
   Parser fuer `simulation.yaml` mit Verhaltensmodellen.
 - `Ct3xxAltiumWireVizExporter`
   Exporter von Altium-Konnektivitaetsdaten nach WireViz.
+- `Ct3xxProgramDiff`
+  Semantischer `.ctxprg`-Diff mit Markdown- und HTML-Report fuer CI/MR-Reviews.
 
 ## Struktur
 
@@ -56,6 +58,7 @@ CT3xx/
 |- Ct3xxSimulator.Desktop/
 |- Ct3xxSimulator.WinAppDriverTests/
 |- Ct3xxSimulator.Waveforms/
+|- Ct3xxProgramDiff/
 |- Ct3xxWireVizParser/
 |- Ct3xxWireVizParser.Tests/
 |- examples/
@@ -163,6 +166,7 @@ Explizit simulierte Testtypen im Simulatorkern umfassen inzwischen unter anderem
 
 - `2C2I`
 - `2ARB`
+- `AM2A`
 - `CDMA`
 - `DM30` (referenzbezogene SPI-EEPROM-Teilunterstuetzung)
 - `E488`
@@ -260,6 +264,8 @@ Die Simulation unterstuetzt derzeit einfache Fault-Typen ueber `faults.json`:
   Referenzszenario fuer `SMUD` in den drei Boundary-Scan-Testadapter-Programmen
 - `simtest_ctct_contact/`
   synthetisches Referenzszenario fuer `CTCT` mit aktivem Pfad, offener Leitung und nicht aufloesbarem Testpunkt
+- `simtest_am4/`
+  Referenzszenario fuer `AM4N` (Stimulus/Acquisition)
 - `examples/PythonDeviceSimulator/`
   einfaches Python-Pipe-Beispiel
 - `examples/altium-wireviz/`

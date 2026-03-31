@@ -10,8 +10,7 @@ namespace Ct3xxSimulator.Simulation;
 /// </summary>
 public class SimulationContext
 {
-    private readonly Dictionary<string, object?> _scalars = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, ProgramArray> _arrays = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<SimulationScope> _scopes = new();
 
     /// <summary>
     /// Gets the textual result of the last completed test or step.
@@ -26,6 +25,26 @@ public class SimulationContext
     /// </summary>
     public string? ProgramPath { get; private set; }
 
+    private SimulationScope CurrentScope => _scopes[^1];
+    private SimulationScope GlobalScope => _scopes[0];
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SimulationContext"/> class.
+    /// </summary>
+    public SimulationContext()
+    {
+        _scopes.Add(new SimulationScope());
+        DefineImplicit("$Result");
+        DefineImplicit("$DUTResult");
+        DefineImplicit("$TestProgramPath");
+        DefineImplicit("$TestProgramFile");
+        DefineImplicit("$LoopCounter");
+        DefineImplicit("$CommandEnd");
+        DefineImplicit("$LoggingPrefix");
+        DefineImplicit("$LoggingSuffix");
+        DefineImplicit("$BoardIndex");
+    }
+
     /// <summary>
     /// Updates the active program file and directory context.
     /// </summary>
@@ -36,8 +55,28 @@ public class SimulationContext
             ? Directory.GetCurrentDirectory()
             : Path.GetDirectoryName(ProgramPath) ?? Directory.GetCurrentDirectory();
 
-        _scalars["$TestProgramPath"] = ProgramDirectory;
-        _scalars["$TestProgramFile"] = ProgramPath ?? string.Empty;
+        SetValue("$TestProgramPath", ProgramDirectory);
+        SetValue("$TestProgramFile", ProgramPath ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Pushes a new variable scope.
+    /// </summary>
+    public IDisposable PushScope()
+    {
+        _scopes.Add(new SimulationScope());
+        return new ScopeHandle(this);
+    }
+
+    /// <summary>
+    /// Pops the current variable scope.
+    /// </summary>
+    public void PopScope()
+    {
+        if (_scopes.Count > 1)
+        {
+            _scopes.RemoveAt(_scopes.Count - 1);
+        }
     }
 
     /// <summary>
@@ -68,9 +107,10 @@ public class SimulationContext
                 continue;
             }
 
+            DefineVariable(variable.Name);
             var address = VariableAddress.From(variable.Name);
             var value = evaluator.Evaluate(variable.Initial);
-            ApplyValue(address, value);
+            ApplyValue(address, value, CurrentScope);
         }
     }
 
@@ -84,49 +124,177 @@ public class SimulationContext
             address = new VariableAddress(name.Trim(), null);
         }
 
-        ApplyValue(address, value);
+        var scope = ResolveScope(address.Name);
+        if (scope == null)
+        {
+            if (IsImplicitVariable(address.Name))
+            {
+                DefineImplicit(address.Name);
+                scope = GlobalScope;
+            }
+            else
+            {
+                throw new UndefinedVariableException(address.Name);
+            }
+        }
+
+        ApplyValue(address, value, scope);
     }
 
     /// <summary>
     /// Sets one scalar or indexed variable value by parsed address.
     /// </summary>
-    public void SetValue(VariableAddress address, object? value) => ApplyValue(address, value);
+    public void SetValue(VariableAddress address, object? value)
+    {
+        var scope = ResolveScope(address.Name);
+        if (scope == null)
+        {
+            if (IsImplicitVariable(address.Name))
+            {
+                DefineImplicit(address.Name);
+                scope = GlobalScope;
+            }
+            else
+            {
+                throw new UndefinedVariableException(address.Name);
+            }
+        }
+
+        ApplyValue(address, value, scope);
+    }
+
+    /// <summary>
+    /// Sets one scalar or indexed variable value in the nearest outer scope.
+    /// </summary>
+    public void SetValueInOuterScope(string name, object? value)
+    {
+        if (!VariableAddress.TryParse(name, out var address))
+        {
+            address = new VariableAddress(name.Trim(), null);
+        }
+
+        var scope = ResolveOuterScope(address.Name);
+        if (scope == null)
+        {
+            if (IsImplicitVariable(address.Name))
+            {
+                DefineImplicit(address.Name);
+                scope = GlobalScope;
+            }
+            else
+            {
+                throw new UndefinedVariableException(address.Name);
+            }
+        }
+
+        ApplyValue(address, value, scope);
+    }
+
+    /// <summary>
+    /// Determines whether a variable is defined in the current scope.
+    /// </summary>
+    public bool IsDefinedInCurrentScope(string name) =>
+        !string.IsNullOrWhiteSpace(name) && CurrentScope.Definitions.Contains(name.Trim());
+
+    /// <summary>
+    /// Determines whether a variable is defined in any outer scope.
+    /// </summary>
+    public bool IsDefinedInOuterScope(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        for (var index = _scopes.Count - 2; index >= 0; index--)
+        {
+            if (_scopes[index].Definitions.Contains(name.Trim()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Determines whether a variable is defined in any scope.
+    /// </summary>
+    public bool IsDefined(VariableAddress address) => ResolveScope(address.Name) != null;
+
+    private SimulationScope? ResolveScope(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        for (var index = _scopes.Count - 1; index >= 0; index--)
+        {
+            if (_scopes[index].Definitions.Contains(name.Trim()))
+            {
+                return _scopes[index];
+            }
+        }
+
+        return null;
+    }
+
+    private SimulationScope? ResolveOuterScope(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        for (var index = _scopes.Count - 2; index >= 0; index--)
+        {
+            if (_scopes[index].Definitions.Contains(name.Trim()))
+            {
+                return _scopes[index];
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Executes ApplyValue.
     /// </summary>
-    private void ApplyValue(VariableAddress address, object? value)
+    private void ApplyValue(VariableAddress address, object? value, SimulationScope scope)
     {
         if (value is ArrayAllocation allocation)
         {
-            var array = GetOrCreateArray(address.Name);
+            var array = scope.GetOrCreateArray(address.Name);
             array.Reset(allocation.Length);
             return;
         }
 
         if (address.HasIndex)
         {
-            var array = GetOrCreateArray(address.Name);
+            var array = scope.GetOrCreateArray(address.Name);
             array.Set(address.Index!.Value, value);
         }
         else
         {
-            _scalars[address.Name] = value;
+            scope.Scalars[address.Name] = value;
         }
     }
 
     /// <summary>
     /// Executes GetOrCreateArray.
     /// </summary>
-    private ProgramArray GetOrCreateArray(string name)
-    {
-        if (!_arrays.TryGetValue(name, out var array))
-        {
-            array = new ProgramArray();
-            _arrays[name] = array;
-        }
+    private static bool IsImplicitVariable(string name) =>
+        name.StartsWith("$", StringComparison.Ordinal);
 
-        return array;
+    private void DefineVariable(string name) => CurrentScope.Definitions.Add(name.Trim());
+
+    private void DefineImplicit(string name)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            GlobalScope.Definitions.Add(name.Trim());
+        }
     }
 
     /// <summary>
@@ -134,14 +302,20 @@ public class SimulationContext
     /// </summary>
     public object? GetValue(VariableAddress address)
     {
+        var scope = ResolveScope(address.Name);
+        if (scope == null)
+        {
+            return null;
+        }
+
         if (address.HasIndex)
         {
-            return _arrays.TryGetValue(address.Name, out var array)
+            return scope.Arrays.TryGetValue(address.Name, out var array)
                 ? array.Get(address.Index!.Value)
                 : null;
         }
 
-        return _scalars.TryGetValue(address.Name, out var value) ? value : null;
+        return scope.Scalars.TryGetValue(address.Name, out var value) ? value : null;
     }
 
     /// <summary>
@@ -167,7 +341,8 @@ public class SimulationContext
             return null;
         }
 
-        return _arrays.TryGetValue(name.Trim(), out var array) ? array : null;
+        var scope = ResolveScope(name.Trim());
+        return scope != null && scope.Arrays.TryGetValue(name.Trim(), out var array) ? array : null;
     }
 
     /// <summary>
@@ -183,8 +358,8 @@ public class SimulationContext
             _ => LastResult
         };
 
-        _scalars["$Result"] = LastResult;
-        _scalars["$DUTResult"] = LastResult;
+        SetValue("$Result", LastResult);
+        SetValue("$DUTResult", LastResult);
     }
 
     /// <summary>
@@ -200,6 +375,46 @@ public class SimulationContext
             float f => f.ToString("0.###", CultureInfo.InvariantCulture),
             _ => value.ToString() ?? string.Empty
         };
+    }
+}
+
+internal sealed class SimulationScope
+{
+    public Dictionary<string, object?> Scalars { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, ProgramArray> Arrays { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> Definitions { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public ProgramArray GetOrCreateArray(string name)
+    {
+        if (!Arrays.TryGetValue(name, out var array))
+        {
+            array = new ProgramArray();
+            Arrays[name] = array;
+        }
+
+        return array;
+    }
+}
+
+internal sealed class ScopeHandle : IDisposable
+{
+    private readonly SimulationContext _context;
+    private bool _disposed;
+
+    public ScopeHandle(SimulationContext context)
+    {
+        _context = context;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _context.PopScope();
     }
 }
 

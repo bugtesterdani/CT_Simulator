@@ -26,7 +26,7 @@ public sealed class AssemblyElementDefinition : SimulationElementDefinition
         }
 
         Wiring = wiring.Trim();
-        Simulation = string.IsNullOrWhiteSpace(simulation) ? null : simulation.Trim();
+        Simulation = string.IsNullOrWhiteSpace(simulation) ? null : simulation!.Trim();
         Ports = ports;
     }
 

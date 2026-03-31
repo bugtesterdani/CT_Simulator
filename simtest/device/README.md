@@ -400,6 +400,36 @@ interfaces:
         ohms: 18.0
 ```
 
+## Deklarative DNIS-Induktivitaetsmessungen
+
+Wenn unter `interfaces` ein Eintrag `protocol: dnis` gesetzt ist, behandelt die Runtime `send_interface(..., payload)` als Small-Inductivity-Messung.
+
+Wichtig:
+
+- das CT3xx-Testsystem bleibt der Mess-Master
+- der DUT liefert den gemessenen Induktivitaetswert
+- zusaetzliche Induktivitaeten aus `simulation.yaml` werden im Simulator seriell addiert
+- pro SIND-Record wird eine Messung angefordert
+
+Beispiel:
+
+```yaml
+interfaces:
+  SIND MODULE 1:
+    protocol: dnis
+    measurements:
+      - when:
+          signal: SIND_CHANNEL1
+        inductance: 95e-6
+        serial_ohms: 9.7
+```
+
+Referenzprofile:
+
+- [sind_generic_good.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/sind_generic_good.yaml)
+- [sind_generic_fail.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/sind_generic_fail.yaml)
+- [sind_generic_error.yaml](C:/Users/hello/Desktop/CT3xx/simtest/device/devices/sind_generic_error.yaml)
+
 ## Deklarative SMUD-Lastprofile
 
 Fuer `SMUD`-Referenzszenarien koennen dieselben Profile als einfache Lastmodelle verwendet werden.

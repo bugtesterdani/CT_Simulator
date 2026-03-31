@@ -77,6 +77,7 @@ Jedes Element braucht mindestens:
 - `assembly`
 - `tester_supply`
 - `tester_output`
+- `testsystem`
 - `switch`
 - `fuse`
 - `diode`
@@ -228,6 +229,28 @@ Wichtig:
 
 - Namen und Feldinhalte sollten stabil und sprechend gehalten werden
 - bei `transistor` bevorzugt `transistor_type` verwenden
+
+### `testsystem`
+
+Gedacht fuer:
+
+- globale Testsystem-Optionen, die nicht direkt an einem Pfadelement haengen
+
+Beispiel:
+
+```yaml
+- id: Testsystem
+  type: testsystem
+  odbc_mode: real
+  odbc_mock_result: "ODBC Mock: OK"
+  odbc_timeout_seconds: 30
+```
+
+Unterstuetzte Felder:
+
+- `odbc_mode`: `real` oder `mock` (default: `real`)
+- `odbc_mock_result`: String fuer Mock-Antwort
+- `odbc_timeout_seconds` oder `odbc_timeout_ms`
 
 ## 4. `board_device_wireviz.yaml` und `board_device_simulation.yaml`
 

@@ -1,0 +1,10 @@
+name: bsc1_generic_error
+
+signals:
+  inputs: []
+  outputs: []
+
+interfaces:
+  BSC1:
+    protocol: bsc1
+    error: "BSC1 Fehler: keine gueltige Boundary-Scan-Antwort"

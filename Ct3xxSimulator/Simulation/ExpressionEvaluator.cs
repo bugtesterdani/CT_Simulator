@@ -90,6 +90,11 @@ public class ExpressionEvaluator
 
         if (VariableAddress.TryParse(trimmed, out var address))
         {
+            if (!_context.IsDefined(address))
+            {
+                throw new UndefinedVariableException(address.Name);
+            }
+
             return _context.GetValue(address);
         }
 

@@ -53,8 +53,11 @@ Dadurch kann die weitere Testtypen-Abdeckung schrittweise aus dem monolithischen
 - `DM30` (referenzbezogene SPI-EEPROM-Teilunterstuetzung)
 - `IOXX`
 - `E488`
+- `AM4N`
 - Datei-/Skriptausfuehrung aus Testprogrammen
 - `2ARB` / AM2-Waveform
+- `AM2A`
+- `DNIS`
 - Split-Unterablaeufe innerhalb eines Tests, z. B. verschachtelte `Group`-/`IOXX`-/`E488`-/`PET$`-Schritte unter einem `2ARB`
 - generische Testschritte mit Ergebnis- und Statuspublikation
 
@@ -127,6 +130,15 @@ Fuer `SHRT` gilt:
 - Messwerte kommen aus der DUT-Simulation ueber `send_interface("SHRT", payload)`
 - WireViz bestimmt die zu messenden Paare, die an das DUT uebergeben werden
 - Verdrahtung dient als Pfadfilter und liefert die Traces fuer die Analyse
+
+Fuer `DNIS` gilt:
+
+- Small-Inductivity-Messungen werden ueber die SIND-Interface-Definition aus `EXT$` ausgeloest
+- pro SIND-Record wird ein Messwert vom DUT angefordert
+- `PASS` entsteht, wenn der gemessene Wert innerhalb der Toleranz liegt
+- `FAIL` entsteht bei Abweichung, `ERROR` bei fehlenden Parametern oder fehlender DUT-Antwort
+- optionaler Kompensationswert wird vom Messwert abgezogen
+- `inductor`-Elemente aus `simulation.yaml` werden seriell addiert
 
 Aktuell unterstuetzt der Simulationskern dabei:
 

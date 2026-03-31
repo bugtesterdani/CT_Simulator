@@ -346,6 +346,13 @@ Fuer SHRT zusaetzlich aktuell wichtig:
 - optional `default_ohms` + `pairs[]`/`overrides[]` fuer WireViz-basierte Paarlisten
 - wenn `pairs[]` im Payload gesetzt ist, verwendet das Profil diese Paarliste
 
+Fuer DNIS zusaetzlich aktuell wichtig:
+
+- das Testsystem bleibt der Mess-Master
+- der DUT liefert den Induktivitaetsmesswert zurueck
+- zusaetzliche `inductor`-Elemente aus `simulation.yaml` werden im Simulator seriell addiert
+- `measurements[]` mit `when`-Filtern wie `signal`, `name`, `channel`
+
 ### `timers`
 
 Gedacht fuer:

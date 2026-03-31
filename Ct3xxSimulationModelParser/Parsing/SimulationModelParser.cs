@@ -88,6 +88,13 @@ public sealed class SimulationModelParser
                     RequireString(map, "b", sourcePath),
                     RequireDouble(map, "ohms", sourcePath),
                     metadata);
+            case "inductor":
+                return new InductorElementDefinition(
+                    id,
+                    RequireString(map, "a", sourcePath),
+                    RequireString(map, "b", sourcePath),
+                    RequireDoubleAny(map, sourcePath, "henry", "inductance"),
+                    metadata);
             case "transformer":
                 return new TransformerElementDefinition(
                     id,
@@ -185,14 +192,14 @@ public sealed class SimulationModelParser
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in source)
         {
-            var key = entry.Key?.ToString();
-            var value = entry.Value?.ToString();
+            var key = entry.Key?.ToString()?.Trim();
+            var value = entry.Value?.ToString()?.Trim();
             if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
             {
                 continue;
             }
 
-            result[key.Trim()] = value;
+            result[key!] = value!;
         }
 
         return result;
@@ -216,7 +223,7 @@ public sealed class SimulationModelParser
                 var text = item?.ToString()?.Trim();
                 if (!string.IsNullOrWhiteSpace(text))
                 {
-                    result.Add(text);
+                    result.Add(text!);
                 }
             }
         }
@@ -225,7 +232,7 @@ public sealed class SimulationModelParser
             var single = nodes?.ToString()?.Trim();
             if (!string.IsNullOrWhiteSpace(single))
             {
-                result.Add(single);
+                result.Add(single!);
             }
         }
 
@@ -274,7 +281,7 @@ public sealed class SimulationModelParser
     private static string? OptionalString(IDictionary<object, object?> map, string key)
     {
         return TryGet(map, key, out var value) && !string.IsNullOrWhiteSpace(value?.ToString())
-            ? value.ToString()
+            ? value?.ToString()?.Trim()
             : null;
     }
 
@@ -290,6 +297,28 @@ public sealed class SimulationModelParser
         }
 
         return value;
+    }
+
+    /// <summary>
+    /// Executes RequireDoubleAny.
+    /// </summary>
+    private static double RequireDoubleAny(IDictionary<object, object?> map, string sourcePath, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (TryGet(map, key, out var value) && !string.IsNullOrWhiteSpace(value?.ToString()))
+            {
+                var text = value!.ToString()!.Trim().Replace(',', '.');
+                if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                {
+                    throw new InvalidDataException($"[{sourcePath}] '{key}' is not a valid number.");
+                }
+
+                return parsed;
+            }
+        }
+
+        throw new InvalidDataException($"[{sourcePath}] Required value missing ({string.Join(" or ", keys)}).");
     }
 
     /// <summary>

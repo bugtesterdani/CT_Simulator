@@ -1,0 +1,28 @@
+name: am4_generic_good
+signals:
+  inputs:
+    - AM4_STI1
+    - AM4_STI2
+  outputs:
+    - AM4_STI1
+    - AM4_ACQP2
+    - AM4_ACQP3
+    - AM4_ACQM4
+    - AM4_ACQP7
+    - AM4_ACQP8
+initial_inputs:
+  AM4_STI1: 0
+  AM4_STI2: 0
+outputs:
+  AM4_STI1:
+    default: 5.0
+  AM4_ACQP2:
+    default: 5.0
+  AM4_ACQP3:
+    default: 0.0
+  AM4_ACQM4:
+    default: 2.5
+  AM4_ACQP7:
+    default: 5.0
+  AM4_ACQP8:
+    default: 5.0

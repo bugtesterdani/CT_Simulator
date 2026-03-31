@@ -22,6 +22,10 @@ elements:
     high_supply: UIF_P_24V
     low_mode: open
 
+  - id: Testsystem
+    type: testsystem
+    odbc_mode: real
+
   - id: DeviceBoard
     type: assembly
     wiring: board_device_wireviz.yaml

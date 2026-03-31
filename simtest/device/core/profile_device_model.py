@@ -25,7 +25,9 @@ from .profile_helpers import (
     normalize_mapping,
     read_signal_value,
 )
+from .profile_bsc1 import handle_bsc1_request
 from .profile_dm30 import handle_dm30_request, initialize_dm30_interfaces
+from .profile_dnis import handle_dnis_request
 from .profile_ict import handle_ict_request
 from .profile_shrt import handle_shrt_request
 from .profile_i2c import handle_i2c_transaction, initialize_i2c_interfaces
@@ -254,8 +256,20 @@ class DeclarativeDeviceModel(BaseDeviceModel):
             state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
             return response
 
+        if str(definition.get("protocol") or "").strip().lower() == "bsc1":
+            response = handle_bsc1_request(self, interface_name, definition, payload)
+            state["last_response"] = response
+            state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+            return response
+
         if str(definition.get("protocol") or "").strip().lower() == "dm30":
             response = handle_dm30_request(self, interface_name, definition, payload)
+            state["last_response"] = response
+            state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
+            return response
+
+        if str(definition.get("protocol") or "").strip().lower() == "dnis":
+            response = handle_dnis_request(self, interface_name, definition, payload)
             state["last_response"] = response
             state["history"].append({"request": payload, "response": response, "time_ms": self.now_ms})
             return response

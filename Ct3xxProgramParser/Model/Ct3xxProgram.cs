@@ -237,6 +237,7 @@ public class Table : SequenceNode
     [XmlElement("File")] public List<TableFile> Files { get; set; } = new();
     [XmlElement("Interface")] public List<InterfaceDefinition> Interfaces { get; set; } = new();
     [XmlElement("Library")] public List<LibraryDefinition> Libraries { get; set; } = new();
+    [XmlElement("Function")] public List<LibraryFunction> Functions { get; set; } = new();
 }
 
 /// <summary>
