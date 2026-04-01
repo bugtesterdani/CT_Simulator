@@ -72,6 +72,7 @@ public static class SimulationSnapshotSessionSerializer
             entry.CurrentTimeMs,
             CopyMap(entry.Signals),
             CopyMap(entry.MeasurementBuses),
+            CopyMap(entry.Variables),
             entry.RelayStates.ToList(),
             entry.ActiveFaults.ToList(),
             new ExternalDeviceStateSnapshot(
@@ -103,6 +104,7 @@ public static class SimulationSnapshotSessionSerializer
             snapshot.CurrentTimeMs,
             CopyMap(snapshot.Signals),
             CopyMap(snapshot.MeasurementBuses),
+            CopyMap(snapshot.Variables),
             snapshot.RelayStates.ToList(),
             snapshot.ActiveFaults.ToList(),
             new SimulationSnapshotExternalDeviceState(

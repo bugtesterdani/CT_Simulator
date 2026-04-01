@@ -64,6 +64,7 @@ public partial class MainWindow
             last.CurrentTimeMs == snapshot.CurrentTimeMs &&
             string.Equals(last.CurrentStep, snapshot.CurrentStep, System.StringComparison.Ordinal) &&
             AreMapsEqual(last.Signals, snapshot.Signals) &&
+            AreMapsEqual(last.Variables, snapshot.Variables) &&
             AreMapsEqual(last.ExternalDeviceState.Outputs, snapshot.ExternalDeviceState.Outputs) &&
             AreMapsEqual(last.ExternalDeviceState.InternalSignals, snapshot.ExternalDeviceState.InternalSignals))
         {

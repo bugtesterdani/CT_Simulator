@@ -165,6 +165,27 @@ Typischer Ablauf:
 - Split-Unterablaeufe innerhalb eines `2ARB` waehrend des aktiven Stimulus ausfuehren
 - 2ARB-Ruecksignale ueber die Simulationszeit sampeln und erste Metriken wie `UMAX`, `UMIN`, `UAVG`, `UEFF`, `NPUL` und `AWID` auswerten
 
+## Gruppen-Loop-Ergebnis (LogLoops)
+
+Fuer Gruppen mit `RepeatCondition` bestimmt `LogLoops`, welches Gruppen-Ergebnis in `$Result` geschrieben wird:
+
+- `LogLoops="all"`: schlechtestes Ergebnis ueber alle Iterationen (FAIL/ERROR gewinnt)
+- `LogLoops="last"`: Ergebnis der letzten Iteration
+
+Damit kann z. B. eine Gruppe erst `FAIL` und nach einer Wiederholung `PASS` liefern, ohne dass das erste Ergebnis das Gruppenresultat dauerhaft ueberschreibt.
+
+## Variablen-Scope und Systemvariablen
+
+Der Simulator unterstuetzt relative Variablenzugriffe mit `..\\`, z. B. `..\\$Result` oder `..\\$LoopCounter` fuer den Parent-Scope.
+
+Wichtige Systemvariablen im Ablauf:
+
+- `$Result` beginnt als `NORESULT` und wird nach jedem Test/Gruppe auf `PASS`, `FAIL` oder `ERROR` gesetzt
+- `$DUTResult` folgt standardmaessig `$Result`, kann aber durch Testlogik explizit ueberschrieben werden
+- `$LoopCounter` wird beim Eintritt in eine Gruppe bzw. in den DUT-Loop inkrementiert (erste Iteration = 1)
+
+Conditions mit `AND`/`OR` werden ausgewertet; die Repeat-Condition wird nach der Iteration geprueft, die Exec-Condition davor.
+
 ## Einbindung
 
 Der Kern wird typischerweise aus der WPF-App verwendet, kann aber auch direkt aus Tools oder Tests aufgerufen werden.

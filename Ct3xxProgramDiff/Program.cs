@@ -41,9 +41,12 @@ internal static class Program
         var oldNodes = NodeIndexer.Index(BuildNodeList(oldProgram));
         var newNodes = NodeIndexer.Index(BuildNodeList(newProgram));
 
-        var added = newNodes.Keys.Except(oldNodes.Keys).Select(k => newNodes[k]).ToList();
-        var removed = oldNodes.Keys.Except(newNodes.Keys).Select(k => oldNodes[k]).ToList();
+        var addedKeys = new HashSet<string>(newNodes.Keys.Except(oldNodes.Keys), StringComparer.Ordinal);
+        var removedKeys = new HashSet<string>(oldNodes.Keys.Except(newNodes.Keys), StringComparer.Ordinal);
+        var added = addedKeys.Select(k => newNodes[k]).ToList();
+        var removed = removedKeys.Select(k => oldNodes[k]).ToList();
         var changed = new List<ChangeEntry>();
+        var changedMap = new Dictionary<string, ChangeEntry>(StringComparer.Ordinal);
 
         foreach (var key in oldNodes.Keys.Intersect(newNodes.Keys))
         {
@@ -52,14 +55,19 @@ internal static class Program
             var diffs = DiffFields(before, after);
             if (diffs.Count > 0)
             {
-                changed.Add(new ChangeEntry(before, after, diffs));
+                var entry = new ChangeEntry(before, after, diffs);
+                changed.Add(entry);
+                changedMap[key] = entry;
             }
         }
+
+        var oldDisplayRows = BuildDisplayRows(oldProgram);
+        var newDisplayRows = BuildDisplayRows(newProgram);
 
         var report = BuildMarkdownReport(oldPath, newPath, added, removed, changed);
         File.WriteAllText(outPath, report, Encoding.UTF8);
 
-        var html = BuildHtmlReport(oldPath, newPath, added, removed, changed);
+        var html = BuildHtmlReport(oldPath, newPath, oldDisplayRows, newDisplayRows);
         File.WriteAllText(htmlPath, html, Encoding.UTF8);
 
         Console.WriteLine($"Report written to: {Path.GetFullPath(outPath)}");
@@ -108,8 +116,9 @@ internal static class Program
 
         WalkSequence(nodes, program.RootItems, "/Program");
 
-        if (program.DutLoop?.Items != null)
+        if (program.DutLoop != null)
         {
+            nodes.Add(NodeInfo.FromDutLoop(program.DutLoop, "/DUTLoop"));
             WalkSequence(nodes, program.DutLoop.Items, "/DUTLoop");
         }
 
@@ -123,6 +132,85 @@ internal static class Program
         }
 
         return nodes;
+    }
+
+    private static List<DisplayRow> BuildDisplayRows(Ct3xxProgram program)
+    {
+        var rows = new List<DisplayRow>();
+
+        if (program.Tables != null && program.Tables.Count > 0)
+        {
+            var tablePath = "/Tables";
+            foreach (var table in program.Tables)
+            {
+                var node = NodeInfo.FromTable(table, tablePath);
+                rows.Add(new DisplayRow(node, 0, NodeIndexer.BuildKey(node), BuildMatchKey(node)));
+            }
+        }
+
+        WalkDisplayRows(rows, program.RootItems, "/Program", 0);
+
+        if (program.DutLoop != null)
+        {
+            var loopNode = NodeInfo.FromDutLoop(program.DutLoop, "/DUTLoop");
+            rows.Add(new DisplayRow(loopNode, 0, NodeIndexer.BuildKey(loopNode), BuildMatchKey(loopNode)));
+            WalkDisplayRows(rows, program.DutLoop.Items, "/DUTLoop", 1);
+        }
+
+        if (program.Application?.Tables != null && program.Application.Tables.Count > 0)
+        {
+            var appPath = "/ApplicationTables";
+            foreach (var table in program.Application.Tables)
+            {
+                var node = NodeInfo.FromTable(table, appPath);
+                rows.Add(new DisplayRow(node, 0, NodeIndexer.BuildKey(node), BuildMatchKey(node)));
+            }
+        }
+
+        return rows;
+    }
+
+    private static void WalkDisplayRows(List<DisplayRow> rows, IEnumerable<SequenceNode>? items, string parentPath, int depth)
+    {
+        if (items == null)
+        {
+            return;
+        }
+
+        var index = 0;
+        foreach (var node in items)
+        {
+            switch (node)
+            {
+                case Group group:
+                    var groupPath = $"{parentPath}/Group[{index}:{group.Name ?? "unnamed"}]";
+                    var groupNode = NodeInfo.FromGroup(group, groupPath);
+                    rows.Add(new DisplayRow(groupNode, depth, NodeIndexer.BuildKey(groupNode), BuildMatchKey(groupNode)));
+                    WalkDisplayRows(rows, group.Items, groupPath, depth + 1);
+                    break;
+                case Test test:
+                    var testPath = $"{parentPath}/Test[{index}:{test.Name ?? test.File ?? "unnamed"}]";
+                    var testNode = NodeInfo.FromTest(test, testPath);
+                    rows.Add(new DisplayRow(testNode, depth, NodeIndexer.BuildKey(testNode), BuildMatchKey(testNode)));
+                    WalkDisplayRows(rows, test.Items, testPath, depth + 1);
+                    if (test.Parameters?.Tables != null)
+                    {
+                        foreach (var table in test.Parameters.Tables)
+                        {
+                            var tableNode = NodeInfo.FromTable(table, $"{testPath}/Tables");
+                            rows.Add(new DisplayRow(tableNode, depth + 1, NodeIndexer.BuildKey(tableNode), BuildMatchKey(tableNode)));
+                        }
+                    }
+                    break;
+                case Table table:
+                    var tablePath = $"{parentPath}/Table[{index}:{table.File ?? table.Id ?? "unnamed"}]";
+                    var tableInfo = NodeInfo.FromTable(table, tablePath);
+                    rows.Add(new DisplayRow(tableInfo, depth, NodeIndexer.BuildKey(tableInfo), BuildMatchKey(tableInfo)));
+                    break;
+            }
+
+            index++;
+        }
     }
 
     private static void WalkSequence(List<NodeInfo> nodes, IEnumerable<SequenceNode>? items, string parentPath)
@@ -179,6 +267,7 @@ internal static class Program
         AddDiff(diffs, "Param.Options", before.ParameterOptions, after.ParameterOptions);
         AddDiff(diffs, "Param.Message", before.ParameterMessage, after.ParameterMessage);
         AddDiff(diffs, "DrawingRef", before.DrawingReference, after.DrawingReference);
+        AddDiff(diffs, "Limits", before.LimitDetails, after.LimitDetails);
         return diffs;
     }
 
@@ -245,10 +334,14 @@ internal static class Program
     private static string BuildHtmlReport(
         string oldPath,
         string newPath,
-        List<NodeInfo> added,
-        List<NodeInfo> removed,
-        List<ChangeEntry> changed)
+        List<DisplayRow> oldRows,
+        List<DisplayRow> newRows)
     {
+        var alignedRows = AlignRows(oldRows, newRows);
+        var addedCount = alignedRows.Count(row => row.Status == DiffStatus.Added);
+        var removedCount = alignedRows.Count(row => row.Status == DiffStatus.Removed);
+        var changedCount = alignedRows.Count(row => row.Status == DiffStatus.Changed);
+
         var sb = new StringBuilder();
         sb.AppendLine("<!doctype html>");
         sb.AppendLine("<html lang=\"en\">");
@@ -257,65 +350,295 @@ internal static class Program
         sb.AppendLine("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>");
         sb.AppendLine("<title>CTXPRG Semantic Diff</title>");
         sb.AppendLine("<style>");
-        sb.AppendLine("body{font-family:Segoe UI,Arial,sans-serif;margin:24px;background:#fafafa;color:#222;}");
+        sb.AppendLine(":root{--border:#D7DEE7;--card:#FDFEFE;--group:#F6F8FB;--text:#293241;--muted:#6B7480;--badge:#E2E8EF;--added:#CBE5D2;--removed:#F1C1C1;--changed:#F9E1A5;}");
+        sb.AppendLine("body{font-family:Segoe UI,Arial,sans-serif;margin:24px;background:#F4F7FA;color:#222;}");
         sb.AppendLine("h1{margin-top:0;} section{margin-top:24px;}");
         sb.AppendLine(".meta{color:#555;font-size:14px;}");
         sb.AppendLine(".count{margin:12px 0;font-weight:600;}");
-        sb.AppendLine(".added{background:#e6f7ea;border-left:4px solid #2e7d32;padding:6px 10px;margin:4px 0;}");
-        sb.AppendLine(".removed{background:#fdecea;border-left:4px solid #c62828;padding:6px 10px;margin:4px 0;}");
-        sb.AppendLine(".changed{background:#fff6e0;border-left:4px solid #f9a825;padding:6px 10px;margin:6px 0;}");
-        sb.AppendLine("code{background:#f0f0f0;padding:2px 4px;border-radius:4px;}");
+        sb.AppendLine(".panel{background:white;border:1px solid var(--border);border-radius:8px;padding:12px;}");
+        sb.AppendLine(".panel-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;}");
+        sb.AppendLine(".panel-title{font-size:18px;font-weight:700;color:var(--text);}");
+        sb.AppendLine(".columns{display:grid;grid-template-columns:2.5fr 1.4fr 2.5fr;gap:12px;margin-bottom:8px;font-weight:700;color:#3B4652;}");
+        sb.AppendLine(".row{display:grid;grid-template-columns:2.5fr 1.4fr 2.5fr;gap:12px;margin-bottom:8px;align-items:start;}");
+        sb.AppendLine(".node{background:var(--card);border:1px solid #E2E8EF;border-radius:6px;padding:8px;position:relative;}");
+        sb.AppendLine(".node.group{background:var(--group);border-color:#D9E2EC;}");
+        sb.AppendLine(".node .title{font-weight:600;color:var(--text);} .node .meta{font-size:11px;color:var(--muted);margin-top:3px;}");
+        sb.AppendLine(".badge{display:inline-block;padding:4px 8px;border-radius:10px;font-weight:700;border:1px solid var(--badge);background:#F5F7FA;color:#3B4652;font-size:12px;}");
+        sb.AppendLine(".badge.added{background:#EAF7EF;border-color:var(--added);color:#2E7D32;}");
+        sb.AppendLine(".badge.removed{background:#FDEDEE;border-color:var(--removed);color:#8B1E3F;}");
+        sb.AppendLine(".badge.changed{background:#FFF6E0;border-color:var(--changed);color:#915E00;}");
+        sb.AppendLine(".diffs{font-size:12px;color:#3B4652;line-height:1.4;}");
+        sb.AppendLine(".diffs div{margin-bottom:6px;}");
+        sb.AppendLine(".diffs .label{font-weight:700;color:#324152;}");
+        sb.AppendLine(".diffs .old{color:#8B1E3F;}");
+        sb.AppendLine(".diffs .new{color:#2E7D32;}");
+        sb.AppendLine(".empty{min-height:40px;}");
+        sb.AppendLine(".indent{display:block;}");
         sb.AppendLine("</style>");
         sb.AppendLine("</head>");
         sb.AppendLine("<body>");
-        sb.AppendLine("<h1>CTXPRG Semantic Diff</h1>");
+        sb.AppendLine("<h1>CTXPRG Diff (CT Style)</h1>");
         sb.AppendLine($"<div class=\"meta\">Old: <code>{Escape(Path.GetFullPath(oldPath))}</code></div>");
         sb.AppendLine($"<div class=\"meta\">New: <code>{Escape(Path.GetFullPath(newPath))}</code></div>");
-        sb.AppendLine($"<div class=\"count\">Added: {added.Count} &nbsp; Removed: {removed.Count} &nbsp; Changed: {changed.Count}</div>");
+        sb.AppendLine($"<div class=\"count\">Added: {addedCount} &nbsp; Removed: {removedCount} &nbsp; Changed: {changedCount}</div>");
 
-        if (added.Count > 0)
+        sb.AppendLine("<section class=\"panel\">");
+        sb.AppendLine("<div class=\"panel-header\"><div class=\"panel-title\">Testschritte</div></div>");
+        sb.AppendLine("<div class=\"columns\"><div>Alt</div><div>Diff / Status</div><div>Neu</div></div>");
+        foreach (var row in alignedRows)
         {
-            sb.AppendLine("<section><h2>Added (in new)</h2>");
-            foreach (var item in added.OrderBy(i => i.Path))
-            {
-                sb.AppendLine($"<div class=\"added\"><strong>{Escape(item.Kind)}</strong> <code>{Escape(item.Path)}</code></div>");
-            }
-            sb.AppendLine("</section>");
+            sb.AppendLine(RenderSideBySideRow(row));
         }
-
-        if (removed.Count > 0)
-        {
-            sb.AppendLine("<section><h2>Removed (missing in new)</h2>");
-            foreach (var item in removed.OrderBy(i => i.Path))
-            {
-                sb.AppendLine($"<div class=\"removed\"><strong>{Escape(item.Kind)}</strong> <code>{Escape(item.Path)}</code></div>");
-            }
-            sb.AppendLine("</section>");
-        }
-
-        if (changed.Count > 0)
-        {
-            sb.AppendLine("<section><h2>Changed</h2>");
-            foreach (var entry in changed.OrderBy(c => c.Before.Path))
-            {
-                sb.AppendLine($"<div class=\"changed\"><div><strong>{Escape(entry.Before.Kind)}</strong> <code>{Escape(entry.Before.Path)}</code></div>");
-                sb.AppendLine("<ul>");
-                foreach (var diff in entry.Diffs)
-                {
-                    sb.AppendLine($"<li>{Escape(diff.Field)}: <code>{Escape(diff.OldValue)}</code> \u2192 <code>{Escape(diff.NewValue)}</code></li>");
-                }
-                sb.AppendLine("</ul></div>");
-            }
-            sb.AppendLine("</section>");
-        }
+        sb.AppendLine("</section>");
 
         sb.AppendLine("</body>");
         sb.AppendLine("</html>");
         return sb.ToString();
     }
 
+    private static string RenderSideBySideRow(AlignedRow row)
+    {
+        var leftCell = row.OldRow != null ? RenderNodeCell(row.OldRow) : "<div class=\"empty\"></div>";
+        var rightCell = row.NewRow != null ? RenderNodeCell(row.NewRow) : "<div class=\"empty\"></div>";
+        var middleCell = RenderDiffCell(row);
+
+        return $@"
+<div class=""row"">
+  <div>{leftCell}</div>
+  <div class=""diffs"">{middleCell}</div>
+  <div>{rightCell}</div>
+</div>";
+    }
+
+    private static string RenderNodeCell(DisplayRow row)
+    {
+        var node = row.Node;
+        var depth = row.Depth;
+        var title = BuildNodeTitle(node);
+        var meta = BuildNodeMeta(node);
+        var nodeClass = node.Kind.Equals("Group", StringComparison.OrdinalIgnoreCase) ? "node group" : "node";
+        return $@"
+<div class=""{nodeClass}"" style=""margin-left:{depth * 18}px;"">
+  <div class=""title"">{Escape(title)}</div>
+  <div class=""meta"">{Escape(meta)}</div>
+</div>";
+    }
+
+    private static string RenderDiffCell(AlignedRow row)
+    {
+        var badgeClass = row.Status switch
+        {
+            DiffStatus.Added => "badge added",
+            DiffStatus.Removed => "badge removed",
+            DiffStatus.Changed => "badge changed",
+            _ => "badge"
+        };
+
+        var statusText = row.Status switch
+        {
+            DiffStatus.Added => "Added",
+            DiffStatus.Removed => "Removed",
+            DiffStatus.Changed => "Changed",
+            _ => "Unchanged"
+        };
+
+        var diffBody = row.Status switch
+        {
+            DiffStatus.Added when row.NewRow != null => BuildFullDetailsBlock("New", row.NewRow.Node),
+            DiffStatus.Removed when row.OldRow != null => BuildFullDetailsBlock("Old", row.OldRow.Node),
+            DiffStatus.Changed when row.Change != null => string.Join(string.Empty, row.Change.Diffs.Select(diff =>
+                $"<div><span class=\"label\">{Escape(diff.Field)}</span><br/>" +
+                $"<span class=\"old\">Old:</span> <code>{Escape(diff.OldValue)}</code><br/>" +
+                $"<span class=\"new\">New:</span> <code>{Escape(diff.NewValue)}</code></div>")),
+            _ => string.Empty
+        };
+
+        return $@"
+<div><span class=""{badgeClass}"">{Escape(statusText)}</span></div>
+{diffBody}";
+    }
+
+    private static string BuildNodeTitle(NodeInfo node)
+    {
+        if (node.Kind.Equals("Group", StringComparison.OrdinalIgnoreCase))
+        {
+            return node.Name ?? node.Id ?? "Group";
+        }
+
+        if (node.Kind.Equals("Loop", StringComparison.OrdinalIgnoreCase))
+        {
+            return node.Name ?? "Test Loop";
+        }
+
+        if (node.Kind.Equals("Test", StringComparison.OrdinalIgnoreCase))
+        {
+            return node.ParameterName ?? node.Name ?? node.Id ?? "Test";
+        }
+
+        return node.File ?? node.Id ?? "Table";
+    }
+
+    private static string BuildNodeMeta(NodeInfo node)
+    {
+        var label = node.Kind;
+        if (!string.IsNullOrWhiteSpace(node.Id))
+        {
+            label += $" ({node.Id})";
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.File))
+        {
+            label += $" | File={node.File}";
+        }
+
+        return label;
+    }
+
+    private static string BuildFullDetailsBlock(string label, NodeInfo node)
+    {
+        var parts = new List<(string Label, string? Value)>
+        {
+            ("Id", node.Id),
+            ("Name", node.Name),
+            ("File", node.File),
+            ("LogFlags", node.LogFlags),
+            ("Disabled", node.Disabled),
+            ("Split", node.Split),
+            ("Param.Name", node.ParameterName),
+            ("Param.Library", node.ParameterLibrary),
+            ("Param.Function", node.ParameterFunction),
+            ("Param.Mode", node.ParameterMode),
+            ("Param.Options", node.ParameterOptions),
+            ("Param.Message", node.ParameterMessage),
+            ("DrawingRef", node.DrawingReference),
+            ("Limits", node.LimitDetails)
+        };
+
+        var lines = parts
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .Select(item => $"<div><span class=\"label\">{Escape(item.Label)}</span><br/><span class=\"new\">{Escape(label)}:</span> <code>{Escape(item.Value ?? string.Empty)}</code></div>");
+
+        return string.Join(string.Empty, lines);
+    }
+
     private static string Escape(string value)
         => value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+
+    private static List<AlignedRow> AlignRows(List<DisplayRow> oldRows, List<DisplayRow> newRows)
+    {
+        var oldKeys = oldRows.Select(row => row.MatchKey).ToArray();
+        var newKeys = newRows.Select(row => row.MatchKey).ToArray();
+        var dp = BuildLcsMatrix(oldKeys, newKeys);
+        var aligned = new List<AlignedRow>();
+
+        var i = 0;
+        var j = 0;
+        while (i < oldKeys.Length && j < newKeys.Length)
+        {
+            if (string.Equals(oldKeys[i], newKeys[j], StringComparison.Ordinal))
+            {
+                var oldRow = oldRows[i];
+                var newRow = newRows[j];
+                var diffs = DiffFields(oldRow.Node, newRow.Node);
+                var status = diffs.Count > 0 ? DiffStatus.Changed : DiffStatus.Unchanged;
+                var change = diffs.Count > 0 ? new ChangeEntry(oldRow.Node, newRow.Node, diffs) : null;
+                aligned.Add(new AlignedRow(oldRow, newRow, status, change));
+                i++;
+                j++;
+                continue;
+            }
+
+            if (dp[i + 1, j] >= dp[i, j + 1])
+            {
+                aligned.Add(new AlignedRow(oldRows[i], null, DiffStatus.Removed, null));
+                i++;
+            }
+            else
+            {
+                aligned.Add(new AlignedRow(null, newRows[j], DiffStatus.Added, null));
+                j++;
+            }
+        }
+
+        while (i < oldKeys.Length)
+        {
+            aligned.Add(new AlignedRow(oldRows[i], null, DiffStatus.Removed, null));
+            i++;
+        }
+
+        while (j < newKeys.Length)
+        {
+            aligned.Add(new AlignedRow(null, newRows[j], DiffStatus.Added, null));
+            j++;
+        }
+
+        return aligned;
+    }
+
+    private static int[,] BuildLcsMatrix(string[] oldKeys, string[] newKeys)
+    {
+        var dp = new int[oldKeys.Length + 1, newKeys.Length + 1];
+        for (var i = oldKeys.Length - 1; i >= 0; i--)
+        {
+            for (var j = newKeys.Length - 1; j >= 0; j--)
+            {
+                dp[i, j] = string.Equals(oldKeys[i], newKeys[j], StringComparison.Ordinal)
+                    ? dp[i + 1, j + 1] + 1
+                    : Math.Max(dp[i + 1, j], dp[i, j + 1]);
+            }
+        }
+
+        return dp;
+    }
+
+    private static string BuildMatchKey(NodeInfo node)
+    {
+        var normalizedPath = NormalizePath(node.Path);
+        return $"{node.Kind}:{normalizedPath}";
+    }
+
+    private static string NormalizePath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return path;
+        }
+
+        var sb = new StringBuilder(path.Length);
+        var i = 0;
+        while (i < path.Length)
+        {
+            if (path[i] != '[')
+            {
+                sb.Append(path[i]);
+                i++;
+                continue;
+            }
+
+            var close = path.IndexOf(']', i + 1);
+            if (close == -1)
+            {
+                sb.Append(path[i]);
+                i++;
+                continue;
+            }
+
+            var colon = path.IndexOf(':', i + 1);
+            if (colon > -1 && colon < close)
+            {
+                sb.Append('[');
+                sb.Append(path, colon + 1, close - colon - 1);
+                sb.Append(']');
+                i = close + 1;
+                continue;
+            }
+
+            sb.Append(path, i, close - i + 1);
+            i = close + 1;
+        }
+
+        return sb.ToString();
+    }
 }
 
 /// <summary>
@@ -336,7 +659,8 @@ internal sealed record NodeInfo(
     string? ParameterMode,
     string? ParameterOptions,
     string? ParameterMessage,
-    string? DrawingReference)
+    string? DrawingReference,
+    string? LimitDetails)
 {
     /// <summary>
     /// Creates a node info from a group.
@@ -350,6 +674,29 @@ internal sealed record NodeInfo(
             null,
             null,
             group.Disabled,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    /// <summary>
+    /// Creates a node info from a DUT loop.
+    /// </summary>
+    public static NodeInfo FromDutLoop(DutLoop loop, string path)
+        => new(
+            "Loop",
+            path,
+            loop.Id,
+            loop.Name ?? "Test Loop",
+            null,
+            null,
+            loop.Disabled,
+            null,
             null,
             null,
             null,
@@ -378,7 +725,8 @@ internal sealed record NodeInfo(
             test.Parameters?.Mode,
             test.Parameters?.Options,
             test.Parameters?.Message,
-            test.Parameters?.DrawingReference);
+            test.Parameters?.DrawingReference,
+            BuildLimitDetails(test));
 
     /// <summary>
     /// Creates a node info from a table.
@@ -399,7 +747,210 @@ internal sealed record NodeInfo(
             null,
             null,
             null,
-            null);
+            null,
+            BuildTableLimitDetails(table));
+
+    private static string? BuildLimitDetails(Test test)
+    {
+        if (test.Parameters == null && (test.Debug == null || test.Debug.Count == 0))
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+
+        var parameters = test.Parameters;
+        if (parameters != null)
+        {
+            AddLimitAttribute(parts, "Options", parameters.Options);
+            AddLimitAttribute(parts, "Mode", parameters.Mode);
+            AddLimitAttribute(parts, "Function", parameters.Function);
+            AddLimitAttribute(parts, "Library", parameters.Library);
+            AddLimitAttribute(parts, "Name", parameters.Name);
+
+            if (parameters.AdditionalAttributes != null)
+            {
+                foreach (var attribute in parameters.AdditionalAttributes)
+                {
+                    if (attribute == null)
+                    {
+                        continue;
+                    }
+
+                    if (IsLimitName(attribute.Name))
+                    {
+                        parts.Add($"{attribute.Name}={attribute.Value}");
+                    }
+                }
+            }
+
+            if (parameters.AcquisitionChannel1 != null)
+            {
+                AddChannelLimits(parts, "Acq1", parameters.AcquisitionChannel1);
+            }
+
+            if (parameters.AcquisitionChannel2 != null)
+            {
+                AddChannelLimits(parts, "Acq2", parameters.AcquisitionChannel2);
+            }
+
+            if (parameters.AcquisitionChannel3 != null)
+            {
+                AddChannelLimits(parts, "Acq3", parameters.AcquisitionChannel3);
+            }
+
+            if (parameters.StimulusChannel1 != null)
+            {
+                AddStimulusLimits(parts, "Sti1", parameters.StimulusChannel1);
+            }
+
+            if (parameters.StimulusChannel2 != null)
+            {
+                AddStimulusLimits(parts, "Sti2", parameters.StimulusChannel2);
+            }
+
+            if (parameters.Records != null)
+            {
+                foreach (var record in parameters.Records)
+                {
+                    AddRecordLimits(parts, record, prefix: "ParamRec");
+                }
+            }
+        }
+
+        if (test.Debug != null)
+        {
+            foreach (var debug in test.Debug)
+            {
+                if (!string.IsNullOrWhiteSpace(debug.RangeLowerLimit) ||
+                    !string.IsNullOrWhiteSpace(debug.RangeUpperLimit) ||
+                    !string.IsNullOrWhiteSpace(debug.LowerLimit) ||
+                    !string.IsNullOrWhiteSpace(debug.UpperLimit))
+                {
+                    parts.Add($"Debug[{debug.Id ?? "-"}] RangeLower={debug.RangeLowerLimit} RangeUpper={debug.RangeUpperLimit} Lower={debug.LowerLimit} Upper={debug.UpperLimit}");
+                }
+            }
+        }
+
+        if (parts.Count == 0)
+        {
+            return null;
+        }
+
+        return string.Join(" | ", parts);
+    }
+
+    private static string? BuildTableLimitDetails(Table table)
+    {
+        if (table.Records == null || table.Records.Count == 0)
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+        foreach (var record in table.Records)
+        {
+            AddRecordLimits(parts, record, prefix: "Rec");
+        }
+
+        return parts.Count == 0 ? null : string.Join(" | ", parts);
+    }
+
+    private static void AddRecordLimits(List<string> parts, Record record, string prefix)
+    {
+        if (record == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(record.LowerLimit) &&
+            string.IsNullOrWhiteSpace(record.UpperLimit) &&
+            string.IsNullOrWhiteSpace(record.Unit) &&
+            string.IsNullOrWhiteSpace(record.Voltage) &&
+            string.IsNullOrWhiteSpace(record.Resistance))
+        {
+            return;
+        }
+
+        var id = record.Id ?? record.Index ?? record.Variable ?? record.Text ?? "-";
+        parts.Add($"{prefix}[{id}] Lower={record.LowerLimit} Upper={record.UpperLimit} Unit={record.Unit} V={record.Voltage} R={record.Resistance}");
+    }
+
+    private static void AddChannelLimits(List<string> parts, string label, AcquisitionChannel channel)
+    {
+        if (channel == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(channel.LowerVoltageLimit) ||
+            !string.IsNullOrWhiteSpace(channel.UpperVoltageLimit))
+        {
+            parts.Add($"{label}.VoltageLimits={channel.LowerVoltageLimit}..{channel.UpperVoltageLimit}");
+        }
+
+        if (channel.AdditionalAttributes != null)
+        {
+            foreach (var attribute in channel.AdditionalAttributes)
+            {
+                if (attribute == null)
+                {
+                    continue;
+                }
+
+                if (IsLimitName(attribute.Name))
+                {
+                    parts.Add($"{label}.{attribute.Name}={attribute.Value}");
+                }
+            }
+        }
+    }
+
+    private static void AddStimulusLimits(List<string> parts, string label, StimulusChannel channel)
+    {
+        if (channel == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(channel.Voltage) ||
+            !string.IsNullOrWhiteSpace(channel.Current) ||
+            !string.IsNullOrWhiteSpace(channel.VoltageLimit))
+        {
+            parts.Add($"{label}.Stimulus V={channel.Voltage} I={channel.Current} VLimit={channel.VoltageLimit}");
+        }
+    }
+
+    private static void AddLimitAttribute(List<string> parts, string label, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        if (IsLimitName(label) || IsLimitName(value))
+        {
+            parts.Add($"{label}={value}");
+        }
+    }
+
+    private static bool IsLimitName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        var normalized = name.Trim();
+        return normalized.Contains("Limit", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("Lower", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("Upper", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("Min", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("Max", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("Range", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("Tol", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("Threshold", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 /// <summary>
@@ -441,15 +992,23 @@ internal static class NodeIndexer
         return map;
     }
 
-    private static string BuildKey(NodeInfo node)
+    public static string BuildKey(NodeInfo node)
     {
-        if (!string.IsNullOrWhiteSpace(node.Id))
-        {
-            return $"{node.Kind}:id:{node.Id}";
-        }
-
+        var idPart = node.Id ?? string.Empty;
         var namePart = node.Name ?? string.Empty;
         var filePart = node.File ?? string.Empty;
-        return $"{node.Kind}:path:{node.Path}:{namePart}:{filePart}";
+        return $"{node.Kind}:path:{node.Path}:{idPart}:{namePart}:{filePart}";
     }
+}
+
+internal sealed record DisplayRow(NodeInfo Node, int Depth, string Key, string MatchKey);
+
+internal sealed record AlignedRow(DisplayRow? OldRow, DisplayRow? NewRow, DiffStatus Status, ChangeEntry? Change);
+
+internal enum DiffStatus
+{
+    Unchanged,
+    Added,
+    Removed,
+    Changed
 }

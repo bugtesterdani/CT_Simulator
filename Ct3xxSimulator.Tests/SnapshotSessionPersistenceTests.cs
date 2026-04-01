@@ -34,6 +34,7 @@ public sealed class SnapshotSessionPersistenceTests
                     3000,
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["ADC_IN"] = "4" },
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["$Result"] = "PASS" },
                     new List<string> { "RELAIS=closed" },
                     new List<string>(),
                     new ExternalDeviceStateSnapshot(

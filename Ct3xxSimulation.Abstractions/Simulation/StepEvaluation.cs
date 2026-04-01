@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Ct3xxSimulator.Simulation;
 
 /// <summary>
@@ -17,6 +20,7 @@ public sealed class StepEvaluation
     /// <param name="details">Additional evaluation detail text.</param>
     /// <param name="traces">The resolved connection traces that explain the signal path.</param>
     /// <param name="curvePoints">The chartable samples captured for the step.</param>
+    /// <param name="variables">The variable snapshot captured for the step.</param>
     public StepEvaluation(
         string stepName,
         TestOutcome outcome,
@@ -26,7 +30,8 @@ public sealed class StepEvaluation
         string? unit = null,
         string? details = null,
         IReadOnlyList<StepConnectionTrace>? traces = null,
-        IReadOnlyList<MeasurementCurvePoint>? curvePoints = null)
+        IReadOnlyList<MeasurementCurvePoint>? curvePoints = null,
+        IReadOnlyDictionary<string, string>? variables = null)
     {
         StepName = stepName;
         Outcome = outcome;
@@ -37,6 +42,7 @@ public sealed class StepEvaluation
         Details = details;
         Traces = traces ?? Array.Empty<StepConnectionTrace>();
         CurvePoints = curvePoints ?? Array.Empty<MeasurementCurvePoint>();
+        Variables = variables ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -83,4 +89,9 @@ public sealed class StepEvaluation
     /// Gets the chartable samples captured for the step.
     /// </summary>
     public IReadOnlyList<MeasurementCurvePoint> CurvePoints { get; }
+
+    /// <summary>
+    /// Gets the variable snapshot captured for the step.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Variables { get; }
 }

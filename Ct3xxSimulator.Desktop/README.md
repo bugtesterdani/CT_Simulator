@@ -23,6 +23,7 @@ WPF-Oberflaeche fuer den CT3xx-Simulator.
 - Live-Zustandsfenster mit `Kompakt`- und `Expert`-Ansicht
 - Export als `PDF`, `JSON`, `CSV`
 - Concurrent-Snapshot-Anzeige im Live-Zustandsfenster
+- Live-Zustandsfenster zeigt Variablenwerte
 - Snapshot-Timeline im Hauptfenster
 - Snapshot-Session speichern und laden (`*.snapshot.json`)
 
@@ -44,6 +45,7 @@ WPF-Oberflaeche fuer den CT3xx-Simulator.
 - In der Verbindungsansicht oeffnen nur echte Unterbaugruppen mit internem Pfad ein weiteres Fenster.
 - Ein Testschritt wird jetzt zunaechst nur ausgewaehlt. Die Verbindungsansicht oeffnet erst per Doppelklick auf den Testschritt.
 - Ueber den Button `Auswertungsanalyse` oeffnet sich fuer den aktuell ausgewaehlten Testschritt eine Auswertungsansicht mit `Ist`, `Soll Min`, `Soll Max` und vorhandenen Kurven.
+- Die Auswertungsansicht enthaelt zusaetzlich einen Variablenreiter fuer den aktuellen Snapshot.
 - Die Testschritt-Liste selbst ist bewusst kompakt gehalten und zeigt nur noch `Struktur`, `Status`, `Ist` und `Bereich`.
 - Bei AM2-/Waveform-Schritten werden in der Auswertungsansicht auch die verfuegbaren Eingangs-/Ausgangskurven des Schritts dargestellt; vorhandene Sollgrenzen werden als Linien und als zulaessiger Bereich eingeblendet.
 - Die Auswertungsansicht ist fuer CSV-gestuetzte Laeufe in die Reiter `Simulation`, `CSV` und `Vergleich` aufgeteilt.

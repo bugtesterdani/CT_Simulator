@@ -15,7 +15,7 @@ public class SimulationContext
     /// <summary>
     /// Gets the textual result of the last completed test or step.
     /// </summary>
-    public string LastResult { get; private set; } = "PASS";
+    public string LastResult { get; private set; } = "NORESULT";
     /// <summary>
     /// Gets the active CT3xx program directory.
     /// </summary>
@@ -43,6 +43,8 @@ public class SimulationContext
         DefineImplicit("$LoggingPrefix");
         DefineImplicit("$LoggingSuffix");
         DefineImplicit("$BoardIndex");
+        SetValue("$Result", "NORESULT");
+        SetValue("$DUTResult", "NORESULT");
     }
 
     /// <summary>
@@ -66,6 +68,17 @@ public class SimulationContext
     {
         _scopes.Add(new SimulationScope());
         return new ScopeHandle(this);
+    }
+
+    /// <summary>
+    /// Ensures a variable is defined in the current scope.
+    /// </summary>
+    public void DefineInCurrentScope(string name)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            CurrentScope.Definitions.Add(name.Trim());
+        }
     }
 
     /// <summary>
@@ -119,12 +132,12 @@ public class SimulationContext
     /// </summary>
     public void SetValue(string name, object? value)
     {
-        if (!VariableAddress.TryParse(name, out var address))
+        if (!TryParseRelativeAddress(name, out var address, out var scopeIndex))
         {
             address = new VariableAddress(name.Trim(), null);
         }
 
-        var scope = ResolveScope(address.Name);
+        var scope = ResolveScope(address.Name, scopeIndex);
         if (scope == null)
         {
             if (IsImplicitVariable(address.Name))
@@ -146,7 +159,7 @@ public class SimulationContext
     /// </summary>
     public void SetValue(VariableAddress address, object? value)
     {
-        var scope = ResolveScope(address.Name);
+        var scope = ResolveScope(address.Name, scopeIndex: null);
         if (scope == null)
         {
             if (IsImplicitVariable(address.Name))
@@ -168,12 +181,12 @@ public class SimulationContext
     /// </summary>
     public void SetValueInOuterScope(string name, object? value)
     {
-        if (!VariableAddress.TryParse(name, out var address))
+        if (!TryParseRelativeAddress(name, out var address, out var scopeIndex))
         {
             address = new VariableAddress(name.Trim(), null);
         }
 
-        var scope = ResolveOuterScope(address.Name);
+        var scope = ResolveOuterScope(address.Name, scopeIndex);
         if (scope == null)
         {
             if (IsImplicitVariable(address.Name))
@@ -206,6 +219,17 @@ public class SimulationContext
             return false;
         }
 
+        if (TryParseRelativeAddress(name, out var address, out var scopeIndex))
+        {
+            if (scopeIndex.HasValue)
+            {
+                return scopeIndex.Value >= 0 &&
+                       scopeIndex.Value < _scopes.Count &&
+                       (_scopes[scopeIndex.Value].Definitions.Contains(address.Name) ||
+                        IsImplicitVariable(address.Name));
+            }
+        }
+
         for (var index = _scopes.Count - 2; index >= 0; index--)
         {
             if (_scopes[index].Definitions.Contains(name.Trim()))
@@ -220,13 +244,35 @@ public class SimulationContext
     /// <summary>
     /// Determines whether a variable is defined in any scope.
     /// </summary>
-    public bool IsDefined(VariableAddress address) => ResolveScope(address.Name) != null;
+    public bool IsDefined(VariableAddress address) => ResolveScope(address.Name, scopeIndex: null) != null;
 
-    private SimulationScope? ResolveScope(string name)
+    private SimulationScope? ResolveScope(string name, int? scopeIndex)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             return null;
+        }
+
+        if (TryExtractRelativeName(name, out var relativeName, out var relativeScopeIndex))
+        {
+            name = relativeName;
+            scopeIndex = relativeScopeIndex;
+        }
+
+        if (scopeIndex.HasValue)
+        {
+            var targetIndex = scopeIndex.Value;
+            if (targetIndex < 0 || targetIndex >= _scopes.Count)
+            {
+                return null;
+            }
+
+            if (_scopes[targetIndex].Definitions.Contains(name.Trim()))
+            {
+                return _scopes[targetIndex];
+            }
+
+            return IsImplicitVariable(name) ? GlobalScope : null;
         }
 
         for (var index = _scopes.Count - 1; index >= 0; index--)
@@ -240,11 +286,33 @@ public class SimulationContext
         return null;
     }
 
-    private SimulationScope? ResolveOuterScope(string name)
+    private SimulationScope? ResolveOuterScope(string name, int? scopeIndex)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             return null;
+        }
+
+        if (TryExtractRelativeName(name, out var relativeName, out var relativeScopeIndex))
+        {
+            name = relativeName;
+            scopeIndex = relativeScopeIndex;
+        }
+
+        if (scopeIndex.HasValue)
+        {
+            var targetIndex = scopeIndex.Value;
+            if (targetIndex < 0 || targetIndex >= _scopes.Count)
+            {
+                return null;
+            }
+
+            if (_scopes[targetIndex].Definitions.Contains(name.Trim()))
+            {
+                return _scopes[targetIndex];
+            }
+
+            return IsImplicitVariable(name) ? GlobalScope : null;
         }
 
         for (var index = _scopes.Count - 2; index >= 0; index--)
@@ -302,7 +370,7 @@ public class SimulationContext
     /// </summary>
     public object? GetValue(VariableAddress address)
     {
-        var scope = ResolveScope(address.Name);
+        var scope = ResolveScope(address.Name, scopeIndex: null);
         if (scope == null)
         {
             return null;
@@ -323,12 +391,28 @@ public class SimulationContext
     /// </summary>
     public object? GetValue(string? name)
     {
-        if (!VariableAddress.TryParse(name, out var address))
+        if (!TryParseRelativeAddress(name, out var address, out var scopeIndex))
+        {
+            if (!VariableAddress.TryParse(name, out address))
+            {
+                return null;
+            }
+        }
+
+        var scope = ResolveScope(address.Name, scopeIndex);
+        if (scope == null)
         {
             return null;
         }
 
-        return GetValue(address);
+        if (address.HasIndex)
+        {
+            return scope.Arrays.TryGetValue(address.Name, out var array)
+                ? array.Get(address.Index!.Value)
+                : null;
+        }
+
+        return scope.Scalars.TryGetValue(address.Name, out var value) ? value : null;
     }
 
     /// <summary>
@@ -341,8 +425,45 @@ public class SimulationContext
             return null;
         }
 
-        var scope = ResolveScope(name.Trim());
+        var scope = ResolveScope(name.Trim(), scopeIndex: null);
         return scope != null && scope.Arrays.TryGetValue(name.Trim(), out var array) ? array : null;
+    }
+
+    /// <summary>
+    /// Creates a flattened snapshot of currently visible scalar and array variables.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> SnapshotVariables(ExpressionEvaluator evaluator)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        for (var index = _scopes.Count - 1; index >= 0; index--)
+        {
+            var scope = _scopes[index];
+            foreach (var scalar in scope.Scalars)
+            {
+                if (result.ContainsKey(scalar.Key))
+                {
+                    continue;
+                }
+
+                result[scalar.Key] = evaluator.ToText(scalar.Value);
+            }
+
+            foreach (var array in scope.Arrays)
+            {
+                foreach (var item in array.Value.Snapshot())
+                {
+                    var key = $"{array.Key}[{item.Key}]";
+                    if (result.ContainsKey(key))
+                    {
+                        continue;
+                    }
+
+                    result[key] = evaluator.ToText(item.Value);
+                }
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -375,6 +496,72 @@ public class SimulationContext
             float f => f.ToString("0.###", CultureInfo.InvariantCulture),
             _ => value.ToString() ?? string.Empty
         };
+    }
+
+    private bool TryParseRelativeAddress(string? raw, out VariableAddress address, out int? scopeIndex)
+    {
+        address = default;
+        scopeIndex = null;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        var trimmed = raw.Trim();
+        var level = 0;
+        while (trimmed.StartsWith(@"..\", StringComparison.Ordinal))
+        {
+            level++;
+            trimmed = trimmed[3..];
+        }
+
+        if (level == 0)
+        {
+            return false;
+        }
+
+        if (!VariableAddress.TryParse(trimmed, out address))
+        {
+            address = new VariableAddress(trimmed, null);
+        }
+
+        scopeIndex = _scopes.Count - 1 - level;
+        if (scopeIndex.Value < 0)
+        {
+            scopeIndex = 0;
+        }
+        return true;
+    }
+
+    private bool TryExtractRelativeName(string raw, out string name, out int? scopeIndex)
+    {
+        name = raw;
+        scopeIndex = null;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        var trimmed = raw.Trim();
+        var level = 0;
+        while (trimmed.StartsWith(@"..\", StringComparison.Ordinal))
+        {
+            level++;
+            trimmed = trimmed[3..];
+        }
+
+        if (level == 0)
+        {
+            return false;
+        }
+
+        name = trimmed;
+        scopeIndex = _scopes.Count - 1 - level;
+        if (scopeIndex.Value < 0)
+        {
+            scopeIndex = 0;
+        }
+        return true;
     }
 }
 

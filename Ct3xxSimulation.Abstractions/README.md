@@ -31,6 +31,8 @@ Das Projekt ist bewusst ohne WPF-Abhaengigkeiten gehalten und dient als gemeinsa
   - `interface_response`
   - `process_exit`
 
+Zusaetzlich enthalten Snapshots jetzt die aktuellen Variablenwerte, damit Live-Zustand und Auswertungsanalyse den Variablenstand anzeigen koennen.
+
 Damit koennen Frontends spaeter echte Concurrent-Timelines und Snapshot-Navigation aufbauen, ohne eigene Annahmen ueber den Simulationskern treffen zu muessen.
 
 Mit Stufe 3 der Concurrent-Roadmap tragen diese Snapshots jetzt auch eine echte gemeinsame Simulationszeit fuer parallele Branches. Frontends bekommen dadurch keine rein serielle Pseudo-Zeit mehr, sondern globale Zustandswechsel entlang einer gemeinsamen Concurrent-Uhr.

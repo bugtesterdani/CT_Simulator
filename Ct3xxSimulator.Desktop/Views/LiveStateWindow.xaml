@@ -49,6 +49,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="160"/>
+                            <RowDefinition Height="160"/>
                         </Grid.RowDefinitions>
                         <DataGrid x:Name="CompactSignalsGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
                             <DataGrid.Columns>
@@ -60,6 +61,12 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Messbus" Binding="{Binding Name}" Width="*"/>
                                 <DataGridTextColumn Header="Signal" Binding="{Binding Value}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DataGrid x:Name="CompactVariablesGrid" Grid.Row="2" Margin="0,8,0,0" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Variable" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
@@ -220,6 +227,16 @@
                                 <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
                                 <DataGridTextColumn Header="Aktuell" Binding="{Binding CurrentItem}" Width="1.3*"/>
                                 <DataGridTextColumn Header="Details" Binding="{Binding Details}" Width="1.2*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Variablen">
+                    <Grid Margin="8">
+                        <DataGrid x:Name="VariablesGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Variable" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Wert" Binding="{Binding Value}" Width="*"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

@@ -24,6 +24,7 @@ public sealed class StepResultViewModel
         IReadOnlyList<StepConnectionTrace>? traces = null,
         IReadOnlyList<MeasurementCurvePoint>? curvePoints = null,
         int? timelineIndex = null,
+        IReadOnlyDictionary<string, string>? variables = null,
         int? csvRowNumber = null,
         string? csvDescription = null,
         string? csvMessage = null,
@@ -46,6 +47,7 @@ public sealed class StepResultViewModel
         Traces = traces ?? Array.Empty<StepConnectionTrace>();
         CurvePoints = curvePoints ?? Array.Empty<MeasurementCurvePoint>();
         TimelineIndex = timelineIndex;
+        Variables = variables ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         CsvRowNumber = csvRowNumber;
         CsvDescription = csvDescription ?? string.Empty;
         CsvMessage = csvMessage ?? string.Empty;
@@ -99,6 +101,10 @@ public sealed class StepResultViewModel
     /// Gets the timeline index.
     /// </summary>
     public int? TimelineIndex { get; }
+    /// <summary>
+    /// Gets the variables captured for the step snapshot.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Variables { get; }
     /// <summary>
     /// Gets the matched CSV row number, if any.
     /// </summary>

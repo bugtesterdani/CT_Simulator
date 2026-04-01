@@ -86,6 +86,11 @@ public partial class EvaluationDetailsWindow : Window
         ComparisonSummaryTextBlock.Text = result.HasCsvReplayMatch ? result.ComparisonSummary : "Kein CSV-Match fuer diesen Schritt vorhanden.";
         ComparisonModeTextBlock.Text = BuildComparisonModeText(result);
 
+        VariablesDataGrid.ItemsSource = result.Variables
+            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new SimulationStateItemViewModel(item.Key, item.Value))
+            .ToList();
+
         var labels = result.CurvePoints
             .Select(point => point.Label)
             .Where(label => !string.IsNullOrWhiteSpace(label))

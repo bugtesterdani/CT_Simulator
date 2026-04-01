@@ -1,4 +1,5 @@
 ﻿// Provides Simulation Snapshot Entry for the export layer export support.
+using System;
 using System.Collections.Generic;
 
 namespace Ct3xxSimulator.Export;
@@ -17,6 +18,7 @@ public sealed class SimulationSnapshotEntry
         long currentTimeMs,
         IReadOnlyDictionary<string, string> signals,
         IReadOnlyDictionary<string, string> measurementBuses,
+        IReadOnlyDictionary<string, string>? variables,
         IReadOnlyList<string> relayStates,
         IReadOnlyList<string> activeFaults,
         SimulationSnapshotExternalDeviceState externalDeviceState,
@@ -30,6 +32,7 @@ public sealed class SimulationSnapshotEntry
         CurrentTimeMs = currentTimeMs;
         Signals = signals;
         MeasurementBuses = measurementBuses;
+        Variables = variables ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         RelayStates = relayStates;
         ActiveFaults = activeFaults;
         ExternalDeviceState = externalDeviceState;
@@ -59,6 +62,10 @@ public sealed class SimulationSnapshotEntry
     /// Gets the measurement buses.
     /// </summary>
     public IReadOnlyDictionary<string, string> MeasurementBuses { get; }
+    /// <summary>
+    /// Gets the variables.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Variables { get; }
     /// <summary>
     /// Gets the relay states.
     /// </summary>

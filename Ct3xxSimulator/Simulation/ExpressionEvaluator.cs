@@ -88,6 +88,16 @@ public class ExpressionEvaluator
             return functionResult;
         }
 
+        if (trimmed.StartsWith(@"..\", StringComparison.Ordinal))
+        {
+            if (!_context.IsDefinedInOuterScope(trimmed))
+            {
+                throw new UndefinedVariableException(trimmed);
+            }
+
+            return _context.GetValue(trimmed);
+        }
+
         if (VariableAddress.TryParse(trimmed, out var address))
         {
             if (!_context.IsDefined(address))
@@ -126,6 +136,34 @@ public class ExpressionEvaluator
 
         var trimmed = condition.Trim();
 
+        var orParts = SplitLogical(trimmed, "OR");
+        if (orParts.Count > 1)
+        {
+            foreach (var part in orParts)
+            {
+                if (EvaluateCondition(part))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        var andParts = SplitLogical(trimmed, "AND");
+        if (andParts.Count > 1)
+        {
+            foreach (var part in andParts)
+            {
+                if (!EvaluateCondition(part))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         if (trimmed.Equals("TRUE", StringComparison.OrdinalIgnoreCase))
         {
             return true;
@@ -148,7 +186,15 @@ public class ExpressionEvaluator
             var left = trimmed[..opIndex].Trim();
             var right = trimmed[(opIndex + op.Length)..].Trim();
             var leftValue = Evaluate(left);
-            var rightValue = Evaluate(right);
+            object? rightValue;
+            try
+            {
+                rightValue = Evaluate(right);
+            }
+            catch (UndefinedVariableException)
+            {
+                rightValue = TrimQuotes(right);
+            }
 
             if (op is "==" or "!=")
             {
@@ -376,6 +422,108 @@ public class ExpressionEvaluator
     private static List<string> SplitArguments(string text)
     {
         return SplitTopLevel(text, ',');
+    }
+
+    /// <summary>
+    /// Split a logical expression by a keyword while respecting nested parentheses and quotes.
+    /// </summary>
+    private static List<string> SplitLogical(string text, string keyword)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return result;
+        }
+
+        var start = 0;
+        var depth = 0;
+        var inSingleQuotes = false;
+        var inDoubleQuotes = false;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+            if (ch == '\'' && !inDoubleQuotes)
+            {
+                inSingleQuotes = !inSingleQuotes;
+                continue;
+            }
+
+            if (ch == '"' && !inSingleQuotes)
+            {
+                inDoubleQuotes = !inDoubleQuotes;
+                continue;
+            }
+
+            if (inSingleQuotes || inDoubleQuotes)
+            {
+                continue;
+            }
+
+            if (ch == '(')
+            {
+                depth++;
+                continue;
+            }
+
+            if (ch == ')')
+            {
+                depth--;
+                continue;
+            }
+
+            if (depth != 0)
+            {
+                continue;
+            }
+
+            if (IsKeywordAt(text, i, keyword))
+            {
+                var part = text[start..i].Trim();
+                if (part.Length > 0)
+                {
+                    result.Add(part);
+                }
+
+                i += keyword.Length - 1;
+                start = i + 1;
+            }
+        }
+
+        var last = text[start..].Trim();
+        if (last.Length > 0)
+        {
+            result.Add(last);
+        }
+
+        return result;
+    }
+
+    private static bool IsKeywordAt(string text, int index, string keyword)
+    {
+        if (index < 0 || index + keyword.Length > text.Length)
+        {
+            return false;
+        }
+
+        if (!text.AsSpan(index, keyword.Length).Equals(keyword.AsSpan(), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var before = index > 0 ? text[index - 1] : ' ';
+        var after = index + keyword.Length < text.Length ? text[index + keyword.Length] : ' ';
+        if (!char.IsWhiteSpace(before) && before != '(')
+        {
+            return false;
+        }
+
+        if (!char.IsWhiteSpace(after) && after != ')')
+        {
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>

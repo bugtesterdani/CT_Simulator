@@ -14,8 +14,9 @@ class PipeClosedError(Exception):
     pass
 
 class PipeHandler:
+    """Provides helpers for the named pipe protocol."""
+
     @staticmethod
-    """Represents PipeHandler."""
     def create_server(pipe_name: str) -> int:
         """Create a single-client message pipe compatible with the C# simulator."""
         return win32pipe.CreateNamedPipe(

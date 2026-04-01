@@ -98,6 +98,7 @@ public partial class MainWindow
                 evaluation.Traces,
                 evaluation.CurvePoints,
                 _timeline.Count == 0 ? null : _timeline.Count - 1,
+                evaluation.Variables,
                 csvMatch?.CsvStep.RowNumber,
                 csvMatch?.CsvStep.Description,
                 csvMatch?.CsvStep.Message,
@@ -1003,33 +1004,6 @@ public partial class MainWindow
         StepResults.Clear();
         StepTreeRootNodes.Clear();
         _stepEvaluationHistory.Clear();
-        foreach (var step in document.Steps)
-        {
-            var result = new StepResultViewModel(
-                step.StepName,
-                step.Outcome,
-                step.MeasuredValue,
-                step.LowerLimit,
-                step.UpperLimit,
-                step.Unit,
-                step.Details,
-                step.Traces,
-                step.CurvePoints,
-                step.TimelineIndex,
-                step.CsvRowNumber,
-                step.CsvDescription,
-                step.CsvMessage,
-                step.CsvOutcome,
-                step.CsvMeasuredValue,
-                step.CsvLowerLimit,
-                step.CsvUpperLimit,
-                step.CsvMatchReason,
-                step.CsvDisplayMode,
-                step.CsvLogFlags,
-                step.CsvLogExpectedForOutcome);
-            StepResults.Add(result);
-            _stepEvaluationHistory.Add(new StepEvaluationHistoryEntry(null, result));
-        }
 
         Logs.Clear();
         foreach (var log in document.Logs)
@@ -1045,6 +1019,40 @@ public partial class MainWindow
             var timelineEntry = new SimulationTimelineEntry(entry.Index, snapshot);
             _timeline.Add(timelineEntry);
             TimelineEntries.Add(timelineEntry);
+        }
+
+        foreach (var step in document.Steps)
+        {
+            var variableSnapshot = step.TimelineIndex.HasValue &&
+                                   step.TimelineIndex.Value >= 0 &&
+                                   step.TimelineIndex.Value < _timeline.Count
+                ? _timeline[step.TimelineIndex.Value].Snapshot.Variables
+                : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var result = new StepResultViewModel(
+                step.StepName,
+                step.Outcome,
+                step.MeasuredValue,
+                step.LowerLimit,
+                step.UpperLimit,
+                step.Unit,
+                step.Details,
+                step.Traces,
+                step.CurvePoints,
+                step.TimelineIndex,
+                variableSnapshot,
+                step.CsvRowNumber,
+                step.CsvDescription,
+                step.CsvMessage,
+                step.CsvOutcome,
+                step.CsvMeasuredValue,
+                step.CsvLowerLimit,
+                step.CsvUpperLimit,
+                step.CsvMatchReason,
+                step.CsvDisplayMode,
+                step.CsvLogFlags,
+                step.CsvLogExpectedForOutcome);
+            StepResults.Add(result);
+            _stepEvaluationHistory.Add(new StepEvaluationHistoryEntry(null, result));
         }
         RefreshTimelineAnnotations();
 

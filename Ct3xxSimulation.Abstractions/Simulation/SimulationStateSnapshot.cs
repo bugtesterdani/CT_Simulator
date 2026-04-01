@@ -14,6 +14,7 @@ public sealed class SimulationStateSnapshot
     /// <param name="currentTimeMs">The current simulated time in milliseconds.</param>
     /// <param name="signals">The logical signal values visible to the simulator.</param>
     /// <param name="measurementBuses">The measurement-bus values visible to the simulator.</param>
+    /// <param name="variables">The variable values visible to the simulator.</param>
     /// <param name="relayStates">The formatted relay states.</param>
     /// <param name="activeFaults">The currently active faults.</param>
     /// <param name="externalDeviceState">The external device state snapshot.</param>
@@ -26,6 +27,7 @@ public sealed class SimulationStateSnapshot
         long currentTimeMs,
         IReadOnlyDictionary<string, string> signals,
         IReadOnlyDictionary<string, string> measurementBuses,
+        IReadOnlyDictionary<string, string> variables,
         IReadOnlyList<string> relayStates,
         IReadOnlyList<string>? activeFaults = null,
         ExternalDeviceStateSnapshot? externalDeviceState = null,
@@ -38,6 +40,7 @@ public sealed class SimulationStateSnapshot
         CurrentTimeMs = currentTimeMs;
         Signals = signals;
         MeasurementBuses = measurementBuses;
+        Variables = variables;
         RelayStates = relayStates;
         ActiveFaults = activeFaults ?? Array.Empty<string>();
         ExternalDeviceState = externalDeviceState ?? ExternalDeviceStateSnapshot.Empty;
@@ -66,6 +69,11 @@ public sealed class SimulationStateSnapshot
     /// Gets the measurement-bus values visible to the simulator.
     /// </summary>
     public IReadOnlyDictionary<string, string> MeasurementBuses { get; }
+
+    /// <summary>
+    /// Gets the variable values visible to the simulator.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Variables { get; }
 
     /// <summary>
     /// Gets the formatted relay state list.

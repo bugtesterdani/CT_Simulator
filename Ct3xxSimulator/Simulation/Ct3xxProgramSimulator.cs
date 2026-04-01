@@ -50,6 +50,7 @@ public partial class Ct3xxProgramSimulator
     private int? _activeConcurrentBranchIndex;
     private ActiveWaveformSession? _activeWaveformSession;
     private readonly List<Group> _groupStack = new();
+    private readonly List<GroupOutcomeState> _groupOutcomeStack = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Ct3xxProgramSimulator"/> class.
@@ -199,6 +200,9 @@ public partial class Ct3xxProgramSimulator
             return;
         }
 
+        using var scope = _context.PushScope();
+        _context.DefineInCurrentScope("$LoopCounter");
+
         try
         {
             EnsureConditionContext(group.ExecCondition);
@@ -217,7 +221,8 @@ public partial class Ct3xxProgramSimulator
 
         _observer.OnGroupStarted(group);
         _groupStack.Add(group);
-        using var scope = _context.PushScope();
+        var outcomeState = new GroupOutcomeState(group.LogLoops);
+        _groupOutcomeStack.Add(outcomeState);
         var repeatEnabled = !string.IsNullOrWhiteSpace(group.RepeatCondition);
         var iteration = 0;
         var previousConcurrentGroupName = _activeConcurrentGroupName;
@@ -226,6 +231,7 @@ public partial class Ct3xxProgramSimulator
             CheckCancellation();
             iteration++;
             _context.SetValue("$LoopCounter", iteration);
+            outcomeState.BeginIteration();
             if (string.Equals(group.ExecMode, "concurrent", StringComparison.OrdinalIgnoreCase))
             {
                 _activeConcurrentGroupName = group.Name ?? group.Id ?? "concurrent";
@@ -236,6 +242,7 @@ public partial class Ct3xxProgramSimulator
             {
                 ExecuteSequenceItems(group.Items);
             }
+            outcomeState.EndIteration();
         }
         while (repeatEnabled && iteration < 10 && SafeEvaluateRepeatCondition(group.RepeatCondition));
 
@@ -245,6 +252,11 @@ public partial class Ct3xxProgramSimulator
         }
 
         _groupStack.RemoveAt(_groupStack.Count - 1);
+        _groupOutcomeStack.RemoveAt(_groupOutcomeStack.Count - 1);
+        if (outcomeState.TryGetFinalOutcome(out var finalOutcome))
+        {
+            _context.MarkOutcome(finalOutcome);
+        }
         _observer.OnGroupCompleted(group);
         _executionController.WaitAfterGroup(group, _cancellationToken);
     }
@@ -329,6 +341,7 @@ public partial class Ct3xxProgramSimulator
         }
 
         using var scope = _context.PushScope();
+        _context.DefineInCurrentScope("$LoopCounter");
         var runs = iterations <= 0 ? 1 : iterations;
         for (var run = 1; run <= runs; run++)
         {
@@ -438,6 +451,7 @@ public partial class Ct3xxProgramSimulator
             outcome = TestOutcome.Error;
         }
 
+        RecordOutcomeForGroups(outcome);
         _context.MarkOutcome(outcome);
         _observer.OnTestCompleted(test, outcome);
         SampleActiveWaveformSignals();
@@ -463,7 +477,6 @@ public partial class Ct3xxProgramSimulator
         }
 
         var assignments = new List<string>();
-        var traces = new List<StepConnectionTrace>();
         foreach (var table in parameters.Tables)
         {
             foreach (var record in table.Records)
@@ -484,31 +497,27 @@ public partial class Ct3xxProgramSimulator
                 var assignmentText = $"{address} := {_evaluator.ToText(value)}";
                 assignments.Add(assignmentText);
                 _observer.OnMessage(assignmentText);
-                var signalName = ExtractSignalName(record.Destination);
-                if (!string.IsNullOrWhiteSpace(signalName))
-                {
-                    if (_wireVizResolver == null ||
-                        _wireVizResolver.TryResolve(signalName!, out _) ||
-                        _wireVizResolver.TryResolveRuntimeTargets(signalName!, _signalState, _signalChangedAtMs, _simulatedTimeMs, _faults, true, out _))
-                    {
-                        RememberSignal(signalName!, value);
-                    }
-
-                    TryWriteExternalSignal(record.Destination, value);
-                    traces.AddRange(CollectSignalTraces(signalName!, "Ansteuerung"));
-                }
             }
         }
 
         PublishStepEvaluation(
             test,
             TestOutcome.Pass,
-            details: assignments.Count == 0 ? null : string.Join(", ", assignments),
-            traces: traces
-                .GroupBy(trace => $"{trace.Title}|{string.Join(">", trace.Nodes)}", StringComparer.OrdinalIgnoreCase)
-                .Select(group => group.First())
-                .ToList());
+            details: assignments.Count == 0 ? null : string.Join(", ", assignments));
         return TestOutcome.Pass;
+    }
+
+    private void RecordOutcomeForGroups(TestOutcome outcome)
+    {
+        if (_groupOutcomeStack.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var state in _groupOutcomeStack)
+        {
+            state.RecordOutcome(outcome);
+        }
     }
 
     /// <summary>
@@ -538,7 +547,7 @@ public partial class Ct3xxProgramSimulator
 
                 var externalValue = ResolveExternalMeasurement(record);
                 var manualValue = externalValue ?? ResolveMeasurementInput(test, record);
-                var value = manualValue ?? _evaluator.Evaluate(record.Expression);
+                var value = manualValue ?? EvaluateEvaluationExpression(record.Expression);
                 var traces = CollectRecordTraces(record);
                 var measured = _evaluator.ToDouble(value);
                 RecordCurvePoint(label: record.DrawingReference ?? record.Expression ?? record.Id ?? "Messung", value: measured, unit: record.Unit);
@@ -548,13 +557,29 @@ public partial class Ct3xxProgramSimulator
                 var label = record.DrawingReference ?? record.Expression ?? record.Id ?? "Measurement";
                 var unit = record.Unit ?? string.Empty;
                 string valueDisplay;
+                var messageDisplay = ResolveRecordMessage(record);
 
                 if (!measured.HasValue)
                 {
-                    pass = false;
                     var textValue = _evaluator.ToText(value);
                     var fallback = string.IsNullOrWhiteSpace(textValue) ? "n/a" : textValue;
-                    valueDisplay = $"{fallback} (invalid)";
+                    var hasExplicitLimits = !string.IsNullOrWhiteSpace(record.LowerLimit) ||
+                                            !string.IsNullOrWhiteSpace(record.UpperLimit);
+                    if (hasExplicitLimits && !lower.HasValue && !upper.HasValue)
+                    {
+                        pass = EvaluateTextOutcome(fallback, record.LowerLimit, record.UpperLimit);
+                        valueDisplay = fallback;
+                    }
+                    else if (!hasExplicitLimits)
+                    {
+                        pass = true;
+                        valueDisplay = fallback;
+                    }
+                    else
+                    {
+                        pass = false;
+                        valueDisplay = $"{fallback} (invalid)";
+                    }
                 }
                 else
                 {
@@ -572,6 +597,10 @@ public partial class Ct3xxProgramSimulator
                 }
 
                 var msg = $"{label}: {valueDisplay} {unit} (limits {lower?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-inf"} .. {upper?.ToString("0.###", CultureInfo.InvariantCulture) ?? "+inf"}) => {(pass ? "PASS" : "FAIL")}";
+                if (!string.IsNullOrWhiteSpace(messageDisplay))
+                {
+                    msg += $" | Message: {messageDisplay}";
+                }
                 _observer.OnMessage(msg);
                 PublishStepEvaluation(
                     test,
@@ -591,6 +620,76 @@ public partial class Ct3xxProgramSimulator
         }
 
         return overall;
+    }
+
+    private string? ResolveRecordMessage(Record record)
+    {
+        var rawMessage = GetRecordAttributeRaw(record, "Message");
+        if (string.IsNullOrWhiteSpace(rawMessage))
+        {
+            return null;
+        }
+
+        var trimmed = rawMessage.Trim();
+        if (trimmed.Contains('&'))
+        {
+            return _evaluator.ResolveText(trimmed);
+        }
+
+        var isQuoted = (trimmed.StartsWith("'", StringComparison.Ordinal) && trimmed.EndsWith("'", StringComparison.Ordinal) && trimmed.Length >= 2) ||
+                       (trimmed.StartsWith("\"", StringComparison.Ordinal) && trimmed.EndsWith("\"", StringComparison.Ordinal) && trimmed.Length >= 2);
+        if (isQuoted)
+        {
+            return trimmed[1..^1];
+        }
+
+        if (VariableAddress.TryParse(trimmed, out var address) && _context.IsDefined(address))
+        {
+            return _evaluator.ToText(_context.GetValue(address));
+        }
+
+        return trimmed;
+    }
+
+    private static bool EvaluateTextOutcome(string? value, string? lowerRaw, string? upperRaw)
+    {
+        var normalizedValue = value ?? string.Empty;
+        var lowerText = NormalizeLimitText(lowerRaw);
+        var upperText = NormalizeLimitText(upperRaw);
+
+        if (string.IsNullOrWhiteSpace(lowerText) && string.IsNullOrWhiteSpace(upperText))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(lowerText) && string.Equals(normalizedValue, lowerText, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(upperText) && string.Equals(normalizedValue, upperText, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string? NormalizeLimitText(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var trimmed = raw.Trim();
+        if ((trimmed.StartsWith("'", StringComparison.Ordinal) && trimmed.EndsWith("'", StringComparison.Ordinal) && trimmed.Length >= 2) ||
+            (trimmed.StartsWith("\"", StringComparison.Ordinal) && trimmed.EndsWith("\"", StringComparison.Ordinal) && trimmed.Length >= 2))
+        {
+            return trimmed[1..^1];
+        }
+
+        return trimmed;
     }
 
     /// <summary>
@@ -1431,7 +1530,7 @@ public partial class Ct3xxProgramSimulator
             _observer.OnMessage(details);
         }
 
-        _observer.OnStepEvaluated(test, new StepEvaluation(label, outcome, measuredValue, lowerLimit, upperLimit, "V", details, traces, CaptureCurvePoints()));
+        PublishStepEvaluation(test, outcome, measuredValue, lowerLimit, upperLimit, "V", details, traces, CaptureCurvePoints(), stepNameOverride: label);
         return outcome;
     }
 
@@ -1494,7 +1593,29 @@ public partial class Ct3xxProgramSimulator
 
         // Only explicit operator interaction tests should ask the user.
         // Evaluation tests read already available variables and signals.
+        if (!_context.IsDefined(address))
+        {
+            return null;
+        }
+
         return _context.GetValue(address);
+    }
+
+    private object? EvaluateEvaluationExpression(string? expression)
+    {
+        if (string.IsNullOrWhiteSpace(expression))
+        {
+            return null;
+        }
+
+        var trimmed = expression.Trim();
+        if (trimmed.Equals("PASS", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("FAIL", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed.ToUpperInvariant();
+        }
+
+        return _evaluator.Evaluate(expression);
     }
 
     /// <summary>
@@ -1703,7 +1824,8 @@ public partial class Ct3xxProgramSimulator
             resolvedTraces = CollectTestTraces(test);
         }
 
-        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details, resolvedTraces, curvePoints ?? CaptureCurvePoints()));
+        var variableSnapshot = _context.SnapshotVariables(_evaluator);
+        _observer.OnStepEvaluated(test, new StepEvaluation(stepName, outcome, measured, lower, upper, unit, details, resolvedTraces, curvePoints ?? CaptureCurvePoints(), variableSnapshot));
         PublishStateSnapshot(force: true);
     }
 
@@ -2345,6 +2467,18 @@ public partial class Ct3xxProgramSimulator
         return attribute?.Value?.Trim().Trim('\'', '"');
     }
 
+    private static string? GetRecordAttributeRaw(Record record, string attributeName)
+    {
+        if (record.AdditionalAttributes == null || string.IsNullOrWhiteSpace(attributeName))
+        {
+            return null;
+        }
+
+        var attribute = record.AdditionalAttributes.FirstOrDefault(item =>
+            string.Equals(item.Name, attributeName, StringComparison.OrdinalIgnoreCase));
+        return attribute?.Value;
+    }
+
     /// <summary>
     /// Initializes a new instance of static.
     /// </summary>
@@ -2538,6 +2672,7 @@ public partial class Ct3xxProgramSimulator
                 item => item.Key,
                 item => item.Value,
                 StringComparer.OrdinalIgnoreCase);
+        var variableSnapshot = _context.SnapshotVariables(_evaluator);
 
         var relayStates = _wireVizResolver?.DescribeRelayStates(_signalState, _signalChangedAtMs, _simulatedTimeMs, _faults) ?? Array.Empty<string>();
         var elementStates = _wireVizResolver?.DescribeElementStates(_signalState, _signalChangedAtMs, _simulatedTimeMs, _faults) ?? Array.Empty<string>();
@@ -2547,6 +2682,7 @@ public partial class Ct3xxProgramSimulator
             _simulatedTimeMs,
             signalSnapshot,
             measurementBusSnapshot,
+            variableSnapshot,
             relayStates,
             _faults.DescribeActiveFaults(),
             _externalDeviceState,
@@ -2559,6 +2695,7 @@ public partial class Ct3xxProgramSimulator
             _simulatedTimeMs,
             signalSnapshot,
             measurementBusSnapshot,
+            variableSnapshot,
             relayStates,
             _faults.DescribeActiveFaults(),
             _externalDeviceState,
@@ -3105,6 +3242,70 @@ public partial class Ct3xxProgramSimulator
         /// Gets the expected exit code.
         /// </summary>
         public int ExpectedExitCode { get; }
+    }
+
+    private sealed class GroupOutcomeState
+    {
+        private readonly bool _logLastOnly;
+        private bool _hasAnyOutcome;
+        private bool _hasIterationOutcome;
+        private TestOutcome _worstOutcome = TestOutcome.Pass;
+        private TestOutcome _iterationWorst = TestOutcome.Pass;
+        private TestOutcome _lastIterationOutcome = TestOutcome.Pass;
+
+        public GroupOutcomeState(string? logLoops)
+        {
+            _logLastOnly = string.Equals(logLoops, "last", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public void BeginIteration()
+        {
+            _iterationWorst = TestOutcome.Pass;
+            _hasIterationOutcome = false;
+        }
+
+        public void RecordOutcome(TestOutcome outcome)
+        {
+            if (!_hasAnyOutcome)
+            {
+                _worstOutcome = outcome;
+                _hasAnyOutcome = true;
+            }
+            else
+            {
+                _worstOutcome = CombineOutcomes(_worstOutcome, outcome);
+            }
+
+            if (!_hasIterationOutcome)
+            {
+                _iterationWorst = outcome;
+                _hasIterationOutcome = true;
+            }
+            else
+            {
+                _iterationWorst = CombineOutcomes(_iterationWorst, outcome);
+            }
+        }
+
+        public void EndIteration()
+        {
+            if (_hasIterationOutcome)
+            {
+                _lastIterationOutcome = _iterationWorst;
+            }
+        }
+
+        public bool TryGetFinalOutcome(out TestOutcome outcome)
+        {
+            if (!_hasAnyOutcome)
+            {
+                outcome = TestOutcome.Pass;
+                return false;
+            }
+
+            outcome = _logLastOnly ? _lastIterationOutcome : _worstOutcome;
+            return true;
+        }
     }
 
     /// <summary>

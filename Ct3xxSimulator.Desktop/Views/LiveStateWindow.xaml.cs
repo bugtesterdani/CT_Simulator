@@ -36,6 +36,7 @@ public partial class LiveStateWindow : Window
         ConcurrentEventTextBlock.Text = $"Concurrent-Event: {snapshot.ConcurrentEvent ?? "-"}";
         var signals = CreateStateItems(snapshot.Signals);
         var measurementBuses = CreateStateItems(snapshot.MeasurementBuses);
+        var variables = CreateStateItems(snapshot.Variables);
         var deviceInputs = CreateStateItems(snapshot.ExternalDeviceState.Inputs);
         var deviceSources = CreateStateItems(snapshot.ExternalDeviceState.Sources);
         var deviceOutputs = CreateStateItems(snapshot.ExternalDeviceState.Outputs);
@@ -58,6 +59,7 @@ public partial class LiveStateWindow : Window
 
         SignalsGrid.ItemsSource = signals;
         MeasurementBusGrid.ItemsSource = measurementBuses;
+        VariablesGrid.ItemsSource = variables;
         DeviceInputsGrid.ItemsSource = deviceInputs;
         DeviceSourcesGrid.ItemsSource = deviceSources;
         DeviceOutputsGrid.ItemsSource = deviceOutputs;
@@ -70,6 +72,7 @@ public partial class LiveStateWindow : Window
 
         CompactSignalsGrid.ItemsSource = signals;
         CompactMeasurementBusGrid.ItemsSource = measurementBuses;
+        CompactVariablesGrid.ItemsSource = variables;
         CompactDeviceIoGrid.ItemsSource = deviceInputs
             .Select(item => new SectionStateItemViewModel("Input", item.Name, item.Value))
             .Concat(deviceOutputs.Select(item => new SectionStateItemViewModel("Output", item.Name, item.Value)))
