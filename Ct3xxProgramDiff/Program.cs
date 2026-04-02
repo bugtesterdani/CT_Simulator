@@ -374,6 +374,12 @@ internal static class Program
         sb.AppendLine(".diffs .new{color:#2E7D32;}");
         sb.AppendLine(".empty{min-height:40px;}");
         sb.AppendLine(".indent{display:block;}");
+        sb.AppendLine(".collapsed-block{margin:6px 0 12px 0;}");
+        sb.AppendLine(".toggle-unchanged{background:#EEF2F6;border:1px dashed #C4CFDA;color:#3B4652;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;}");
+        sb.AppendLine(".toggle-unchanged:focus{outline:2px solid #7AA2C2;outline-offset:2px;}");
+        sb.AppendLine(".collapsed-rows{display:none;margin-top:8px;}");
+        sb.AppendLine(".collapsed-block.open .collapsed-rows{display:block;}");
+        sb.AppendLine(".collapsed-block.open .toggle-unchanged{background:#E8F1FF;border-style:solid;}");
         sb.AppendLine("</style>");
         sb.AppendLine("</head>");
         sb.AppendLine("<body>");
@@ -385,12 +391,22 @@ internal static class Program
         sb.AppendLine("<section class=\"panel\">");
         sb.AppendLine("<div class=\"panel-header\"><div class=\"panel-title\">Testschritte</div></div>");
         sb.AppendLine("<div class=\"columns\"><div>Alt</div><div>Diff / Status</div><div>Neu</div></div>");
-        foreach (var row in alignedRows)
-        {
-            sb.AppendLine(RenderSideBySideRow(row));
-        }
+        sb.AppendLine(RenderAlignedRows(alignedRows));
         sb.AppendLine("</section>");
 
+        sb.AppendLine("<script>");
+        sb.AppendLine("document.querySelectorAll('.toggle-unchanged').forEach(btn => {");
+        sb.AppendLine("  const showText = btn.dataset.showText || 'Show unchanged';");
+        sb.AppendLine("  const hideText = btn.dataset.hideText || 'Hide unchanged';");
+        sb.AppendLine("  btn.textContent = showText;");
+        sb.AppendLine("  btn.addEventListener('click', () => {");
+        sb.AppendLine("    const block = btn.closest('.collapsed-block');");
+        sb.AppendLine("    if (!block) return;");
+        sb.AppendLine("    const open = block.classList.toggle('open');");
+        sb.AppendLine("    btn.textContent = open ? hideText : showText;");
+        sb.AppendLine("  });");
+        sb.AppendLine("});");
+        sb.AppendLine("</script>");
         sb.AppendLine("</body>");
         sb.AppendLine("</html>");
         return sb.ToString();
@@ -409,6 +425,80 @@ internal static class Program
   <div>{rightCell}</div>
 </div>";
     }
+
+    private static string RenderAlignedRows(List<AlignedRow> rows)
+    {
+        var changedSubtree = ComputeChangedSubtreeFlags(rows);
+        var sb = new StringBuilder();
+        var i = 0;
+        var groupId = 0;
+
+        while (i < rows.Count)
+        {
+            var isCollapsible = rows[i].Status == DiffStatus.Unchanged && !changedSubtree[i];
+            if (!isCollapsible)
+            {
+                sb.AppendLine(RenderSideBySideRow(rows[i]));
+                i++;
+                continue;
+            }
+
+            var start = i;
+            while (i < rows.Count && rows[i].Status == DiffStatus.Unchanged && !changedSubtree[i])
+            {
+                i++;
+            }
+
+            var count = i - start;
+            sb.AppendLine(RenderCollapsedBlock(rows, start, count, groupId++));
+        }
+
+        return sb.ToString();
+    }
+
+    private static string RenderCollapsedBlock(List<AlignedRow> rows, int start, int count, int groupId)
+    {
+        var showText = $"Show {count} unchanged row{(count == 1 ? string.Empty : "s")}";
+        var hideText = $"Hide {count} unchanged row{(count == 1 ? string.Empty : "s")}";
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"<div class=\"collapsed-block\" id=\"unchanged-{groupId}\">");
+        sb.AppendLine($"  <button type=\"button\" class=\"toggle-unchanged\" data-show-text=\"{Escape(showText)}\" data-hide-text=\"{Escape(hideText)}\"></button>");
+        sb.AppendLine("  <div class=\"collapsed-rows\">");
+        for (var i = start; i < start + count; i++)
+        {
+            sb.AppendLine(RenderSideBySideRow(rows[i]));
+        }
+        sb.AppendLine("  </div>");
+        sb.AppendLine("</div>");
+
+        return sb.ToString();
+    }
+
+    private static bool[] ComputeChangedSubtreeFlags(List<AlignedRow> rows)
+    {
+        var result = new bool[rows.Count];
+        var stack = new Stack<(int Depth, bool HasChanged)>();
+
+        for (var i = rows.Count - 1; i >= 0; i--)
+        {
+            var depth = GetRowDepth(rows[i]);
+            var hasChanged = rows[i].Status != DiffStatus.Unchanged;
+
+            while (stack.Count > 0 && stack.Peek().Depth > depth)
+            {
+                hasChanged |= stack.Pop().HasChanged;
+            }
+
+            result[i] = hasChanged;
+            stack.Push((depth, hasChanged));
+        }
+
+        return result;
+    }
+
+    private static int GetRowDepth(AlignedRow row)
+        => row.OldRow?.Depth ?? row.NewRow?.Depth ?? 0;
 
     private static string RenderNodeCell(DisplayRow row)
     {

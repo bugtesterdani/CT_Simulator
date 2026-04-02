@@ -34,3 +34,13 @@
 3. Web UI (Block-Liste, Board, Edges)
 4. Desktop Host (WebView2 + File-Dialoge)
 5. CLI/Server-Hosting via `Ct3xxWireVizDesigner.Web`
+
+## Aktueller Funktionsumfang
+
+- WireViz Properties Editor (Known + Custom Keys)
+- Globals: metadata/options/tweak/additional_bom_items
+- YAML Preview
+- Export minimal/full und optional gzip
+- Snapshot CSV/JSON
+- Pan/Zoom + resizable Panels
+- Light/Dark (System + Toggle)

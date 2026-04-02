@@ -4,6 +4,8 @@ Source: `wireviz/WireViz` syntax definition (docs/syntax.md).
 
 Reference git hash: `e4fe099f8c7b86736aee7b4227cc794b6e8b36f0`
 
+This list is mirrored in `Ct3xxWireVizSchema` for shared use by parser and designer.
+
 ## Main sections
 
 - `connectors`

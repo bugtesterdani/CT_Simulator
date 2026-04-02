@@ -15,6 +15,15 @@ The parser keeps the whole YAML document available as a navigable value tree and
 
 Unknown or future WireViz options are preserved instead of being discarded.
 
+## Shared Schema
+
+The parser now shares its known-key lists and type hints with the WireViz Designer via:
+
+- `Ct3xxWireVizSchema` (central definition)
+- `WireVizKnownSchema` (parser-facing wrapper)
+
+This avoids duplicated key lists and keeps UI hints aligned with parsing logic.
+
 ## CT3xx Naming Conventions
 
 For CT3xx integration, the WireViz data is interpreted not only structurally, but also semantically.

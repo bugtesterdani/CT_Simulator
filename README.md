@@ -31,6 +31,14 @@ Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fue
   Parser fuer `.ctxprg` und referenzierte CT3xx-Dateien wie `ctsit`, `ctarb` oder `ctict`.
 - `Ct3xxWireVizParser`
   Parser fuer standardkonformes WireViz-YAML.
+- `Ct3xxWireVizSchema`
+  Zentrale WireViz-Schluessel und Typ-Hints fuer Parser und Designer.
+- `Ct3xxWireVizDesigner.Core`
+  BlockGraph-Modell und WireViz-Import/Export fuer den Designer.
+- `Ct3xxWireVizDesigner.Web`
+  Web-UI fuer WireViz-Planung, Properties und Export.
+- `Ct3xxWireVizDesigner.Desktop`
+  Desktop-Host (WebView2) fuer den WireViz Designer.
 - `Ct3xxSimulationModelParser`
   Parser fuer `simulation.yaml` mit Verhaltensmodellen.
 - `Ct3xxAltiumWireVizExporter`
@@ -60,6 +68,10 @@ CT3xx/
 |- Ct3xxSimulator.Waveforms/
 |- Ct3xxProgramDiff/
 |- Ct3xxWireVizParser/
+|- Ct3xxWireVizSchema/
+|- Ct3xxWireVizDesigner.Core/
+|- Ct3xxWireVizDesigner.Web/
+|- Ct3xxWireVizDesigner.Desktop/
 |- Ct3xxWireVizParser.Tests/
 |- examples/
 |- simtest/
@@ -199,7 +211,7 @@ Unter `simtest/device` gibt es zwei Wege fuer DUT-Simulationen:
 - ein neues Python-Modul unter `simtest/device/devices/*.py`
 - oder ein neues JSON-/YAML-Profil unter `simtest/device/devices/*`
 
-ergÃ¤nzen und weiter dieselbe `simtest/device/main.py`- und `simtest/device/core`-Basis verwenden.
+ergaenzen und weiter dieselbe `simtest/device/main.py`- und `simtest/device/core`-Basis verwenden.
 
 Deklarative Profile unterstuetzen unter anderem:
 
