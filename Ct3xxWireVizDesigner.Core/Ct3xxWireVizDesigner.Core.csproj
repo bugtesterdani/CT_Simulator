@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ct3xxWireVizParser\Ct3xxWireVizParser.csproj" />
+    <ProjectReference Include="..\Ct3xxWireVizSchema\Ct3xxWireVizSchema.csproj" />
+  </ItemGroup>
+
+</Project>

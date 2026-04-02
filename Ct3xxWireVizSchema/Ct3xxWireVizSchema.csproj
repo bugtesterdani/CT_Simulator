@@ -6,12 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="YamlDotNet" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Ct3xxWireVizSchema\Ct3xxWireVizSchema.csproj" />
-  </ItemGroup>
-
 </Project>

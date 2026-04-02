@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CT3xx WireViz Block Designer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-title">
+      <h1>CT3xx WireViz Block Designer</h1>
+      <p>BlockGraph editor and WireViz round-trip utility</p>
+    </div>
+    <div class="app-actions">
+      <button id="newGraph">New</button>
+      <button id="loadGraph">Load JSON</button>
+      <button id="saveGraph">Save JSON</button>
+      <button id="importWireViz">Import WireViz</button>
+      <button id="exportWireViz">Export WireViz</button>
+      <button id="toggleTheme" class="theme-toggle">Light</button>
+    </div>
+  </header>
+
+  <main class="app-main" id="appMain">
+    <section class="panel">
+      <h2>Nodes</h2>
+      <div class="node-actions">
+        <input id="nodeName" placeholder="Node name" />
+        <select id="nodeType">
+          <option value="Connector">Connector</option>
+          <option value="Device">Device</option>
+          <option value="Harness">Harness</option>
+          <option value="Cable">Cable</option>
+          <option value="Bundle">Bundle</option>
+          <option value="Splice">Splice</option>
+          <option value="Comment">Comment</option>
+        </select>
+        <button id="addNode" class="primary-pill">Add Node</button>
+      </div>
+      <div id="nodeList" class="node-list"></div>
+    </section>
+
+    <div class="resizer" id="resizerLeft" title="Drag to resize"></div>
+
+    <section class="board-panel">
+      <h2>Board</h2>
+      <div class="board-toolbar">
+        <button id="zoomOut" class="ghost-button">-</button>
+        <span id="zoomLevel" class="edge-hint">100%</span>
+        <button id="zoomIn" class="ghost-button">+</button>
+        <button id="resetView" class="ghost-button">Reset</button>
+      </div>
+      <div id="board" class="board">
+        <div id="boardContent" class="board-content">
+          <svg id="edgeLayer" class="edge-layer"></svg>
+        </div>
+      </div>
+    </section>
+
+    <div class="resizer" id="resizerRight" title="Drag to resize"></div>
+
+    <section class="panel">
+      <h2>Connections</h2>
+      <div class="edge-actions">
+        <div class="edge-hint">Click two ports to connect.</div>
+        <div id="selectedNodeBanner" class="selected-banner">
+          <span class="badge">Selected</span>
+          <span class="value" id="selectedNodeValue">None</span>
+        </div>
+        <label class="color-picker">
+          Wire color
+          <input id="edgeColor" type="color" value="#2e6cdf" />
+        </label>
+        <div class="connect-summary">
+          <div class="summary-title">Connection</div>
+          <div class="summary-line">
+            <span class="summary-label">From</span>
+            <span id="connectFrom" class="summary-value">–</span>
+          </div>
+          <div class="summary-line">
+            <span class="summary-label">To</span>
+            <span id="connectTo" class="summary-value">–</span>
+          </div>
+          <button id="cancelConnect" class="ghost-button">Cancel</button>
+        </div>
+        <button id="clearSelection">Clear Selection</button>
+      </div>
+      <div class="port-editor">
+        <h3>Selected Node</h3>
+        <div id="selectedNode">None</div>
+        <div class="port-actions">
+          <input id="portName" placeholder="Port name" />
+          <input id="portIndex" type="number" placeholder="Index" />
+          <button id="addPort" class="primary-pill">Add Port</button>
+        </div>
+        <div id="portList" class="port-list"></div>
+      </div>
+      <div class="port-editor">
+        <h3>WireViz Properties</h3>
+        <div class="port-actions">
+          <input id="propKey" list="propKeyList" placeholder="Property key" />
+          <datalist id="propKeyList"></datalist>
+          <div id="propHint" class="edge-hint">Hint: select a key to see field type.</div>
+          <div id="propValueTextWrap" class="prop-editor-field">
+            <input id="propValueText" placeholder="Value" />
+          </div>
+          <div id="propValueBoolWrap" class="prop-editor-field">
+            <label class="color-picker">
+              Boolean
+              <input id="propValueBool" type="checkbox" />
+            </label>
+          </div>
+          <div id="propValueArrayWrap" class="prop-editor-field">
+            <input id="propValueArrayItem" placeholder="Add item" />
+            <button id="propValueArrayAdd" class="ghost-button">Add Item</button>
+            <div id="propValueArrayList" class="port-list"></div>
+          </div>
+          <button id="addProp" class="primary-pill">Set Property</button>
+        </div>
+        <div id="propList" class="port-list"></div>
+      </div>
+      <div class="port-editor">
+        <h3>WireViz Globals</h3>
+        <div class="port-actions">
+          <textarea id="metaJson" rows="3" placeholder="metadata (JSON)"></textarea>
+          <textarea id="optionsJson" rows="3" placeholder="options (JSON)"></textarea>
+          <textarea id="tweakJson" rows="3" placeholder="tweak (JSON)"></textarea>
+          <textarea id="bomJson" rows="3" placeholder="additional_bom_items (JSON array)"></textarea>
+          <button id="saveGlobals" class="primary-pill">Save Globals</button>
+          <label class="color-picker">
+            Compress export (.yaml.gz)
+            <input id="exportCompress" type="checkbox" />
+          </label>
+          <label class="color-picker">
+            Full export
+            <input id="exportFull" type="checkbox" />
+          </label>
+          <button id="exportSnapshot" class="ghost-button">Export Snapshot (CSV/JSON)</button>
+        </div>
+      </div>
+      <div class="port-editor">
+        <h3>WireViz YAML Preview</h3>
+        <div class="port-actions">
+          <label class="color-picker">
+            Auto refresh
+            <input id="previewAuto" type="checkbox" checked />
+          </label>
+          <button id="refreshPreview" class="ghost-button">Refresh Preview</button>
+          <textarea id="yamlPreview" rows="10" readonly></textarea>
+        </div>
+      </div>
+      <div id="edgeList" class="edge-list"></div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div id="status">Ready.</div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

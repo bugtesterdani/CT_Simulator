@@ -105,6 +105,38 @@ public sealed class WireVizDocument
     public IReadOnlyList<WireVizValue> AdditionalBomItems => AdditionalBomItemsSection?.AsSequenceOrEmpty() ?? EmptyList;
 
     /// <summary>
+    /// Returns connector keys that are not part of the known WireViz schema.
+    /// </summary>
+    public IReadOnlyList<string> GetUnknownConnectorKeys(string designator)
+    {
+        if (!Connectors.TryGetValue(designator, out var value))
+        {
+            return Array.Empty<string>();
+        }
+
+        var known = new HashSet<string>(Ct3xxWireVizSchema.WireVizSchema.ConnectorKeys, StringComparer.OrdinalIgnoreCase);
+        return value.AsMappingOrEmpty().Keys
+            .Where(key => !known.Contains(key))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Returns cable keys that are not part of the known WireViz schema.
+    /// </summary>
+    public IReadOnlyList<string> GetUnknownCableKeys(string designator)
+    {
+        if (!Cables.TryGetValue(designator, out var value))
+        {
+            return Array.Empty<string>();
+        }
+
+        var known = new HashSet<string>(Ct3xxWireVizSchema.WireVizSchema.CableKeys, StringComparer.OrdinalIgnoreCase);
+        return value.AsMappingOrEmpty().Keys
+            .Where(key => !known.Contains(key))
+            .ToList();
+    }
+
+    /// <summary>
     /// Gets the section.
     /// </summary>
     public WireVizValue? GetSection(string name)
