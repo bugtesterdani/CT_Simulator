@@ -1,0 +1,13 @@
+**/bin
+**/obj
+**/.vs
+**/.git
+artifacts
+examples
+testprogramme
+simtest*
+*.user
+*.suo
+*.cache
+*.log
+.DS_Store
