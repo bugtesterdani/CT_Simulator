@@ -4,3 +4,8 @@ __pycache__/
 *.csv
 .tmp*
 testprogramme/
+.vs/
+artifacts/
+examples/altium_plan/
+simtest/ct3xx/
+simtest_*/

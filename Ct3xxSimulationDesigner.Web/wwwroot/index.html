@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CT3xx Simulation Designer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-title">
+      <h1>CT3xx Simulation Designer</h1>
+      <p>Create and export simulation.yaml from existing examples.</p>
+    </div>
+    <div class="app-actions">
+      <button id="toggleTheme" data-help="Toggle light/dark mode.">Dark</button>
+      <button id="newDoc">New</button>
+      <button id="loadYaml" data-help="Import a simulation.yaml and populate the editor.">Load YAML</button>
+      <button id="loadJson" data-help="Import a saved simulation.json from this editor.">Load JSON</button>
+      <button id="saveJson" data-help="Save the current structure as simulation.json.">Save JSON</button>
+      <button id="exportYaml" data-help="Export the current structure to simulation.yaml.">Export YAML</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="panel">
+      <h2>Sections</h2>
+      <div class="section-actions">
+        <select id="sectionName" class="select" data-help="Top-level section, usually 'elements'.">
+          <option value="elements">elements</option>
+        </select>
+        <button id="addSection" data-help="Create a new top-level section.">Add Section</button>
+      </div>
+      <div id="sectionList" class="list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Items</h2>
+      <div class="section-actions">
+        <input id="itemName" list="itemOptions" placeholder="Item name (id)" data-help="Element id. This becomes the 'id' field." />
+        <div class="dropdown" id="itemTypeDropdown">
+          <button id="itemTypeButton" class="select" type="button" data-help="Select the element type. Type is locked after creation.">
+            Select type
+          </button>
+          <div id="itemTypeMenu" class="dropdown-menu"></div>
+        </div>
+        <button id="addItem" data-help="Create the element and apply its type + id.">Add Item</button>
+      </div>
+      <datalist id="itemOptions"></datalist>
+      <div id="itemList" class="list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Properties</h2>
+      <div class="section-actions">
+        <input id="propKey" list="propKeyOptions" placeholder="Key" data-help="Property key for the selected element." />
+        <input id="propValue" list="propValueOptions" placeholder="Value (JSON or text)" data-help="Value. JSON allowed for objects/arrays." />
+        <button id="addProp" data-help="Set the property on the selected element.">Set</button>
+      </div>
+      <datalist id="propKeyOptions"></datalist>
+      <datalist id="propValueOptions"></datalist>
+      <div id="propList" class="list"></div>
+      <div class="helper-panel">
+        <div class="helper-header">
+          <strong>Suggested Properties</strong>
+          <span id="typeHint" class="muted"></span>
+        </div>
+        <div id="suggestedProps" class="suggested-grid"></div>
+      </div>
+      <div class="helper-panel">
+        <div class="helper-header">
+          <strong>Required Fields</strong>
+          <span class="muted">auto sync</span>
+        </div>
+        <div id="requiredProps" class="required-grid"></div>
+      </div>
+    </section>
+
+    <section class="panel full">
+      <h2>YAML Preview</h2>
+      <textarea id="yamlPreview" readonly></textarea>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div id="status">Ready.</div>
+  </footer>
+
+  <div id="helpTooltip" class="help-tooltip" role="tooltip" aria-hidden="true"></div>
+  <div id="jsonEditor" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong>Edit JSON</strong>
+        <button id="jsonCancel" type="button">Close</button>
+      </div>
+      <textarea id="jsonEditorText" spellcheck="false"></textarea>
+      <div class="modal-actions">
+        <button id="jsonSave" type="button">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

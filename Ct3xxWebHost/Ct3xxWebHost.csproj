@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ct3xxWireVizDesigner.Core\Ct3xxWireVizDesigner.Core.csproj" />
+    <ProjectReference Include="..\Ct3xxWireVizSchema\Ct3xxWireVizSchema.csproj" />
+    <ProjectReference Include="..\Ct3xxSimulationSchema\Ct3xxSimulationSchema.csproj" />
+    <ProjectReference Include="..\Ct3xxSimulationModelParser\Ct3xxSimulationModelParser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Ct3xxWireVizDesigner.Web\wwwroot\**\*">
+      <Link>wwwroot\wireviz\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\Ct3xxSimulationDesigner.Web\wwwroot\**\*">
+      <Link>wwwroot\simulation\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

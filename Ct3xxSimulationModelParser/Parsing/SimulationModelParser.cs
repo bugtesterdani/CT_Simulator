@@ -36,6 +36,20 @@ public sealed class SimulationModelParser
     }
 
     /// <summary>
+    /// Parses the yaml content.
+    /// </summary>
+    public SimulationModelDocument ParseText(string yaml, string sourcePath = "<inline>")
+    {
+        if (string.IsNullOrWhiteSpace(yaml))
+        {
+            throw new ArgumentException("Yaml must be provided.", nameof(yaml));
+        }
+
+        var raw = _deserializer.Deserialize<Dictionary<object, object?>>(yaml);
+        return ParseRoot(raw, sourcePath);
+    }
+
+    /// <summary>
     /// Executes ParseRoot.
     /// </summary>
     private static SimulationModelDocument ParseRoot(IDictionary<object, object?>? root, string sourcePath)

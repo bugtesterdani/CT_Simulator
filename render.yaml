@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ct-simulator
+    env: dotnet
+    plan: free
+    buildCommand: dotnet publish Ct3xxWebHost/Ct3xxWebHost.csproj -c Release -o out
+    startCommand: dotnet out/Ct3xxWebHost.dll
+    envVars:
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:$PORT

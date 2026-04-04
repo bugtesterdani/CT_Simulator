@@ -790,10 +790,13 @@ async function refreshYamlPreview() {
     sendToHost("request-export-wireviz-preview", { graph: state.graph });
     return;
   }
-  const response = await fetch("/api/wireviz/export", {
+  const response = await fetch("api/wireviz/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(state.graph),
+    body: JSON.stringify({
+      graph: state.graph,
+      full: exportFull?.checked ?? false,
+    }),
   });
   if (!response.ok) {
     yamlPreview.value = "Preview failed.";
@@ -824,7 +827,7 @@ initResizers();
 
 async function loadSchema() {
   try {
-    const response = await fetch("/api/wireviz/schema");
+    const response = await fetch("api/wireviz/schema");
     if (!response.ok) {
       return;
     }
@@ -846,7 +849,7 @@ async function openWireVizViaApi() {
     const file = input.files?.[0];
     if (!file) return;
     const yaml = await file.text();
-    const response = await fetch("/api/wireviz/import", {
+    const response = await fetch("api/wireviz/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ yaml }),
@@ -864,7 +867,7 @@ async function openWireVizViaApi() {
 }
 
 async function exportWireVizViaApi() {
-  const response = await fetch("/api/wireviz/export", {
+  const response = await fetch("api/wireviz/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

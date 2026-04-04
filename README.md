@@ -46,6 +46,23 @@ Dieses Repository enthaelt Parser, Simulationslogik und eine WPF-Oberflaeche fue
 - `Ct3xxProgramDiff`
   Semantischer `.ctxprg`-Diff mit Markdown- und HTML-Report fuer CI/MR-Reviews.
 
+## Projektabhaengigkeiten (High-Level)
+
+- `Ct3xxSimulator` -> `Ct3xxSimulation.Abstractions`, `Ct3xxProgramParser`, `Ct3xxSimulationModelParser`, `Ct3xxWireVizParser`, `Ct3xxSimulator.Interfaces`, `Ct3xxSimulator.Modules`, `Ct3xxSimulator.Waveforms`, `Ct3xxSimulator.TestTypes`
+- `Ct3xxSimulator.Desktop` -> `Ct3xxSimulation.Abstractions`, `Ct3xxSimulator`, `Ct3xxSimulator.Export`, `Ct3xxSimulator.Validation`, `Ct3xxTestRunLogParser`
+- `Ct3xxSimulator.Cli` -> `Ct3xxProgramParser`, `Ct3xxSimulator`, `Ct3xxSimulator.Export`, `Ct3xxSimulator.Validation`
+- `Ct3xxSimulator.Validation` -> `Ct3xxSimulationModelParser`, `Ct3xxProgramParser`, `Ct3xxWireVizParser`
+- `Ct3xxSimulator.Export` -> keine internen Projektabhaengigkeiten
+- `Ct3xxSimulation.Abstractions` -> `Ct3xxProgramParser`
+- `Ct3xxSimulationModelParser` -> `Ct3xxSimulationSchema`
+- `Ct3xxSimulationDesigner.Web` -> `Ct3xxSimulationSchema`
+- `Ct3xxProgramDiff` -> `Ct3xxProgramParser`
+- `Ct3xxTestRunLogParser` -> `Ct3xxProgramParser`
+- `Ct3xxWireVizParser` -> `Ct3xxWireVizSchema`
+- `Ct3xxWireVizDesigner.Core` -> `Ct3xxWireVizParser`, `Ct3xxWireVizSchema`
+- `Ct3xxWireVizDesigner.Web` -> `Ct3xxWireVizDesigner.Core`, `Ct3xxWireVizSchema`
+- `Ct3xxWireVizDesigner.Desktop` -> `Ct3xxWireVizDesigner.Core`
+
 ## Struktur
 
 ```text
